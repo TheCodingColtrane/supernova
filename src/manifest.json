@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Supernova",
+  "version": "1.0",
+  "description": "Scrapes lawsuit data from PJe and saves to CSV",
+  "permissions": ["scripting", "activeTab", "downloads", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "host_permissions": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
