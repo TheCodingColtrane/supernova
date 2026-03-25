@@ -139,7 +139,7 @@ async function batchFetch(pagesData, system, circuit) {
   const urls = []
 
   for (const page of pagesData) {
-    for (let i = system === 2 ? 1 : 0; i <= page.count; i++) {
+    for (let i = 1; i <= page.count; i++) {
       let solarURL = ""
 
       if (system === 2) {
@@ -152,7 +152,7 @@ async function batchFetch(pagesData, system, circuit) {
     }
   }
 
-  // lotes de 3. (ISSO É FEITO PARA EVITAR TOO MANY REQUESTS. NÃO DEFINIR VALOR SUPERIOR A 10.)
+  // lotes de 3. (ISSO É FEITO PARA EVITAR RATE LIMIT DO SOLAR. NÃO DEFINIR VALOR SUPERIOR A 10.)
   const BATCH_SIZE = 3
 
   for (let i = 0; i < urls.length; i += BATCH_SIZE) {
@@ -242,17 +242,17 @@ async function fetchPages(pagesData, system, circuit) {
 
 /**
  * Retorna a página HTML em formato de document
- * @param {NodeList} lawsuitsStatusDataCount  Quantidade de registros
+ * @param {{count: 0, status: 0}} lawsuitsStatusDataCount  Quantidade de registros
  * @param {number} system  Solar v1 ou v2
  * @param {number} circuit Vara ou defensoria
  */
 async function parseHTML(lawsuitsStatusDataCount, system, circuit) {
   const rawLawsuits = await Promise.all(await batchFetch(lawsuitsStatusDataCount, system, circuit))
-  const lawsuitsData = []
+  let lawsuitsData = []
   for (let lawsuit of rawLawsuits) {
     let parser = new DOMParser()
     const pageData = parser.parseFromString(lawsuit.rawHTML, "text/html")
-    if (system === 1) lawsuitsData.push(await getEPROCLawsuitsData(pageData))
+    if (system === 1) lawsuitsData = await getEPROCLawsuitsData(pageData)
     else lawsuitsData.push(getEPROCLegacyLawsuitsData(pageData))
 
   }
@@ -319,7 +319,7 @@ async function getEPROCLawsuitsData(page) {
 
     if (!Object.hasOwn(data, "nextUpdate") || Date.now() >= data.nextUpdate) {
       const rawDefenders = rawResults[1].substring(1, rawResults[1].length).split("total")[0]
-      const currentDefenders = JSON.stringify(rawDefenders.substring(0, rawDefenders.length - 2))
+      const currentDefenders = rawDefenders.substring(0, rawDefenders.length - 2)
       await chrome.storage.local.set({
         defenders: currentDefenders,
         cacheVersion: "1.0",
@@ -330,7 +330,6 @@ async function getEPROCLawsuitsData(page) {
     defenders = JSON.parse(defenders)
     const firstLawsuitNumber = document.querySelector("[aria-label='Número do processo']").innerHTML
     let results = JSON.parse(lawsuits)
-    console.log(results)
     const responsable = results.find(l => l.numero === firstLawsuitNumber)
     if (responsable) {
       const defender = defenders.find(d => d.cpf === responsable.distribuido_cpf)
