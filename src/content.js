@@ -261,6 +261,7 @@ async function getEPROCLawsuitsData(page) {
     let { defenders } = await chrome.storage.local.get("defenders")
     defenders = JSON.parse(defenders)
     let results = JSON.parse(lawsuits)
+    console.log(results)
     const filedLawsuits = []
     for (let result of results) {
 
@@ -274,7 +275,7 @@ async function getEPROCLawsuitsData(page) {
         awarenessDate: result.prazo_ciencia,
         deadline: result.prazo_final || result.prazo_ciencia,
         givenDeadLine: result.prazo_inicial && result.prazo_final ? function (startingDate, endingDate) {
-          const diffTime = Math.abs(new Date(endingDate), new Date(startingDate))
+          const diffTime = Math.abs(new Date(endingDate) - new Date(startingDate))
           return Math.floor(diffTime / (1000 * 60 * 60 * 24));
         }(result.prazo_inicial, result.prazo_final) : 0,
         defender: defenders.find(c => c.cpf === result.distribuido_cpf)
