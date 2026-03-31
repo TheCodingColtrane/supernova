@@ -5,18 +5,12 @@
     });
   });
 
-  document.getElementById("loadCircuit").addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "loadCircuit" });
-    })
-  })
-
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === "LAWSUIT_DATA") {
-      console.log("Dados recebidos:", request.payload);
-      generateCSV(request.payload);
-    }
-  });
+  // chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  //   if (request.type === "LAWSUIT_DATA") {
+  //     console.log("Dados recebidos:", request.payload);
+  //     generateCSV(request.payload);
+  //   }
+  // });
 
   
   //Carrega as varas ao abrir o popup no PJE e outros sistemas. 

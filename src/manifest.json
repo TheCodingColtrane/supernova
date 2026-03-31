@@ -10,7 +10,8 @@
   },
   "host_permissions": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "sw.js",
+    "type": "module" 
   },
   "content_scripts": [
     {

@@ -1,5 +1,6 @@
 // import { getDefenders, setDefenders } from "./background";
 
+
 const currentPage = document.location.href
 let system = ""
 
@@ -15,6 +16,9 @@ let lawsuitInfo = [{
   "Data Limite": new Date()
 }]
 
+
+
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "startExtraction") {
     if (system > -1 || system < 3) scrapeData();
@@ -25,13 +29,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "loadCircuit") {
-    loadCircuit();
-  }
-});
 
 const getPJELawsuits = () => {
 
@@ -145,7 +142,7 @@ async function batchFetch(pagesData, system, circuit) {
       if (system === 2) {
         solarURL = `https://solar.defensoria.mg.def.br/processo/intimacao/buscar/?situacao=${page.status}&tipo=INT&setor_responsavel=${circuit}&page=${i}`
       } else {
-        solarURL = `https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?situacao=${page.status}&page_size=100&page=${i}`
+        solarURL = `https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=AND&situacao=${page.status}&page_size=100&page=${i}`
       }
 
       urls.push(solarURL)
@@ -154,33 +151,16 @@ async function batchFetch(pagesData, system, circuit) {
 
   // lotes de 3. (ISSO É FEITO PARA EVITAR RATE LIMIT DO SOLAR. NÃO DEFINIR VALOR SUPERIOR A 10.)
   const BATCH_SIZE = 3
-
   for (let i = 0; i < urls.length; i += BATCH_SIZE) {
     const batch = urls.slice(i, i + BATCH_SIZE)
-
     const promises = batch.map(async (url) => {
       try {
         const response = await fetch(url)
-
-        if (!response.ok) {
-          return {
-            rawHTML: "",
-            statusCode: response.status
-          }
-        }
-
-        return {
-          rawHTML: await response.text(),
-          statusCode: 200
-        }
-
+        if (!response.ok)  return { rawHTML: "", statusCode: response.status }
+        return { rawHTML: await response.text(), statusCode: 200 }
       } catch (error) {
         console.error("Erro no fetch:", error)
-
-        return {
-          rawHTML: "",
-          statusCode: 500
-        }
+        return { rawHTML: "", statusCode: 500 }
       }
     })
 
@@ -190,54 +170,6 @@ async function batchFetch(pagesData, system, circuit) {
 
   return allResults
 }
-
-/**
- * Faz a pesquisa no sistema da defensoria para extrair páginas HTML com os processos
- * @param {{count: 0, status: 0}} pagesData quantidade de páginas, com o respectivo status de cada lista de processos
- * @param {number} system Solar v1 ou v2
- * @param {number} circuit Vara ou defensoria
- * @returns 
- */
-async function fetchPages(pagesData, system, circuit) {
-  const pageResponses = [{ rawHTML: "", statusCode: 200 }]
-  for (let page of pagesData) {
-    for (let i = 1; i <= page.count; i++) {
-      let solarURL = ""
-      if (system === 2) {
-        //O ideal seria que essas urls estivessem num .env, mas como o ambiente da aplicação é o navegador, qualquer link é público então perde o sentido.
-        solarURL = `https://solar.defensoria.mg.def.br/processo/intimacao/buscar/?situacao=${page.status}&tipo=INT&setor_responsavel=${circuit}&page=${i}`
-      } else solarURL = `https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?situacao=${page.status}&page_size=100&page=${i}`
-
-      const response = await fetch(solarURL)
-      if (!response.ok) {
-        pageResponses.push({ rawHTML: "", statusCode: response.status })
-        console.error("ERRO NA BUSCA DOS DADOS. CONVOQUE O DESENVOLVEDOR", response.statusText())
-      }
-      if (pageResponses.length === 1) {
-        pageResponses[0].rawHTML = await response.text()
-        pageResponses[0].statusCode = 200
-        if (pageResponses.length < pagesData.length) pageResponses.push({ rawHTML: "", statusCode: 200 })
-      } else {
-        pageResponses[pageResponses.length - 1] = { rawHTML: await response.text(), statusCode: 200 }
-        if (pageResponses.length < pagesData.length) pageResponses.push({ rawHTML: "", statusCode: 200 })
-      }
-
-    }
-
-  };
-  console.log("resposta", pageResponses)
-  return pageResponses
-
-}
-
-
-// const promises = urls.map(url =>
-//   fetch(url).then(async res => {
-//     if (!res.ok) return { rawHTML: "", statusCode: res.status };
-//     return { rawHTML: await res.text(), statusCode: 200 };
-//   })
-// );
-// const results = await Promise.all(promises);  // espera todas juntas
 
 
 /**
@@ -252,7 +184,7 @@ async function parseHTML(lawsuitsStatusDataCount, system, circuit) {
   for (let lawsuit of rawLawsuits) {
     let parser = new DOMParser()
     const pageData = parser.parseFromString(lawsuit.rawHTML, "text/html")
-    if (system === 1) lawsuitsData = await getEPROCLawsuitsData(pageData)
+    if (system === 1) lawsuitsData.push(...await getEPROCLawsuitsData(pageData))
     else lawsuitsData.push(getEPROCLegacyLawsuitsData(pageData))
 
   }
@@ -316,7 +248,7 @@ async function getEPROCLawsuitsData(page) {
     const lawsuits = rawResults[0].substring(0, rawResults[0].length - 2)
     const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
     const data = await chrome.storage.local.get("nextUpdate")
-
+    // se o armazenamento não retornar nada, é populado um objeto sem props. Desta forma, é necessário a verificação abaixo. 
     if (!Object.hasOwn(data, "nextUpdate") || Date.now() >= data.nextUpdate) {
       const rawDefenders = rawResults[1].substring(1, rawResults[1].length).split("total")[0]
       const currentDefenders = rawDefenders.substring(0, rawDefenders.length - 2)
@@ -326,79 +258,45 @@ async function getEPROCLawsuitsData(page) {
         nextUpdate: Date.now() + THIRTY_DAYS
       })
     }
-    let {defenders} = await chrome.storage.local.get("defenders")
+    let { defenders } = await chrome.storage.local.get("defenders")
     defenders = JSON.parse(defenders)
-    const firstLawsuitNumber = document.querySelector("[aria-label='Número do processo']").innerHTML
     let results = JSON.parse(lawsuits)
-    const responsable = results.find(l => l.numero === firstLawsuitNumber)
-    if (responsable) {
-      const defender = defenders.find(d => d.cpf === responsable.distribuido_cpf)
-      results = results.filter(l => l.distribuido_cpf === responsable.distribuido_cpf)
-      for (let result of results) {
-        lawsuitInfo.push({
-          "Nº do Processo": result.processo.numero,
-          Partes: result.destinatario.pessoa.nome,
-          Vara: result.processo.orgaoJulgador.nomeOrgao,
-          "Data de Última Movimentação": result.modificado_em,
-          "Data Limite": result.prazo_ciencia,
-          Prazo: result.prazo_final || result.prazo_ciencia,
-          "Último Movimento": result.evento ? result.evento.descricao : "-",
-          defensor: defender
-        })
+    const filedLawsuits = []
+    for (let result of results) {
 
-      }
+      filedLawsuits.push({
+        number: result.processo.numero,
+        circuit: result.processo.orgaoJulgador.nomeOrgao,
+        status: result.situacao,
+        assisted: result.destinatario.pessoa.nome,
+        isDefendant: result.polo_destinatario === "PA" ? false : true,
+        source: result.sistema_webservice,
+        awarenessDate: result.prazo_ciencia,
+        deadline: result.prazo_final || result.prazo_ciencia,
+        givenDeadLine: result.prazo_inicial && result.prazo_final ? function (startingDate, endingDate) {
+          const diffTime = Math.abs(new Date(endingDate), new Date(startingDate))
+          return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }(result.prazo_inicial, result.prazo_final) : 0,
+        defender: defenders.find(c => c.cpf === result.distribuido_cpf)
 
-      return lawsuitInfo
-    } return []
+      })
 
+      // lawsuitInfo.push({
+      //   "Nº do Processo": result.processo.numero,
+      //   Partes: result.destinatario.pessoa.nome,
+      //   Vara: result.processo.orgaoJulgador.nomeOrgao,
+      //   "Data de Última Movimentação": result.modificado_em,
+      //   "Data Limite": result.prazo_ciencia,
+      //   Prazo: result.prazo_final || result.prazo_ciencia,
+      //   "Último Movimento": result.evento ? result.evento.descricao : "-",
+      //   defensor: defenders.find(c => c.cpf === result.distribuido_cpf)
+      // })
 
+    }
 
-
-    // console.log(results)
-    // const blob = new Blob([results], { type: "application/json;charset=utf-8;" });
-    // const link = document.createElement("a");
-    // const url = URL.createObjectURL(blob);
-    // link.setAttribute("href", url);
-    // const date = new Date()
-    // const fileName = "processos" + date.getFullYear().toString() + date.getMonth().toString() + date.getDay().toString() + date.getMilliseconds().toString() + "-NV.json"
-    // link.setAttribute("download", fileName);
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
-    // URL.revokeObjectURL(url);
+    return filedLawsuits
 
   }
-
-  // const rows = page.querySelector(".MuiDataGrid-virtualScrollerRenderZone").children
-  // for (let i = 0; i < rows.length; i++) {
-  //   const rowData = rows.item(i).children
-  //   let lawsuit = rowData.item(2).children.item(0).children.item(1).children.item(0).innerHTML
-  //   let circuit = rowData.item(2).children.item(0).children.item(4).children.item(0).children.item(0).innerHTML.substring(9, 12) + "vc";
-  //   let event = rowData.item(3).children.item(0).children.item(1).innerHTML
-  //   let eventRawDate = rowData.item(3).children.item(0).children.item(0).innerHTML
-  //   let eventDate = parseDate(eventRawDate)
-  //   let assistido = rowData.item(4).children.item(0).children.item(0).innerHTML
-  //   let comunication = rowData.item(5).children.item(0).children.item(0).innerHTML
-  //   let deadLineCount = rowData.item(6).children.item(0).children
-  //   if (deadLineCount.length > 1) {
-  //     let startingDeadlineDate = rowData.item(6).children.item(0).children.item(0).innerHTML
-  //     let endingDeadlineDate = rowData.item(6).children.item(0).children.item(1).innerHTML
-  //   } else deadlineDate = rowData.item(6).children.item(0).children.item(0).innerHTML
-
-  //   lawsuitInfo.push({
-  //     "Nº do Processo": lawsuit,
-  //     Partes: assistido,
-  //     Vara: circuit,
-  //     "Data de Última Movimentação": eventDate,
-  //     "Data Limite": deadlineDate || endingDeadlineDate,
-  //     Prazo: deadlineDate || endingDeadlineDate,
-  //     "Último Movimento": comunication
-  //   })
-
-
-  //}
-
-
 
 }
 
@@ -456,12 +354,24 @@ function getEPROCLegacyLawsuitsData(page = new Document()) {
  * @param {number} system 
  * @returns 
  */
-function scrapeData(system) {
+async function scrapeData(system) {
   system = currentPage.includes("pje.") ? 0 : currentPage.includes("v2") && currentPage.includes("solar") ? 1 : currentPage.includes("solar") ? 2 : -1
   if (system === 0) return getPJELawsuits()
-  else if (system === 1 || system === 2) return getEPROCLawsuits(system)
+  else if (system === 1 || system === 2) {
+    const data = await getEPROCLawsuits(system)
+    if (data) {
+
+     let res =  await sendMessage("SAVE_LAWSUITS", {lawsuits: data, isBulkInsert: true})
+      console.log("OILHA O RESULTADO", res)
+    }
+
+  }
+
 }
 
+//rocesso adm etaa do rj ara saber q etaa esta o rojetoi. Cada etapa vai ser configuravel
+//peças o docs q eles subiram
+// imoortar maa do rj. Kml geojson, faz o maemento do lugar. Tem que gerar um maa, tem outras coisas mais
 /** 
  * Pega os processos do E-proc.
  * @param {number} system 
@@ -482,7 +392,33 @@ async function getEPROCLawsuits(system) {
 
 }
 
-
-
-
+/**
+ * Envio de mensagem para sw
+ * @param {string} message messagem para identificar a chamada
+ * @param {*} data  dados para o envio
+ */
+// content.js
+async function sendMessage(message, data) {
+  try {
+    const response = await chrome.runtime.sendMessage({  type: message,  payload: data  });
+    
+    // Verifica se houve erro na resposta
+    if (response?.success === false) {
+      console.error("Erro no SW:", response.error);
+      throw new Error(response.error);
+    }
+    
+    return response;
+  } catch (error) {
+    // Captura erros de conexão ou serialização
+    console.error("Falha ao enviar mensagem para SW:", error);
+    
+    // Dica: chrome.runtime.lastError pode ter mais detalhes
+    if (chrome.runtime.lastError) {
+      console.error("Detalhe do erro:", chrome.runtime.lastError.message);
+    }
+    
+    throw error;
+  }
+}
 
