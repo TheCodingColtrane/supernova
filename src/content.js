@@ -246,6 +246,7 @@ async function getEPROCLawsuitsData(page) {
     const rawResults = queryResults.split('\"defensores\"')
     //formata o resto da cadeia JSON para depois torná-lo um JSON válido.
     const lawsuits = rawResults[0].substring(0, rawResults[0].length - 2)
+    console.log(lawsuits)
     const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
     const data = await chrome.storage.local.get("nextUpdate")
     // se o armazenamento não retornar nada, é populado um objeto sem props. Desta forma, é necessário a verificação abaixo. 
@@ -273,7 +274,8 @@ async function getEPROCLawsuitsData(page) {
         isDefendant: result.polo_destinatario === "PA" ? false : true,
         source: result.sistema_webservice,
         awarenessDate: result.prazo_ciencia,
-        deadline: result.prazo_final || result.prazo_ciencia,
+        deadline: function (deadline) {return deadline.split("T")[0]} (result.prazo_final || result.prazo_ciencia),
+        // deadline: result.prazo_final || result.prazo_ciencia,
         givenDeadLine: result.prazo_inicial && result.prazo_final ? function (startingDate, endingDate) {
           const diffTime = Math.abs(new Date(endingDate) - new Date(startingDate))
           return Math.floor(diffTime / (1000 * 60 * 60 * 24));

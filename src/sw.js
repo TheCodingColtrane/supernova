@@ -1,5 +1,5 @@
 import { Dexie } from "./dexie.mjs"
-// import { addTask } from "./repository.js";
+// import { getWeekLawsuits } from "./repository.mjs";
 export const db = new Dexie("supernova")
 db.version(1).stores({
   tasks: `
@@ -123,37 +123,90 @@ db.version(1).stores({
  */
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === "SAVE_LAWSUITS") {
-    if (request.payload.isBulkInsert) {
-      (async () => {
-        try {
-          await db.lawsuits.bulkAdd(request.payload.lawsuits);
-          const all = await db.lawsuits.toArray();
-          sendResponse({ success: true, data: all });
-        } catch (error) {
-          sendResponse({ success: false, error: error.message });
-        }
-      })();
+  (async () => {
+    let result
+    try {
+      switch (request.type) {
+        case "SAVE_LAWSUITS":
+          result = await saveLawsuits(request.payload.lawsuits, request.payload.isBulkInsert);
+          break;
+        case "GET_STATUS_COUNT":
+          result = await getLawsuitStatusCount();
+          break;
+        case "GET_WEEK_LAWSUITS":
+          result = await getWeekLawsuits()
+          break;
+      }
+      sendResponse({ success: true, data: result });
 
-      // 3. RETORNO CRUCIAL: Mantém o canal de mensagem aberto
-      return true; 
+    } catch (error) {
+      sendResponse({ success: false, error: error.message });
     }
-  }
+
+  })()
+  return true;
+
+
 });
 
 
 
 
-async function saveTask(tasks, isBulkInsert) {
-  await addTask(tasks, isBulkInsert);
+async function saveLawsuits(lawsuits, isBulkInsert) {
+  try {
+    if (isBulkInsert) await db.lawsuits.bulkAdd(lawsuits);
+    else await db.lawsuits.add(lawsuits[0]);
+    return true
+  } catch (error) {
+    console.log(error)
+    return false
+  }
+
 }
 /**
  * Cria os defensores cadastrados no solar no localStorage.
  * @returns
  */
-async function setDefenders(defenders) {
-  if (defenders) await chrome.storage.local.set({ defenders });
-  return
+async function getLawsuitStatusCount() {
+  // if (defenders) await chrome.storage.local.set({ defenders });
+  const statusCount = { "Aberto": 0, "Aguardando Abertura": 0, "Decurso de Prazo": 0, "Fechado": 0 };
+  await db.lawsuits
+    .orderBy("status")
+    .each(lawsuit => {
+      statusCount[lawsuit.status] = (statusCount[lawsuit.status] || 0) + 1;
+    });
+  return statusCount
 }
 
 
+async function getWeekLawsuits() {
+  try {
+    const curDate = new Date()
+    const day = curDate.getDay()
+    const dates = {
+      startingDate: "",
+      endingDate: ""
+    }
+      const weekStartDate = new Date(curDate)
+
+    if (day > 1) {
+      dates.startingDate = new Date(weekStartDate.setDate(curDate.getDate()  - day)).toISOString().split("T")[0]
+      const weekEndDate = new Date(weekStartDate)
+      //7 para ir de acordo com o art. 224 CPC
+      dates.endingDate = new Date(weekEndDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0]
+    } else {
+      dates.startingDate = weekStartDate.toISOString().split("T")[0]
+      dates.endingDate = new Date(weekStartDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0]
+    }
+    
+    const lawsuits = await db.lawsuits.where("deadline").between(dates.startingDate, dates.endingDate).limit(30).toArray()
+    const filteredLawsuits =  lawsuits.map(({ number, assisted, deadline, status }) => ({ number, assisted, deadline, status }))
+    const sortedLawsuits = filteredLawsuits.sort((a, b) => new Date(b.deadline) - new Date(a.deadline))
+    for (const lawsuit of sortedLawsuits) lawsuit.deadline = new Date(lawsuit.deadline).toLocaleDateString()
+    return sortedLawsuits
+
+  } catch (error) {
+    console.log(error)
+  }
+
+}
