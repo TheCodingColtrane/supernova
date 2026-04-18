@@ -6,7 +6,8 @@ build({
   entryPoints: {
     content: "src/core/controller/content.ts",
     sw: "src/core/controller/sw.ts",
-    popup: "src/core/popup.ts"
+    popup: "src/core/controller/popup.ts",
+    dashboard: "src/core/controller/dashboard.ts"
   },
   bundle: true,
   outdir: 'dist/extension',

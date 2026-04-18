@@ -19,7 +19,16 @@ async function sendMessage(message, data) {
   }
 }
 
-// src/core/popup.ts
+// src/core/controller/popup.ts
+document.addEventListener("DOMContentLoaded", (e) => {
+  const cards = Array.from(document.querySelectorAll(".status-card"));
+  for (const card of cards) {
+    const status = card.className.split(" ")[1];
+    card.addEventListener("click", () => {
+      chrome.tabs.create({ url: "dashboard.html?status=" + status });
+    });
+  }
+});
 function renderTable(headers, data) {
   const table = document.createElement("table");
   const thead = table.createTHead();
@@ -51,7 +60,7 @@ document.addEventListener("DOMContentLoaded", async (e) => {
       document.querySelector("#pending-status").innerHTML = queries[0].data["Aguardando Abertura"];
     }
     if (queries[1].data)
-      renderTable(["Processo", "Assistido(a)", "Prazo", "Status", "Dias restantes"], queries[1].data);
+      renderTable(["Processo", "Assistido(a)", "Prazo Final", "Status"], queries[1].data);
   } catch (error) {
     console.log(error);
   }

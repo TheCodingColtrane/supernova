@@ -48,19 +48,21 @@ export async function getWeekLawsuitsData() {
             dates.endingDate = new Date(weekStartDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0] ?? ""
         }
         
-        const lawsuits = await db.lawsuits.where("deadline").between(dates.startingDate, dates.endingDate).limit(30).toArray()
+        const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto",dates.startingDate], ["Aberto",dates.endingDate]).limit(30).toArray()
         const filteredLawsuits = Array<WeekLawsuits>()
         for (const lawsuit of lawsuits) {
+            console.log(lawsuit)
                 filteredLawsuits.push({
-                    assisted: lawsuit.assisted,
-                    deadline: lawsuit.deadline,
-                    initialDeadline: lawsuit.deadline,
                     number: lawsuit.number,
+                    assisted: lawsuit.assisted,
+                    initialDeadline: lawsuit.initialDeadline,
+                    deadline: lawsuit.deadline,
                     status: lawsuit.status
                 })
         }
         // const filteredLawsuits = lawsuits.map(({ number, assisted, initialDeadline, deadline, status }) => ({ number, assisted, initialDeadline, deadline, status }))
-        const sortedLawsuits = filteredLawsuits.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline as string).getTime())
+        const sortedLawsuits = [...filteredLawsuits].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+        console.log("!dsda", sortedLawsuits)
         return sortedLawsuits
 
     } catch (error) {
@@ -84,5 +86,15 @@ export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
     console.log(error)
     return false
   }
+
+}
+
+
+export async function getPendingLawsuitsData(){
+    const today = new Date()
+    const endDate = new Date(today.setDate(new Date().getDate() + 90)).toISOString().split("T")[0]
+    const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray()
+    console.log("SDADASD", lawsuits)
+    return lawsuits
 
 }

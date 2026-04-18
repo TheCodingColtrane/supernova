@@ -1,3 +1,7 @@
+import { addDays } from "../../../node_modules/date-fns/addDays"
+import { differenceInBusinessDays } from "../../../node_modules/date-fns/differenceInBusinessDays"
+import { differenceInDays } from "../../../node_modules/date-fns/differenceInDays"
+import { formatISO } from "../../../node_modules/date-fns/formatISO"
 import type { Holidays } from "../types/holidays"
 
 export function localDateToIsoDate(date: string, time: boolean) {
@@ -12,7 +16,7 @@ export function localDateToIsoDate(date: string, time: boolean) {
 }
 
 export function isBusinessDay(date: Date){
-    if(date.getDay() === 6 || date.getDay() === 5) 
+    if(date.getDay() === 6 || date.getDay() === 0) 
         return false
     return true
 }
@@ -20,45 +24,41 @@ export function isBusinessDay(date: Date){
 
 export function getNextBusinessDay(date: Date) {
     const day = date.getDay()
-    if (day === 5 || day === 6)
-        return date.setDate(date.getDate() + day === 5 ? 2 : 1)
+    if (!isBusinessDay(date))
+        return addDays(date, day === 6 ? 2 : 1)
     else
-        return date.setDate(date.getDate() + 1)
+        return addDays(date, 1)
 
 }
 
 
 
 export function getBusinessDays(startDate: Date, endDate: Date, holidays?: Holidays[]) {
-    startDate = new Date(getNextBusinessDay(startDate))
-    endDate = new Date(getNextBusinessDay(startDate))
-    
+    if(!isBusinessDay(startDate))
+        startDate = new Date(getNextBusinessDay(startDate))
+    if(!isBusinessDay(endDate))
+        endDate = new Date(getNextBusinessDay(endDate))
+    let bDays = differenceInBusinessDays(endDate, startDate)
+    let datesToIgnore = Array<string>()
     if (holidays) {
         const pendingHolidays = holidays.filter(h => h.startDate >= startDate && h.endDate <= endDate)
         const isEndDateHoliday = pendingHolidays.find(c => c.startDate === endDate)
         if (isEndDateHoliday) endDate = new Date(getNextBusinessDay(endDate))
-    }
-
-    let i = 0, businessDays = 0
-    while (startDate < endDate) {
-        if (holidays) {
-            if (startDate === holidays[i]?.startDate) {
-                if (holidays[i]?.startDate === holidays[i]?.endDate) {
-                    i++
-                    continue
-                } else {
-                    startDate = new Date(getNextBusinessDay(new Date(holidays[i]!.endDate)))
-                    i++
-                    continue
+        for (const holiday of pendingHolidays) {
+                    let days = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate))
+                    for (let i = 1; i < days; i++) {
+                        let currentDate = addDays(new Date(holiday.startDate), i)
+                        datesToIgnore.push(formatISO(currentDate, { representation: 'date' }));
                 }
 
-            }
         }
 
-        startDate = new Date(getNextBusinessDay(startDate))
-        businessDays++
+        bDays+=datesToIgnore.length
+        endDate = addDays(startDate, bDays)
     }
+    
+     
 
-    return { businessDays, deadline: startDate }
+    return { businessDays: bDays < 0 ? 0 : bDays , deadline: endDate }
 
 }

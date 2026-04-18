@@ -116,3 +116,27 @@ export async function getDefenders() {
     return data.defenders as Defenders[]
 
 }
+
+
+export function renderTable<T>(headers: string[], data: T[]) {
+  const table = document.createElement("table");
+  const thead = table.createTHead();
+  const headerRow = thead.insertRow();
+  
+  for (let header of headers) {
+    let th = document.createElement("th");
+    th.innerHTML = header;
+    headerRow.appendChild(th);
+  }
+
+  const tbody = table.createTBody();
+  for (let row of data) {
+    let currentRow = tbody.insertRow();
+    const rowValues = Object.values(row as object); 
+    for (let i = 0; i < headers.length; i++) {
+      let cell = currentRow.insertCell();
+      cell.innerHTML = rowValues[i] !== undefined ? String(rowValues[i]) : "";
+    }
+  }
+  document.body.appendChild(table);
+}

@@ -12,5 +12,6 @@ export type Lawsuits = {
     initialDeadline: Date | string,
     deadline: Date | string,
     givenDeadLine: number,
+    daysLeft?: number
     defender: Defenders[] | Defenders
 } 
