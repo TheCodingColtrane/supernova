@@ -6356,18 +6356,20 @@ async function getWeekLawsuitsData() {
       dates.startingDate = weekStartDate.toISOString().split("T")[0] ?? "";
       dates.endingDate = new Date(weekStartDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0] ?? "";
     }
-    const lawsuits = await db2.lawsuits.where("deadline").between(dates.startingDate, dates.endingDate).limit(30).toArray();
+    const lawsuits = await db2.lawsuits.where(["status", "deadline"]).between(["Aberto", dates.startingDate], ["Aberto", dates.endingDate]).limit(30).toArray();
     const filteredLawsuits = Array();
     for (const lawsuit of lawsuits) {
+      console.log(lawsuit);
       filteredLawsuits.push({
-        assisted: lawsuit.assisted,
-        deadline: lawsuit.deadline,
-        initialDeadline: lawsuit.deadline,
         number: lawsuit.number,
+        assisted: lawsuit.assisted,
+        initialDeadline: lawsuit.initialDeadline,
+        deadline: lawsuit.deadline,
         status: lawsuit.status
       });
     }
-    const sortedLawsuits = filteredLawsuits.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+    const sortedLawsuits = [...filteredLawsuits].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+    console.log("!dsda", sortedLawsuits);
     return sortedLawsuits;
   } catch (error) {
     console.log(error);
@@ -6387,41 +6389,250 @@ async function saveLawsuitsData(lawsuits) {
     return false;
   }
 }
+async function getPendingLawsuitsData() {
+  const today = /* @__PURE__ */ new Date();
+  const endDate = new Date(today.setDate((/* @__PURE__ */ new Date()).getDate() + 90)).toISOString().split("T")[0];
+  const lawsuits = await db2.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray();
+  console.log("SDADASD", lawsuits);
+  return lawsuits;
+}
+
+// node_modules/date-fns/constants.js
+var daysInYear = 365.2425;
+var maxTime = Math.pow(10, 8) * 24 * 60 * 60 * 1e3;
+var minTime = -maxTime;
+var millisecondsInDay = 864e5;
+var secondsInHour = 3600;
+var secondsInDay = secondsInHour * 24;
+var secondsInWeek = secondsInDay * 7;
+var secondsInYear = secondsInDay * daysInYear;
+var secondsInMonth = secondsInYear / 12;
+var secondsInQuarter = secondsInMonth * 3;
+var constructFromSymbol = /* @__PURE__ */ Symbol.for("constructDateFrom");
+
+// node_modules/date-fns/constructFrom.js
+function constructFrom(date, value) {
+  if (typeof date === "function") return date(value);
+  if (date && typeof date === "object" && constructFromSymbol in date)
+    return date[constructFromSymbol](value);
+  if (date instanceof Date) return new date.constructor(value);
+  return new Date(value);
+}
+
+// node_modules/date-fns/toDate.js
+function toDate(argument, context) {
+  return constructFrom(context || argument, argument);
+}
+
+// node_modules/date-fns/addDays.js
+function addDays(date, amount, options) {
+  const _date = toDate(date, options?.in);
+  if (isNaN(amount)) return constructFrom(options?.in || date, NaN);
+  if (!amount) return _date;
+  _date.setDate(_date.getDate() + amount);
+  return _date;
+}
+
+// node_modules/date-fns/_lib/normalizeDates.js
+function normalizeDates(context, ...dates) {
+  const normalize = constructFrom.bind(
+    null,
+    context || dates.find((date) => typeof date === "object")
+  );
+  return dates.map(normalize);
+}
+
+// node_modules/date-fns/_lib/getTimezoneOffsetInMilliseconds.js
+function getTimezoneOffsetInMilliseconds(date) {
+  const _date = toDate(date);
+  const utcDate = new Date(
+    Date.UTC(
+      _date.getFullYear(),
+      _date.getMonth(),
+      _date.getDate(),
+      _date.getHours(),
+      _date.getMinutes(),
+      _date.getSeconds(),
+      _date.getMilliseconds()
+    )
+  );
+  utcDate.setUTCFullYear(_date.getFullYear());
+  return +date - +utcDate;
+}
+
+// node_modules/date-fns/startOfDay.js
+function startOfDay(date, options) {
+  const _date = toDate(date, options?.in);
+  _date.setHours(0, 0, 0, 0);
+  return _date;
+}
+
+// node_modules/date-fns/differenceInCalendarDays.js
+function differenceInCalendarDays(laterDate, earlierDate, options) {
+  const [laterDate_, earlierDate_] = normalizeDates(
+    options?.in,
+    laterDate,
+    earlierDate
+  );
+  const laterStartOfDay = startOfDay(laterDate_);
+  const earlierStartOfDay = startOfDay(earlierDate_);
+  const laterTimestamp = +laterStartOfDay - getTimezoneOffsetInMilliseconds(laterStartOfDay);
+  const earlierTimestamp = +earlierStartOfDay - getTimezoneOffsetInMilliseconds(earlierStartOfDay);
+  return Math.round((laterTimestamp - earlierTimestamp) / millisecondsInDay);
+}
+
+// node_modules/date-fns/isSameDay.js
+function isSameDay(laterDate, earlierDate, options) {
+  const [dateLeft_, dateRight_] = normalizeDates(
+    options?.in,
+    laterDate,
+    earlierDate
+  );
+  return +startOfDay(dateLeft_) === +startOfDay(dateRight_);
+}
+
+// node_modules/date-fns/isDate.js
+function isDate(value) {
+  return value instanceof Date || typeof value === "object" && Object.prototype.toString.call(value) === "[object Date]";
+}
+
+// node_modules/date-fns/isValid.js
+function isValid(date) {
+  return !(!isDate(date) && typeof date !== "number" || isNaN(+toDate(date)));
+}
+
+// node_modules/date-fns/isWeekend.js
+function isWeekend(date, options) {
+  const day = toDate(date, options?.in).getDay();
+  return day === 0 || day === 6;
+}
+
+// node_modules/date-fns/differenceInBusinessDays.js
+function differenceInBusinessDays(laterDate, earlierDate, options) {
+  const [laterDate_, earlierDate_] = normalizeDates(
+    options?.in,
+    laterDate,
+    earlierDate
+  );
+  if (!isValid(laterDate_) || !isValid(earlierDate_)) return NaN;
+  const diff = differenceInCalendarDays(laterDate_, earlierDate_);
+  const sign = diff < 0 ? -1 : 1;
+  const weeks = Math.trunc(diff / 7);
+  let result = weeks * 5;
+  let movingDate = addDays(earlierDate_, weeks * 7);
+  while (!isSameDay(laterDate_, movingDate)) {
+    result += isWeekend(movingDate, options) ? 0 : sign;
+    movingDate = addDays(movingDate, sign);
+  }
+  return result === 0 ? 0 : result;
+}
+
+// node_modules/date-fns/differenceInDays.js
+function differenceInDays(laterDate, earlierDate, options) {
+  const [laterDate_, earlierDate_] = normalizeDates(
+    options?.in,
+    laterDate,
+    earlierDate
+  );
+  const sign = compareLocalAsc(laterDate_, earlierDate_);
+  const difference = Math.abs(
+    differenceInCalendarDays(laterDate_, earlierDate_)
+  );
+  laterDate_.setDate(laterDate_.getDate() - sign * difference);
+  const isLastDayNotFull = Number(
+    compareLocalAsc(laterDate_, earlierDate_) === -sign
+  );
+  const result = sign * (difference - isLastDayNotFull);
+  return result === 0 ? 0 : result;
+}
+function compareLocalAsc(laterDate, earlierDate) {
+  const diff = laterDate.getFullYear() - earlierDate.getFullYear() || laterDate.getMonth() - earlierDate.getMonth() || laterDate.getDate() - earlierDate.getDate() || laterDate.getHours() - earlierDate.getHours() || laterDate.getMinutes() - earlierDate.getMinutes() || laterDate.getSeconds() - earlierDate.getSeconds() || laterDate.getMilliseconds() - earlierDate.getMilliseconds();
+  if (diff < 0) return -1;
+  if (diff > 0) return 1;
+  return diff;
+}
+
+// node_modules/date-fns/_lib/addLeadingZeros.js
+function addLeadingZeros(number, targetLength) {
+  const sign = number < 0 ? "-" : "";
+  const output = Math.abs(number).toString().padStart(targetLength, "0");
+  return sign + output;
+}
+
+// node_modules/date-fns/formatISO.js
+function formatISO(date, options) {
+  const date_ = toDate(date, options?.in);
+  if (isNaN(+date_)) {
+    throw new RangeError("Invalid time value");
+  }
+  const format = options?.format ?? "extended";
+  const representation = options?.representation ?? "complete";
+  let result = "";
+  let tzOffset = "";
+  const dateDelimiter = format === "extended" ? "-" : "";
+  const timeDelimiter = format === "extended" ? ":" : "";
+  if (representation !== "time") {
+    const day = addLeadingZeros(date_.getDate(), 2);
+    const month = addLeadingZeros(date_.getMonth() + 1, 2);
+    const year = addLeadingZeros(date_.getFullYear(), 4);
+    result = `${year}${dateDelimiter}${month}${dateDelimiter}${day}`;
+  }
+  if (representation !== "date") {
+    const offset = date_.getTimezoneOffset();
+    if (offset !== 0) {
+      const absoluteOffset = Math.abs(offset);
+      const hourOffset = addLeadingZeros(Math.trunc(absoluteOffset / 60), 2);
+      const minuteOffset = addLeadingZeros(absoluteOffset % 60, 2);
+      const sign = offset < 0 ? "+" : "-";
+      tzOffset = `${sign}${hourOffset}:${minuteOffset}`;
+    } else {
+      tzOffset = "Z";
+    }
+    const hour = addLeadingZeros(date_.getHours(), 2);
+    const minute = addLeadingZeros(date_.getMinutes(), 2);
+    const second = addLeadingZeros(date_.getSeconds(), 2);
+    const separator = result === "" ? "" : "T";
+    const time = [hour, minute, second].join(timeDelimiter);
+    result = `${result}${separator}${time}${tzOffset}`;
+  }
+  return result;
+}
 
 // src/core/utils/date.ts
+function isBusinessDay(date) {
+  if (date.getDay() === 6 || date.getDay() === 0)
+    return false;
+  return true;
+}
 function getNextBusinessDay(date) {
   const day = date.getDay();
-  if (day === 5 || day === 6)
-    return date.setDate(date.getDate() + day === 5 ? 2 : 1);
+  if (!isBusinessDay(date))
+    return addDays(date, day === 6 ? 2 : 1);
   else
-    return date.setDate(date.getDate() + 1);
+    return addDays(date, 1);
 }
 function getBusinessDays(startDate, endDate, holidays) {
-  startDate = new Date(getNextBusinessDay(startDate));
-  endDate = new Date(getNextBusinessDay(startDate));
+  if (!isBusinessDay(startDate))
+    startDate = new Date(getNextBusinessDay(startDate));
+  if (!isBusinessDay(endDate))
+    endDate = new Date(getNextBusinessDay(endDate));
+  let bDays = differenceInBusinessDays(endDate, startDate);
+  let datesToIgnore = Array();
   if (holidays) {
     const pendingHolidays = holidays.filter((h) => h.startDate >= startDate && h.endDate <= endDate);
     const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === endDate);
     if (isEndDateHoliday) endDate = new Date(getNextBusinessDay(endDate));
-  }
-  let i = 0, businessDays = 0;
-  while (startDate < endDate) {
-    if (holidays) {
-      if (startDate === holidays[i]?.startDate) {
-        if (holidays[i]?.startDate === holidays[i]?.endDate) {
-          i++;
-          continue;
-        } else {
-          startDate = new Date(getNextBusinessDay(new Date(holidays[i].endDate)));
-          i++;
-          continue;
-        }
+    for (const holiday of pendingHolidays) {
+      let days = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
+      for (let i = 1; i < days; i++) {
+        let currentDate = addDays(new Date(holiday.startDate), i);
+        datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
       }
     }
-    startDate = new Date(getNextBusinessDay(startDate));
-    businessDays++;
+    bDays += datesToIgnore.length;
+    endDate = addDays(startDate, bDays);
   }
-  return { businessDays, deadline: startDate };
+  return { businessDays: bDays < 0 ? 0 : bDays, deadline: endDate };
 }
 
 // src/core/service/lawsuits.ts
@@ -6444,17 +6655,15 @@ async function getWeekLawsuits(considerHoliday = false) {
       } else
         holidays = await getHolidaysData();
     }
-    const lawsuits = [];
+    const lawsuits = Array();
     for (const lawsuit of data) {
-      let dates = getBusinessDays(new Date(lawsuit.initialDeadline), new Date(lawsuit.deadline), holidays);
+      let dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(lawsuit.deadline), holidays);
       lawsuit.deadline = dates.deadline.toLocaleDateString();
       const businessDaysLeft = dates.businessDays;
       lawsuits.push({
-        assisted: lawsuit.assisted,
-        businessDaysLeft,
-        deadline: lawsuit.deadline,
-        initialDeadline: lawsuit.initialDeadline,
         number: lawsuit.number,
+        assisted: lawsuit.assisted,
+        deadline: lawsuit.deadline + " (" + businessDaysLeft + " dias )",
         status: lawsuit.status
       });
     }
@@ -6467,6 +6676,15 @@ async function getWeekLawsuits(considerHoliday = false) {
 async function getLawsuitStatusCount() {
   try {
     const data = await getLawsuitStatusCountData();
+    return data;
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
+async function getPendingLawsuits() {
+  try {
+    const data = await getPendingLawsuitsData();
     return data;
   } catch (error) {
     console.log(error);
@@ -6497,6 +6715,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
         case "GET_WEEK_LAWSUITS":
           result = await getWeekLawsuits();
+          break;
+        case "GET_PENDING_LAWSUITS":
+          result = await getPendingLawsuits();
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year);

@@ -1,7 +1,7 @@
 import type { Holidays } from "../db/schemas/holidays"
 import type { Lawsuits } from "../db/schemas/lawsuits"
 import { getHolidaysData } from "../repository/holidays"
-import { getLawsuitStatusCountData, getWeekLawsuitsData, saveLawsuitsData } from "../repository/lawsuits"
+import { getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData } from "../repository/lawsuits"
 import { getBusinessDays } from '../utils/date'
 
 type WeekLawsuits = { number: string; assisted: string; initialDeadline: string | Date; deadline: string | Date; status: string }
@@ -20,28 +20,26 @@ export async function getWeekLawsuits(considerHoliday = false) {
                 new Date(x.initialDeadline as string).getFullYear() < year ||
                 new Date(x.deadline as string).getFullYear() < year
             );
-            if (hasHolidays){
+            if (hasHolidays) {
                 const currentYear = new Date()
                 currentYear.setDate(1)
                 currentYear.setMonth(1)
                 currentYear.setFullYear((year - 1))
                 holidays = await getHolidaysData(currentYear.toISOString().split("T")[0])
             }
-            
+
             else
                 holidays = await getHolidaysData()
         }
-        const lawsuits: WeekLawsuitsBusinessDays[] = []
+        const lawsuits = Array<{number: string, assisted: string, deadline:string, status: string}>()
         for (const lawsuit of data) {
-            let dates = getBusinessDays(new Date(lawsuit.initialDeadline), new Date(lawsuit.deadline), holidays)
+            let dates = getBusinessDays(new Date(), new Date(lawsuit.deadline), holidays)
             lawsuit.deadline = dates.deadline.toLocaleDateString()
             const businessDaysLeft = dates.businessDays
             lawsuits.push({
-                assisted: lawsuit.assisted,
-                businessDaysLeft,   
-                deadline: lawsuit.deadline,
-                initialDeadline: lawsuit.initialDeadline,
                 number: lawsuit.number,
+                assisted: lawsuit.assisted,
+                deadline: lawsuit.deadline + " (" + businessDaysLeft + " dias )",
                 status: lawsuit.status
             })
         }
@@ -65,6 +63,17 @@ export async function getLawsuitStatusCount() {
 
 }
 
+export async function getPendingLawsuits() {
+    try {
+        const data = await getPendingLawsuitsData()
+        return data
+
+    } catch (error) {
+        console.log(error)
+        return []
+    }
+
+}
 
 export async function saveLawsuits(lawsuits: Lawsuits[] | Lawsuits) {
     try {

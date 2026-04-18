@@ -3,7 +3,7 @@
 // import { checkHolidays } from "../service/holidays";
 import type { Defenders } from "../types/defenders";
 import type { Lawsuits } from "../types/lawsuits";
-import { getDefenders,  sendMessage } from "../utils";
+import { getDefenders, sendMessage } from "../utils";
 import { getNextBusinessDay, isBusinessDay, localDateToIsoDate } from "../utils/date";
 // import { checkHolidays, saveHolidays } from "./service/holidays";
 // import { getHolidaysAPI } from "./utils";
@@ -123,28 +123,29 @@ function nextPage() {
 
 
 function getDeadlineDate(elements: HTMLCollection) {
+  console.log(elements)
   let initialDeadline = "", deadline = "", noDeadline = "", awarenessDate = ""
   for (const element of elements) {
     let currentTd = element as HTMLElement
-    if(currentTd.title === "Prazo final para ciência")
-        awarenessDate = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(0, 10)!, false)
-     else if(currentTd.title === "Prazo inicial"){
-        initialDeadline = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(8)!, false)
-      }else if(currentTd.title === "Prazo final para resposta"){
-        deadline = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(0, 10)!, false)
-      }else if(currentTd.className === "text-error"){
-        if(currentTd.innerHTML.split("\n")[1]?.trimStart() === "Sem prazo final definido"){
-            let date = new Date(initialDeadline)
-            date = new Date(date.setDate(date.getDate() + 10))
-            const isWorkDay = isBusinessDay(date)
-            if(!isWorkDay)
-              noDeadline =  localDateToIsoDate(new Date(getNextBusinessDay(date)).toLocaleDateString(), false)
-            else 
-              noDeadline = localDateToIsoDate(date.toLocaleDateString(), false)
-        }
+    if (currentTd.title === "Prazo final para ciência")
+      awarenessDate = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(0, 10)!, false)
+    else if (currentTd.title === "Prazo inicial") {
+      initialDeadline = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(8)!, false)
+    } else if (currentTd.title === "Prazo final para resposta") {
+      deadline = localDateToIsoDate(currentTd.textContent.split("\n")[1]?.trimStart().substring(0, 10)!, false)
+    } else if (currentTd.className === "text-error") {
+      if (currentTd.innerHTML.split("\n")[1]?.trimStart() === "Sem prazo final definido") {
+        let date = new Date(initialDeadline)
+        date = new Date(date.setDate(date.getDate() + 10))
+        const isWorkDay = isBusinessDay(date)
+        if (!isWorkDay)
+          noDeadline = localDateToIsoDate(new Date(getNextBusinessDay(date)).toLocaleDateString(), false)
+        else
+          noDeadline = localDateToIsoDate(date.toLocaleDateString(), false)
       }
+    }
   }
-    return {initialDeadline, deadline, noDeadline, awarenessDate} 
+  return { initialDeadline, deadline, noDeadline, awarenessDate }
 }
 
 
@@ -210,20 +211,20 @@ async function parseHTML(lawsuitsStatusDataCount: Array<{ count: number, status:
   const rawLawsuits = await Promise.all(await batchFetch(lawsuitsStatusDataCount, system, circuit))
   let lawsuitsData = []
   const defenders = await getDefenders()
-  if(!defenders) return
+  if (!defenders) return
   for (let lawsuit of rawLawsuits) {
     let parser = new DOMParser()
     const pageData = parser.parseFromString(lawsuit.rawHTML, "text/html")
     if (system === 1) {
       const result = getEPROCLawsuitsData(pageData, defenders)
-      if(result)
-      lawsuitsData.push(...result)
-      }
-    else{
+      if (result)
+        lawsuitsData.push(...result)
+    }
+    else {
       const result = getEPROCLegacyLawsuitsData(pageData, defenders)
-      if(result)
-      lawsuitsData.push(...result)
-    } 
+      if (result)
+        lawsuitsData.push(...result)
+    }
 
   }
   // if (system === 1) {
@@ -267,10 +268,10 @@ async function parseHTML(lawsuitsStatusDataCount: Array<{ count: number, status:
  * @param {number} system  Solar v1 ou v2
  */
 function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number) {
-  console.log("odada")
   const pages = Array<{ count: number, status: number }>()
-  let x = 0
+  let x = 0, breaker = 0 
   for (let element of pageLawsuitsStatus) {
+    if(breaker === 2) return pages
     let newElement = element as HTMLElement
     if (system === 1 && x > 3) break;
     let count = 0, recordsNumber = system === 2 ? 10 : 100
@@ -279,6 +280,7 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number
     if (count < recordsNumber) {
       pages.push({ count: 1, status: pages.length ? pages[x - 1]!.status + 10 : 10 })
       x++
+      breaker++
       continue
     }
     let rest = count % recordsNumber
@@ -286,6 +288,8 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number
     if (rest) roundLawsuitCount++
     pages.push({ count: roundLawsuitCount, status: pages.length ? pages[x - 1]!.status + 10 : 10 })
     x++
+    breaker++
+
 
   }
 
@@ -321,14 +325,14 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
     //Abaixo é necessário formatar o resto da cadeia JSON para depois torná-lo um JSON válido.
     const lawsuits = rawResults[0]?.substring(0, rawResults[0].length - 2)
     if (!lawsuits) return []
-    let results = JSON.parse(lawsuits)
+    let results = JSON.parse(lawsuits) 
     console.log(results)
     const filedLawsuits = Array<Lawsuits>()
     for (let result of results) {
 
       filedLawsuits.push({
         number: result.processo.numero,
-        circuit: result.processo.orgaoJulgador.nomeOrgao,
+        circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", ""),
         status: result.situacao,
         assisted: result.destinatario.pessoa.nome,
         isDefendant: result.polo_destinatario === "PA" ? false : true,
@@ -372,32 +376,38 @@ function getEPROCLegacyLawsuitsData(page: Document, defenders: Defenders[] | und
     const lawsuits = Array<Lawsuits>()
     for (let i = 0; i < tableRows; i++) {
       let currentRow = tableElements.rows.item(i)
-      let initialDeadline = "", deadline = "", awarenessDate = "", 
-      number = "", circuit = "", assisted = "", source = "", 
-      defender = "", status = "", tab = "", dates = getDeadlineDate(currentRow?.cells.item(7)?.children.item(0)?.children!)
+      let initialDeadline = "", deadline = "", awarenessDate = "",
+        number = "", circuit = "", assisted = "", source = "",
+        defender = "", status = "", tab = "", 
+        dates = { initialDeadline: "", deadline: "", noDeadline: "", awarenessDate: "" }
+        if(!currentRow?.cells.item(7)?.children.item(0)?.children){
+          console.log("lihas", tableRows)
+          return lawsuits
+        }
+      dates = getDeadlineDate(currentRow?.cells.item(7)?.children.item(0)?.children!)
       number = currentRow?.cells.item(1)?.children.item(2)?.textContent?.split('\n')[2]?.trimStart()!
-      circuit = currentRow?.cells.item(2)!.innerHTML.split("\n")[3]?.trimStart()!
+      circuit = currentRow?.cells.item(2)!.innerHTML.split("\n")[3]?.trimStart().replaceAll("Juízo da ", "")!
       assisted = currentRow?.cells.item(3)!.innerHTML.split("\n")[1]?.trimStart()!
       source = currentRow?.cells.item(8)?.innerHTML.split("\n")[1]?.trimStart()!
       defender = currentRow?.cells.item(1)?.children.item(0)?.innerHTML.
-      replaceAll("<br>", " ").split("\n")[1]?.trimStart()!
+        replaceAll("<br>", " ").split("\n")[1]?.trimStart()!
       tab = currentRow?.cells.item(9)?.innerHTML.split("\n")[1]?.trimStart()!
       if (tab === "Aguardando Abertura") {
         status = "Aguardando Abertura"
         awarenessDate = dates.awarenessDate
         deadline = dates.awarenessDate
-      }else if (tab === "Aberto") {
+      } else if (tab === "Aberto") {
         status = "Aberto"
         initialDeadline = dates.initialDeadline
-        deadline = dates.deadline
-      }else if (tab === "Decurso de Prazo"){
+        deadline = dates.deadline ?? dates.initialDeadline
+      } else if (tab === "Decurso de Prazo") {
         status = "Decurso de Prazo"
         awarenessDate = dates.awarenessDate
         deadline = dates.deadline
-      }else if (tab === "Fechado"){
+      } else if (tab === "Fechado") {
         status = "Fechado"
         initialDeadline = dates.initialDeadline
-        deadline = dates.deadline
+        deadline = dates.deadline ?? dates.noDeadline
         awarenessDate = dates.awarenessDate
       }
 
@@ -439,7 +449,7 @@ async function scrapeData() {
   else if (system === 1 || system === 2) {
     const data = await getEPROCLawsuits(system)
     if (data) {
-      let res = await sendMessage("SAVE_LAWSUITS", { lawsuits: data})
+      let res = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
     }
 
   }

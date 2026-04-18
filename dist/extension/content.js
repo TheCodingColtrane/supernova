@@ -45,6 +45,41 @@ async function getDefenders() {
   return data.defenders;
 }
 
+// node_modules/date-fns/constants.js
+var daysInYear = 365.2425;
+var maxTime = Math.pow(10, 8) * 24 * 60 * 60 * 1e3;
+var minTime = -maxTime;
+var secondsInHour = 3600;
+var secondsInDay = secondsInHour * 24;
+var secondsInWeek = secondsInDay * 7;
+var secondsInYear = secondsInDay * daysInYear;
+var secondsInMonth = secondsInYear / 12;
+var secondsInQuarter = secondsInMonth * 3;
+var constructFromSymbol = /* @__PURE__ */ Symbol.for("constructDateFrom");
+
+// node_modules/date-fns/constructFrom.js
+function constructFrom(date, value) {
+  if (typeof date === "function") return date(value);
+  if (date && typeof date === "object" && constructFromSymbol in date)
+    return date[constructFromSymbol](value);
+  if (date instanceof Date) return new date.constructor(value);
+  return new Date(value);
+}
+
+// node_modules/date-fns/toDate.js
+function toDate(argument, context) {
+  return constructFrom(context || argument, argument);
+}
+
+// node_modules/date-fns/addDays.js
+function addDays(date, amount, options) {
+  const _date = toDate(date, options?.in);
+  if (isNaN(amount)) return constructFrom(options?.in || date, NaN);
+  if (!amount) return _date;
+  _date.setDate(_date.getDate() + amount);
+  return _date;
+}
+
 // src/core/utils/date.ts
 function localDateToIsoDate(date, time) {
   date = date.replaceAll("/", "-");
@@ -56,16 +91,16 @@ function localDateToIsoDate(date, time) {
   return aux[2] + "-" + aux[1] + "-" + aux[0];
 }
 function isBusinessDay(date) {
-  if (date.getDay() === 6 || date.getDay() === 5)
+  if (date.getDay() === 6 || date.getDay() === 0)
     return false;
   return true;
 }
 function getNextBusinessDay(date) {
   const day = date.getDay();
-  if (day === 5 || day === 6)
-    return date.setDate(date.getDate() + day === 5 ? 2 : 1);
+  if (!isBusinessDay(date))
+    return addDays(date, day === 6 ? 2 : 1);
   else
-    return date.setDate(date.getDate() + 1);
+    return addDays(date, 1);
 }
 
 // src/core/controller/content.ts
@@ -149,6 +184,7 @@ function nextPage() {
   }
 }
 function getDeadlineDate(elements) {
+  console.log(elements);
   let initialDeadline = "", deadline = "", noDeadline = "", awarenessDate = "";
   for (const element of elements) {
     let currentTd = element;
@@ -225,10 +261,10 @@ async function parseHTML(lawsuitsStatusDataCount, system2, circuit) {
   return lawsuitsData;
 }
 function getLawsuitsTotalPageNumber(pageLawsuitsStatus, system2) {
-  console.log("odada");
   const pages = Array();
-  let x = 0;
+  let x = 0, breaker = 0;
   for (let element of pageLawsuitsStatus) {
+    if (breaker === 2) return pages;
     let newElement = element;
     if (system2 === 1 && x > 3) break;
     let count = 0, recordsNumber = system2 === 2 ? 10 : 100;
@@ -237,6 +273,7 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus, system2) {
     if (count < recordsNumber) {
       pages.push({ count: 1, status: pages.length ? pages[x - 1].status + 10 : 10 });
       x++;
+      breaker++;
       continue;
     }
     let rest = count % recordsNumber;
@@ -244,6 +281,7 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus, system2) {
     if (rest) roundLawsuitCount++;
     pages.push({ count: roundLawsuitCount, status: pages.length ? pages[x - 1].status + 10 : 10 });
     x++;
+    breaker++;
   }
   return pages;
 }
@@ -265,7 +303,7 @@ function getEPROCLawsuitsData(page, defenders) {
     for (let result of results) {
       filedLawsuits.push({
         number: result.processo.numero,
-        circuit: result.processo.orgaoJulgador.nomeOrgao,
+        circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Ju\xEDzo da ", ""),
         status: result.situacao,
         assisted: result.destinatario.pessoa.nome,
         isDefendant: result.polo_destinatario === "PA" ? false : true,
@@ -295,9 +333,14 @@ function getEPROCLegacyLawsuitsData(page, defenders) {
     const lawsuits = Array();
     for (let i = 0; i < tableRows; i++) {
       let currentRow = tableElements.rows.item(i);
-      let initialDeadline = "", deadline = "", awarenessDate = "", number = "", circuit = "", assisted = "", source = "", defender = "", status = "", tab = "", dates = getDeadlineDate(currentRow?.cells.item(7)?.children.item(0)?.children);
+      let initialDeadline = "", deadline = "", awarenessDate = "", number = "", circuit = "", assisted = "", source = "", defender = "", status = "", tab = "", dates = { initialDeadline: "", deadline: "", noDeadline: "", awarenessDate: "" };
+      if (!currentRow?.cells.item(7)?.children.item(0)?.children) {
+        console.log("lihas", tableRows);
+        return lawsuits;
+      }
+      dates = getDeadlineDate(currentRow?.cells.item(7)?.children.item(0)?.children);
       number = currentRow?.cells.item(1)?.children.item(2)?.textContent?.split("\n")[2]?.trimStart();
-      circuit = currentRow?.cells.item(2).innerHTML.split("\n")[3]?.trimStart();
+      circuit = currentRow?.cells.item(2).innerHTML.split("\n")[3]?.trimStart().replaceAll("Ju\xEDzo da ", "");
       assisted = currentRow?.cells.item(3).innerHTML.split("\n")[1]?.trimStart();
       source = currentRow?.cells.item(8)?.innerHTML.split("\n")[1]?.trimStart();
       defender = currentRow?.cells.item(1)?.children.item(0)?.innerHTML.replaceAll("<br>", " ").split("\n")[1]?.trimStart();
@@ -309,7 +352,7 @@ function getEPROCLegacyLawsuitsData(page, defenders) {
       } else if (tab === "Aberto") {
         status = "Aberto";
         initialDeadline = dates.initialDeadline;
-        deadline = dates.deadline;
+        deadline = dates.deadline ?? dates.initialDeadline;
       } else if (tab === "Decurso de Prazo") {
         status = "Decurso de Prazo";
         awarenessDate = dates.awarenessDate;
@@ -317,7 +360,7 @@ function getEPROCLegacyLawsuitsData(page, defenders) {
       } else if (tab === "Fechado") {
         status = "Fechado";
         initialDeadline = dates.initialDeadline;
-        deadline = dates.deadline;
+        deadline = dates.deadline ?? dates.noDeadline;
         awarenessDate = dates.awarenessDate;
       }
       if (currentRow) {
