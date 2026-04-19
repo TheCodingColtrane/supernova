@@ -1,0 +1,172 @@
+<html lang="pt">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f5f6fa;
+  }
+
+  header {
+    background: #1e3a8a;
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  input {
+    padding: 8px;
+    width: 300px;
+    border-radius: 6px;
+    border: none;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  .cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    flex: 1;
+    padding: 16px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+  }
+
+  .red {
+    background: #dc2626;
+  }
+
+  .yellow {
+    background: #f59e0b;
+  }
+
+  .green {
+    background: #16a34a;
+  }
+
+  .blue {
+    background: #2563eb;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  th,
+  td {
+    padding: 12px;
+    text-align: left;
+  }
+
+  th {
+    cursor: pointer;
+  }
+
+  th {
+    background: #e5e7eb;
+  }
+
+  tr:nth-child(even) {
+    background: #f9fafb;
+  }
+
+  .badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+  }
+
+  .status-open {
+    background: #f59e0b;
+  }
+
+  .status-closed {
+    background: #16a34a;
+  }
+
+  .status-late {
+    background: #dc2626;
+  }
+
+  .deadline-danger {
+    color: #dc2626;
+    font-weight: bold;
+  }
+
+  .deadline-warning {
+    color: #f59e0b;
+    font-weight: bold;
+  }
+
+  .deadline-ok {
+    color: #16a34a;
+  }
+
+  button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+</style>
+</style>
+
+<body>
+
+  <header>
+    <h2>📅 Gestão de Prazos</h2>
+    <div>
+      <input type="text" placeholder="Buscar processo..." />
+      <button>+ Nova tarefa</button>
+    </div>
+  </header>
+  <div class="container">
+    <!-- Cards resumo -->
+    <div class="cards">
+      <div class="card red">🔴 Vencendo hoje: <span id="todayCount">0</span></div>
+      <div class="card yellow">🟡 Esta semana: <span id="weekCount">0</span></div>
+      <div class="card blue">📊 Ativos: <span id="activeCount">0</span></div>
+      <div class="card green">✅ Finalizados: <span id="doneCount">0</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th data-nm="number" data-sort="">Processo</th>
+          <th data-nm="circuit" data-sort="">Vara</th>
+          <th data-nm="assisted" data-sort="">Assistido(a)/Curatelado(a)</th>
+          <th data-nm="status" data-sort="">Status</th>
+          <th data-nm="side" data-sort="">Polo</th>
+          <th data-nm="deadline" data-sort="">Prazo</th>
+          <th data-nm="daysLeft" data-sort="">Dias Restantes</th>
+          <th data-nm="assignedTo" data-sort="">Responsável</th>
+        </tr>
+      </thead>
+      <tbody id="processTable"></tbody>
+    </table>
+
+  </div>
+</body>
+<script src="dashboard.js" defer></script>
+
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+</head>
+
+<body>
+  <div class="header">
+    <!-- <div class="header-icon"></div> -->
+    <h3>Seus processos pendentes</h3>
+  </div>
+  <div class="status-container">
+    <div class="status-card pending">
+      <span class="count" id="pending-status" ></span>
+      <span class="label">Pendentes de Abertura</span>
+    </div>
+    <div class="status-card open">
+      <span class="count" id="open-status"></span>
+      <span class="label">Em aberto</span>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button type="button" id="coletar">Pegar processos</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
+
+<style>
+ * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  width: 360px;
+  min-height: 200px;
+  padding: 16px;
+  overflow-x: hidden; /* garante que nada estoure horizontalmente */
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.header-icon {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+}
+
+/* ── Status Cards ── */
+.status-container {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.status-card {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border-top: 3px solid transparent;
+}
+
+.status-card.pending {
+  border-top-color: #f59e0b;
+  cursor: pointer;
+}
+
+.status-card.open {
+  border-top-color: #ef4444;
+  cursor: pointer;
+}
+
+.status-card .count {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.status-card.pending .count {
+  color: #f59e0b;
+}
+
+.status-card.open .count {
+  color: #ef4444;
+}
+
+.status-card .label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Buttons ── */
+.btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+button {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#coletar {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+#coletar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+}
+
+#coletar:active {
+  transform: translateY(0);
+}
+
+#loadVaras {
+  background: white;
+  color: #4f46e5;
+  border: 1.5px solid #4f46e5;
+}
+
+#loadVaras:hover {
+  background: #f5f3ff;
+}
+
+/* ── Tabela (ajustada) ── */
+table {
+  width: 100%;
+  table-layout: fixed; /* evita expansão horizontal */
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+thead {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+}
+
+thead th {
+  padding: 10px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+tbody tr {
+  border-bottom: 1px solid #f0f2f5;
+  transition: background 0.15s ease;
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: #f5f3ff;
+}
+
+tbody td {
+  padding: 7px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+── Controle de largura das colunas ── */
+th:nth-child(1), td:nth-child(1) { width: 25%; } /* nº processo */
+th:nth-child(2), td:nth-child(2) { width: 25%; } /* réu */
+th:nth-child(3), td:nth-child(3) { width: 25%; } /* prazo */
+th:nth-child(4), td:nth-child(4) { width: 25%; } /* prazo dias
+
+/* ── Permite quebra só no nome do réu ── */
+td:nth-child(1) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+td:nth-child(3) {
+  white-space: normal;
+  word-break: break-word;
+}
+  
+  
+  
+</style>
