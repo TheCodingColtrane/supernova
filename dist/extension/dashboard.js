@@ -1,22 +1,10 @@
 "use strict";
 
-// src/core/utils.ts
-async function sendMessage(message, data) {
-  try {
-    console.log("oi");
-    const response = await chrome.runtime.sendMessage({ type: message, payload: data });
-    if (response?.success === false) {
-      console.error("Erro no SW:", response.error);
-      throw new Error(response.error);
-    }
-    return response;
-  } catch (error) {
-    console.error("Falha ao enviar mensagem para SW:", error);
-    if (chrome.runtime.lastError) {
-      console.error("Detalhe do erro:", chrome.runtime.lastError.message);
-    }
-    throw error;
-  }
+// node_modules/date-fns/_lib/addLeadingZeros.js
+function addLeadingZeros(number, targetLength) {
+  const sign = number < 0 ? "-" : "";
+  const output = Math.abs(number).toString().padStart(targetLength, "0");
+  return sign + output;
 }
 
 // node_modules/date-fns/constants.js
@@ -44,6 +32,87 @@ function constructFrom(date, value) {
 // node_modules/date-fns/toDate.js
 function toDate(argument, context) {
   return constructFrom(context || argument, argument);
+}
+
+// node_modules/date-fns/formatISO.js
+function formatISO(date, options) {
+  const date_ = toDate(date, options?.in);
+  if (isNaN(+date_)) {
+    throw new RangeError("Invalid time value");
+  }
+  const format = options?.format ?? "extended";
+  const representation = options?.representation ?? "complete";
+  let result = "";
+  let tzOffset = "";
+  const dateDelimiter = format === "extended" ? "-" : "";
+  const timeDelimiter = format === "extended" ? ":" : "";
+  if (representation !== "time") {
+    const day = addLeadingZeros(date_.getDate(), 2);
+    const month = addLeadingZeros(date_.getMonth() + 1, 2);
+    const year = addLeadingZeros(date_.getFullYear(), 4);
+    result = `${year}${dateDelimiter}${month}${dateDelimiter}${day}`;
+  }
+  if (representation !== "date") {
+    const offset = date_.getTimezoneOffset();
+    if (offset !== 0) {
+      const absoluteOffset = Math.abs(offset);
+      const hourOffset = addLeadingZeros(Math.trunc(absoluteOffset / 60), 2);
+      const minuteOffset = addLeadingZeros(absoluteOffset % 60, 2);
+      const sign = offset < 0 ? "+" : "-";
+      tzOffset = `${sign}${hourOffset}:${minuteOffset}`;
+    } else {
+      tzOffset = "Z";
+    }
+    const hour = addLeadingZeros(date_.getHours(), 2);
+    const minute = addLeadingZeros(date_.getMinutes(), 2);
+    const second = addLeadingZeros(date_.getSeconds(), 2);
+    const separator = result === "" ? "" : "T";
+    const time = [hour, minute, second].join(timeDelimiter);
+    result = `${result}${separator}${time}${tzOffset}`;
+  }
+  return result;
+}
+
+// src/core/utils.ts
+async function sendMessage(message, data) {
+  try {
+    console.log("oi");
+    const response = await chrome.runtime.sendMessage({ type: message, payload: data });
+    if (response?.success === false) {
+      console.error("Erro no SW:", response.error);
+      throw new Error(response.error);
+    }
+    return response;
+  } catch (error) {
+    console.error("Falha ao enviar mensagem para SW:", error);
+    if (chrome.runtime.lastError) {
+      console.error("Detalhe do erro:", chrome.runtime.lastError.message);
+    }
+    throw error;
+  }
+}
+async function getHolidaysAPI(oldestYear) {
+  try {
+    const curYear = (/* @__PURE__ */ new Date()).getFullYear();
+    let holidays = [];
+    if (curYear - oldestYear > 0) {
+      for (let year = oldestYear; year <= curYear; year++) {
+        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year);
+        holidays.push(holiday);
+      }
+      const allHolidays = await Promise.all(holidays);
+      holidays = [];
+      for (const holiday of allHolidays) {
+        if (holiday.status === 200) holidays.push(holiday.json());
+      }
+      const holidaysResponse2 = await Promise.all(holidays);
+      return holidaysResponse2;
+    }
+    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear);
+    if (holidaysResponse.status === 200) return await holidaysResponse.json();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 // node_modules/date-fns/addDays.js
@@ -174,52 +243,6 @@ function compareLocalAsc(laterDate, earlierDate) {
   return diff;
 }
 
-// node_modules/date-fns/_lib/addLeadingZeros.js
-function addLeadingZeros(number, targetLength) {
-  const sign = number < 0 ? "-" : "";
-  const output = Math.abs(number).toString().padStart(targetLength, "0");
-  return sign + output;
-}
-
-// node_modules/date-fns/formatISO.js
-function formatISO(date, options) {
-  const date_ = toDate(date, options?.in);
-  if (isNaN(+date_)) {
-    throw new RangeError("Invalid time value");
-  }
-  const format = options?.format ?? "extended";
-  const representation = options?.representation ?? "complete";
-  let result = "";
-  let tzOffset = "";
-  const dateDelimiter = format === "extended" ? "-" : "";
-  const timeDelimiter = format === "extended" ? ":" : "";
-  if (representation !== "time") {
-    const day = addLeadingZeros(date_.getDate(), 2);
-    const month = addLeadingZeros(date_.getMonth() + 1, 2);
-    const year = addLeadingZeros(date_.getFullYear(), 4);
-    result = `${year}${dateDelimiter}${month}${dateDelimiter}${day}`;
-  }
-  if (representation !== "date") {
-    const offset = date_.getTimezoneOffset();
-    if (offset !== 0) {
-      const absoluteOffset = Math.abs(offset);
-      const hourOffset = addLeadingZeros(Math.trunc(absoluteOffset / 60), 2);
-      const minuteOffset = addLeadingZeros(absoluteOffset % 60, 2);
-      const sign = offset < 0 ? "+" : "-";
-      tzOffset = `${sign}${hourOffset}:${minuteOffset}`;
-    } else {
-      tzOffset = "Z";
-    }
-    const hour = addLeadingZeros(date_.getHours(), 2);
-    const minute = addLeadingZeros(date_.getMinutes(), 2);
-    const second = addLeadingZeros(date_.getSeconds(), 2);
-    const separator = result === "" ? "" : "T";
-    const time = [hour, minute, second].join(timeDelimiter);
-    result = `${result}${separator}${time}${tzOffset}`;
-  }
-  return result;
-}
-
 // src/core/utils/date.ts
 function isBusinessDay(date) {
   if (date.getDay() === 6 || date.getDay() === 0)
@@ -233,28 +256,28 @@ function getNextBusinessDay(date) {
   else
     return addDays(date, 1);
 }
-function getBusinessDays(startDate, endDate, holidays) {
+function getBusinessDays(startDate, endDate, holidays, isElapsedDays = false) {
   if (!isBusinessDay(startDate))
     startDate = new Date(getNextBusinessDay(startDate));
   if (!isBusinessDay(endDate))
     endDate = new Date(getNextBusinessDay(endDate));
-  let bDays = differenceInBusinessDays(endDate, startDate);
+  let days = !isElapsedDays ? differenceInBusinessDays(endDate, startDate) : differenceInDays(endDate, startDate);
   let datesToIgnore = Array();
   if (holidays) {
     const pendingHolidays = holidays.filter((h) => h.startDate >= startDate && h.endDate <= endDate);
     const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === endDate);
-    if (isEndDateHoliday) endDate = new Date(getNextBusinessDay(endDate));
+    if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate));
     for (const holiday of pendingHolidays) {
-      let days = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
-      for (let i = 1; i < days; i++) {
+      let days2 = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
+      for (let i = 1; i < days2; i++) {
         let currentDate = addDays(new Date(holiday.startDate), i);
         datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
       }
     }
-    bDays += datesToIgnore.length;
-    endDate = addDays(startDate, bDays);
+    days += datesToIgnore.length;
+    endDate = addDays(startDate, days);
   }
-  return { businessDays: bDays < 0 ? 0 : bDays, deadline: endDate };
+  return { days: days < 0 ? 0 : days, deadline: endDate };
 }
 
 // src/core/controller/dashboard.ts
@@ -268,6 +291,28 @@ function getStatusClass(status) {
   if (status === "closed") return "status-closed";
   return "status-open";
 }
+var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
+(async function() {
+  const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {});
+  const holidays = sendMessage("GET_HOLIDAYS", {});
+  const results = await Promise.all([lawsuits, holidays]);
+  const holidaysData = results[1].data;
+  const lawsuitsData = results[0].data;
+  const circuits = new Set("");
+  lawsuitsData.map((c) => {
+    if (!circuits.has(c.circuit)) {
+      circuits.add(c.circuit);
+    }
+  });
+  const select = document.querySelector("#filterCircuit");
+  circuits.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.textContent = c;
+    select.options.add(opt);
+    select.appendChild(select);
+  });
+  sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
+})();
 function changeSortOrder(propName, prop, sortOrder) {
   const props = { "number": "", "circuit": "", "assisted": "", "status": "", "isDefendant": "", "deadline": "" };
   if (sortOrder === "" || sortOrder === "desc") sortOrder = "asc";
@@ -285,8 +330,6 @@ function changeSortOrder(propName, prop, sortOrder) {
   window.history.pushState(null, "", url.toString());
   const data = JSON.parse(sessionStorage.getItem("lawsuits"));
   const sortedLawsuits = sortTable(data, prop, sortOrder);
-  const tds = document.getElementById("processTable");
-  tds?.replaceChildren();
   renderTable(sortedLawsuits);
 }
 function sortTable(arr, property, order) {
@@ -298,24 +341,25 @@ function sortTable(arr, property, order) {
     return 0;
   });
 }
-async function renderTable(data) {
+async function renderTable(data, holidays, isElapsedDays = false) {
   const table = document.getElementById("processTable");
+  table?.replaceChildren();
   table.innerHTML = "";
   data.forEach((p) => {
-    let dates = { businessDays: 0, deadline: /* @__PURE__ */ new Date() };
+    let dates = { days: 0, deadline: /* @__PURE__ */ new Date() };
     if (p.initialDeadline && p.deadline)
-      dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(p.deadline));
+      dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(p.deadline), holidays, isElapsedDays);
     const tr = document.createElement("tr");
-    console.log(p.number, p.deadline);
+    tr.dataset.id = p.id?.toString();
     tr.innerHTML = `
         <td>${p.number}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted}</td>
         <td><span class="badge ${getStatusClass(p.status)}">${p.status}</span></td>
         <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
-        <td>${!p.deadline ? "N\xE3o definido" : new Date(p.deadline).toLocaleDateString()}</td>
-        <td class="${getDeadlineClass(dates.businessDays)}">
-          ${dates.businessDays}
+        <td>${!p.deadline ? "N\xE3o definido" : new Date(dates.deadline).toLocaleDateString()}</td>
+        <td class="${getDeadlineClass(dates.days)}">
+          ${dates.days}
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
@@ -356,10 +400,132 @@ document.addEventListener("DOMContentLoaded", async () => {
               break;
           }
         });
+        const searchField = document.querySelector("#search");
+        searchField.addEventListener("keydown", (e) => {
+          const input = searchField;
+          searchLawsuits(input.value);
+        });
+        const lawsuits = data;
+        const today = formatISO(/* @__PURE__ */ new Date(), { representation: "date" });
+        document.querySelector("#todayCount").innerHTML = lawsuits.filter((c) => c.deadline === today).length.toString();
+        document.querySelector("#weekCount").innerHTML = lawsuits.length.toString();
+        document.querySelector("#activeCount").innerHTML = lawsuits.length.toString();
+        document.querySelector("#checkHolidays")?.addEventListener("click", async (e) => {
+          let holidays = sessionStorage.getItem("holidays");
+          if (!holidays) {
+            let result = await sendMessage("GET_HOLIDAYS", { year: /* @__PURE__ */ new Date() });
+            if (!result.data) {
+              const year = (/* @__PURE__ */ new Date()).getFullYear();
+              const hasHolidays = lawsuits.some(
+                (x) => (/* @__PURE__ */ new Date()).getFullYear() < year || new Date(x.deadline).getFullYear() < year
+              );
+              const holidaysResult = await getHolidaysAPI(hasHolidays ? year - 1 : year);
+              if (hasHolidays) {
+                const holidays2 = holidaysResult;
+                let { data: data2 } = await sendMessage("SAVE_HOLIDAYS", { holidays: holidays2, year: hasHolidays ? year - 1 : year });
+                if (data2.success) sessionStorage.setItem("holidays", JSON.stringify(data2));
+              } else {
+                const holidays2 = holidaysResult;
+                let { data: data2 } = await sendMessage("SAVE_HOLIDAYS", { holidays: holidays2, year });
+                if (data2.success) sessionStorage.setItem("holidays", JSON.stringify(data2));
+              }
+              const isElapsedDays = document.querySelector("#checkCalendarDays");
+              const input = e.target;
+              if (input.checked) {
+                const data2 = JSON.parse(sessionStorage.getItem("holidays"));
+                renderTable(lawsuits, data2, isElapsedDays.checked);
+              }
+            } else {
+              const isElapsedDays = document.querySelector("#checkCalendarDays");
+              const data2 = JSON.parse(sessionStorage.getItem("holidays"));
+              renderTable(lawsuits, data2, isElapsedDays.checked);
+            }
+          }
+        });
+        document.querySelector("#checkCalendarDays")?.addEventListener("click", (e) => {
+          const isElapsedDaysInput = e.target;
+          const holidaysData = JSON.parse(sessionStorage.getItem("holidays"));
+          if (isElapsedDaysInput.checked) {
+            return renderTable(data, holidaysData ? holidaysData : [], true);
+          }
+          return renderTable(data, holidaysData ? holidaysData : [], false);
+        });
       }
     }
   } catch (error) {
     console.error(error);
   }
 });
+document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
+  const select = e.target;
+  const search = document.querySelector("#search");
+  if (select.selectedOptions.item(0)?.textContent === "Todas") {
+    activeFilters.circuit = "";
+    searchLawsuits(search.value);
+  } else {
+    activeFilters.circuit = select.selectedOptions.item(0)?.textContent;
+    searchLawsuits(search.value);
+  }
+});
+document.querySelector("#filterStatus")?.addEventListener("change", (e) => {
+  const select = e.target;
+  const search = document.querySelector("#search");
+  if (select.selectedOptions.item(0)?.textContent === "Todos") {
+    activeFilters.status = "";
+    searchLawsuits(search.value);
+  } else {
+    activeFilters.status = select.selectedOptions.item(0)?.textContent;
+    searchLawsuits(search.value);
+  }
+});
+document.querySelector("#filterSide")?.addEventListener("change", (e) => {
+  const select = e.target;
+  const search = document.querySelector("#search");
+  if (select.selectedOptions.item(0)?.textContent === "Todos") {
+    activeFilters.side = "";
+    searchLawsuits(search.value);
+  } else {
+    activeFilters.side = select.selectedOptions.item(0)?.textContent;
+    searchLawsuits(search.value);
+  }
+});
+document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
+  const select = e.target;
+  const search = document.querySelector("#search");
+  if (select.selectedOptions.item(0)?.textContent === "Todos") {
+    activeFilters.assignedTo = "";
+    searchLawsuits(search.value);
+  } else {
+    activeFilters.assignedTo = select.selectedOptions.item(0)?.textContent;
+    searchLawsuits(search.value);
+  }
+});
+function updateCards(data) {
+  const today = formatISO(/* @__PURE__ */ new Date(), { representation: "date" });
+  document.querySelector("#todayCount").innerHTML = data.filter((c) => c.deadline === today).length.toString();
+  document.querySelector("#weekCount").innerHTML = data.length.toString();
+  document.querySelector("#activeCount").innerHTML = data.filter((c) => c.status === "aberto").length.toString();
+}
+function searchLawsuits(term) {
+  const data = JSON.parse(sessionStorage.getItem("lawsuits"));
+  let filtered = [...data];
+  if (activeFilters.circuit) filtered = filtered.filter((l) => l.circuit === activeFilters.circuit);
+  if (activeFilters.status !== "") filtered = filtered.filter((l) => String(l.status) === activeFilters.status);
+  if (activeFilters.side) {
+    const isDefendant = activeFilters.side === "Passivo";
+    filtered = filtered.filter((l) => l.isDefendant === isDefendant);
+  }
+  if (activeFilters.assignedTo) {
+    filtered = filtered.filter(
+      (l) => Array.isArray(l.defender) ? false : l.defender?.nome === activeFilters.assignedTo
+    );
+  }
+  if (term) {
+    filtered = filtered.filter(
+      (c) => c.assisted.toUpperCase().includes(term.toUpperCase()) || c.number.includes(term)
+    );
+  }
+  updateCards(filtered);
+  renderTable(filtered);
+}
 //# sourceMappingURL=dashboard.js.map

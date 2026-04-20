@@ -123,7 +123,6 @@ function nextPage() {
 
 
 function getDeadlineDate(elements: HTMLCollection) {
-  console.log(elements)
   let initialDeadline = "", deadline = "", noDeadline = "", awarenessDate = ""
   for (const element of elements) {
     let currentTd = element as HTMLElement
@@ -189,7 +188,9 @@ async function batchFetch(pagesData: Array<{ count: number, status: number }>, s
         return { rawHTML: await response.text(), statusCode: 200 }
       } catch (error) {
         console.error("Erro no fetch:", error)
+        hideLoadingIcon()
         return { rawHTML: "", statusCode: 500 }
+
       }
     })
 
@@ -227,34 +228,7 @@ async function parseHTML(lawsuitsStatusDataCount: Array<{ count: number, status:
     }
 
   }
-  // if (system === 1) {
-  //   let year = new Date()
-  //   const lawsuits = lawsuitsData
-  //   const hasPreviousYear = lawsuits.filter(c => c.status === "Aberto" || c.status === "Aguardando Abertura")
-  //     .some(c => new Date(c.initialDeadline).getFullYear() < year.getFullYear() || new Date(c.deadline).getFullYear() < year.getFullYear())
-  //   const hasHolidays = await sendMessage("GET_HOLIDAYS", { year: hasPreviousYear ? year.setFullYear(year.getFullYear() - 1) : year })
-  //   if (!hasHolidays) {
-  //     await sendMessage("SAVE_HOLIDAYS", hasPreviousYear ? year.getFullYear() - 1 : year)
-  //   }
 
-  // }
-
-
-
-
-  // .map((data) => {
-  //   for (lawsuit of filteredLawsuits) {
-  //     let deadline = new Date(lawsuit.deadline)
-  //     let initialDeadline = new Date(lawsuit.initialDeadline)
-  //     if (initialDeadline.getFullYear() !== uniqueYears.find(c == initialDeadline.getFullYear()))
-  //       uniqueYears.add(initialDeadline)
-  //     else if (deadline.getFullYear() !== uniqueYears.find(c == deadline.getFullYear()))
-  //       uniqueYears.add(deadline)
-  //   }
-
-
-
-  // })
   return lawsuitsData
 
 
@@ -269,9 +243,9 @@ async function parseHTML(lawsuitsStatusDataCount: Array<{ count: number, status:
  */
 function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number) {
   const pages = Array<{ count: number, status: number }>()
-  let x = 0, breaker = 0 
+  let x = 0, breaker = 0
   for (let element of pageLawsuitsStatus) {
-    if(breaker === 2) return pages
+    if (breaker === 2) return pages
     let newElement = element as HTMLElement
     if (system === 1 && x > 3) break;
     let count = 0, recordsNumber = system === 2 ? 10 : 100
@@ -325,7 +299,7 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
     //Abaixo é necessário formatar o resto da cadeia JSON para depois torná-lo um JSON válido.
     const lawsuits = rawResults[0]?.substring(0, rawResults[0].length - 2)
     if (!lawsuits) return []
-    let results = JSON.parse(lawsuits) 
+    let results = JSON.parse(lawsuits)
     console.log(results)
     const filedLawsuits = Array<Lawsuits>()
     for (let result of results) {
@@ -378,12 +352,12 @@ function getEPROCLegacyLawsuitsData(page: Document, defenders: Defenders[] | und
       let currentRow = tableElements.rows.item(i)
       let initialDeadline = "", deadline = "", awarenessDate = "",
         number = "", circuit = "", assisted = "", source = "",
-        defender = "", status = "", tab = "", 
+        defender = "", status = "", tab = "",
         dates = { initialDeadline: "", deadline: "", noDeadline: "", awarenessDate: "" }
-        if(!currentRow?.cells.item(7)?.children.item(0)?.children){
-          console.log("lihas", tableRows)
-          return lawsuits
-        }
+      if (!currentRow?.cells.item(7)?.children.item(0)?.children) {
+        console.log("lihas", tableRows)
+        return lawsuits
+      }
       dates = getDeadlineDate(currentRow?.cells.item(7)?.children.item(0)?.children!)
       number = currentRow?.cells.item(1)?.children.item(2)?.textContent?.split('\n')[2]?.trimStart()!
       circuit = currentRow?.cells.item(2)!.innerHTML.split("\n")[3]?.trimStart().replaceAll("Juízo da ", "")!
@@ -439,17 +413,97 @@ function getEPROCLegacyLawsuitsData(page: Document, defenders: Defenders[] | und
   }
 }
 
+function renderLoadingIcon(){
+  if(document.querySelector(".loader-overlay")){
+    const loading = document.querySelector(".loader-overlay") as HTMLElement
+    loading.style.display = "block"
+    return
+  } 
+
+  const loader = document.createElement("div");
+  loader.className = "loader-overlay";
+
+  const style = document.createElement("style");
+  style.innerHTML = `
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+  }
+
+  .loader {
+  width: 120px;
+  height: 120px;
+  border: 10px solid rgba(255,255,255,0.2);
+  border-top: 10px solid ##4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader-text {
+    color: white;
+    margin-top: 20px;
+    font-size: 18px;
+    font-family: sans-serif;
+  }
+`;
+
+  document.head.appendChild(style);
+
+  const spinner = document.createElement("div");
+  spinner.className = "loader";
+
+  const text = document.createElement("div");
+  text.className = "loader-text";
+  text.textContent = "Carregando  ...";
+
+  loader.appendChild(spinner);
+  loader.appendChild(text);
+
+  document.body.appendChild(loader);
+
+}
+
+function hideLoadingIcon(){
+  if(document.querySelector(".loader-overlay")){
+    const loading = document.querySelector(".loader-overlay") as HTMLElement
+    loading.style.display = "none"
+}
+
+}
+
+
+
 
 /**
  * Extrai os dados dos sistemas.
  */
 async function scrapeData() {
   system = currentPage.includes("pje.") ? 0 : currentPage.includes("v2") && currentPage.includes("solar") ? 1 : currentPage.includes("solar") ? 2 : -1
+  renderLoadingIcon()
   if (system === 0) return getPJELawsuits()
   else if (system === 1 || system === 2) {
     const data = await getEPROCLawsuits(system)
     if (data) {
       let res = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+      hideLoadingIcon()
     }
 
   }

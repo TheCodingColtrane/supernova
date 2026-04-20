@@ -35,7 +35,7 @@ export async function getWeekLawsuits(considerHoliday = false) {
         for (const lawsuit of data) {
             let dates = getBusinessDays(new Date(), new Date(lawsuit.deadline), holidays)
             lawsuit.deadline = dates.deadline.toLocaleDateString()
-            const businessDaysLeft = dates.businessDays
+            const businessDaysLeft = dates.days
             lawsuits.push({
                 number: lawsuit.number,
                 assisted: lawsuit.assisted,

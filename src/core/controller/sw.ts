@@ -1,4 +1,4 @@
-import { getHolidays } from "../service/holidays";
+import { getHolidays, saveHolidays } from "../service/holidays";
 import { getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits } from "../service/lawsuits";
 
 
@@ -18,6 +18,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
         case "GET_PENDING_LAWSUITS":
           result = await getPendingLawsuits()
+          break;
+        case "SAVE_HOLIDAYS":
+          result = await saveHolidays(request.payload.holidays, request.payload.year)
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year)
