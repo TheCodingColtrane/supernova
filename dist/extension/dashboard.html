@@ -1,172 +1,376 @@
-<html lang="pt">
+<!DOCTYPE html>
+<html lang="pt-br">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Gestão de Prazos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-body: #f8fafc;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --info: #3b82f6;
+      --white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--white);
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    input[type="text"] {
+      padding: 10px 16px;
+      width: 320px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* ── Layout Container ── */
+    .container {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    /* ── Dashboard Cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--white);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border-left: 4px solid;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card .label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .card.red {
+      border-left-color: var(--danger);
+    }
+
+    .card.yellow {
+      border-left-color: var(--warning);
+    }
+
+    .card.blue {
+      border-left-color: var(--info);
+    }
+
+    .card.green {
+      border-left-color: var(--success);
+    }
+
+    /* ── Table Styling ── */
+    .table-container {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    thead {
+      background: #f1f5f9;
+    }
+
+    th {
+      padding: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+    }
+
+    td {
+      padding: 16px;
+      border-bottom: 1px solid #f1f5f9;
+      color: var(--text-main);
+    }
+
+    tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    /* ── Filters Bar ── */
+    .filters-bar {
+      background: var(--white);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-end;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filter-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background-color: #fff;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .filter-select:focus {
+      border-color: var(--primary);
+    }
+
+    /* ── Custom Checkboxes ── */
+    .filter-options {
+      display: flex;
+      gap: 20px;
+      padding-bottom: 10px;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .checkbox-container input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--primary);
+      /* Define a cor do checkbox nos navegadores modernos */
+    }
+
+    /* ── Status Badges ── */
+    .badge {
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-open {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-closed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    /* ── Critical Indicators ── */
+    .days-critical {
+      color: var(--danger);
+      font-weight: 700;
+    }
+  </style>
 </head>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f5f6fa;
-  }
-
-  header {
-    background: #1e3a8a;
-    color: white;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  input {
-    padding: 8px;
-    width: 300px;
-    border-radius: 6px;
-    border: none;
-  }
-
-  .container {
-    padding: 20px;
-  }
-
-  .cards {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-
-  .card {
-    flex: 1;
-    padding: 16px;
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-  }
-
-  .red {
-    background: #dc2626;
-  }
-
-  .yellow {
-    background: #f59e0b;
-  }
-
-  .green {
-    background: #16a34a;
-  }
-
-  .blue {
-    background: #2563eb;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  th,
-  td {
-    padding: 12px;
-    text-align: left;
-  }
-
-  th {
-    cursor: pointer;
-  }
-
-  th {
-    background: #e5e7eb;
-  }
-
-  tr:nth-child(even) {
-    background: #f9fafb;
-  }
-
-  .badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    color: white;
-    font-size: 12px;
-  }
-
-  .status-open {
-    background: #f59e0b;
-  }
-
-  .status-closed {
-    background: #16a34a;
-  }
-
-  .status-late {
-    background: #dc2626;
-  }
-
-  .deadline-danger {
-    color: #dc2626;
-    font-weight: bold;
-  }
-
-  .deadline-warning {
-    color: #f59e0b;
-    font-weight: bold;
-  }
-
-  .deadline-ok {
-    color: #16a34a;
-  }
-
-  button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 6px;
-    background: #2563eb;
-    color: white;
-    cursor: pointer;
-  }
-</style>
-</style>
 
 <body>
 
   <header>
-    <h2>📅 Gestão de Prazos</h2>
-    <div>
-      <input type="text" placeholder="Buscar processo..." />
-      <button>+ Nova tarefa</button>
+    <h2>Gestão de Prazos</h2>
+    <div class="header-actions">
+      <input type="text" placeholder="Buscar por número ou assistido..." id="search" />
+      <button class="btn-primary">+ Nova Tarefa</button>
     </div>
   </header>
-  <div class="container">
-    <!-- Cards resumo -->
-    <div class="cards">
-      <div class="card red">🔴 Vencendo hoje: <span id="todayCount">0</span></div>
-      <div class="card yellow">🟡 Esta semana: <span id="weekCount">0</span></div>
-      <div class="card blue">📊 Ativos: <span id="activeCount">0</span></div>
-      <div class="card green">✅ Finalizados: <span id="doneCount">0</span></div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th data-nm="number" data-sort="">Processo</th>
-          <th data-nm="circuit" data-sort="">Vara</th>
-          <th data-nm="assisted" data-sort="">Assistido(a)/Curatelado(a)</th>
-          <th data-nm="status" data-sort="">Status</th>
-          <th data-nm="side" data-sort="">Polo</th>
-          <th data-nm="deadline" data-sort="">Prazo</th>
-          <th data-nm="daysLeft" data-sort="">Dias Restantes</th>
-          <th data-nm="assignedTo" data-sort="">Responsável</th>
-        </tr>
-      </thead>
-      <tbody id="processTable"></tbody>
-    </table>
 
+  <div class="container">
+    <div class="cards">
+      <div class="card red">
+        <span class="label">Vencendo hoje</span>
+        <span class="value" id="todayCount">0</span>
+      </div>
+      <div class="card yellow">
+        <span class="label">Esta semana</span>
+        <span class="value" id="weekCount">0</span>
+      </div>
+      <div class="card blue">
+        <span class="label">Processos Ativos</span>
+        <span class="value" id="activeCount">0</span>
+      </div>
+      <div class="card green">
+        <span class="label">Finalizados</span>
+        <span class="value" id="doneCount">0</span>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label class="filter-label">Vara</label>
+        <select class="filter-select" id="filterCircuit">
+          <option value="">Todas</option>
+
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select class="filter-select" id="filterStatus">
+          <option value="">Todos</option>
+          <option value="1">Aberto</option>
+          <option value="0">Aguardando Abertura</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Polo</label>
+        <select class="filter-select" id="filterSide">
+          <option value="">Todos</option>
+          <option value="ativo">Ativo</option>
+          <option value="passivo">Passivo</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Responsável</label>
+        <select class="filter-select" id="filterAssignedTo">
+          <option value="">Todos</option>
+          <option value="user1">Dr. João Silva</option>
+          <option value="user2">Dra. Maria Souza</option>
+        </select>
+      </div>
+      <div class="filter-options">
+        <label class="checkbox-container">
+          <input type="checkbox" id="checkHolidays">
+          <span class="checkmark"></span>
+          Considerar Feriados
+        </label>
+        <label class="checkbox-container">
+          <input type="checkbox" id="checkCalendarDays">
+          <span class="checkmark"></span>
+          Dias Corridos
+        </label>
+      </div>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th data-nm="number" data-sort="">Processo</th>
+            <th data-nm="circuit" data-sort="">Vara</th>
+            <th data-nm="assisted" data-sort="">Assistido(a)</th>
+            <th data-nm="status" data-sort="">Status</th>
+            <th data-nm="side" data-sort="">Polo</th>
+            <th data-nm="deadline" data-sort="">Prazo</th>
+            <th data-nm="daysLeft" data-sort="">Restante</th>
+            <th data-nm="">Responsável</th>
+          </tr>
+        </thead>
+        <tbody id="processTable">
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <script src="dashboard.js" defer></script>
 </body>
-<script src="dashboard.js" defer></script>
 
 </html>

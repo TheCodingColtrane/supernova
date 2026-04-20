@@ -184,7 +184,6 @@ function nextPage() {
   }
 }
 function getDeadlineDate(elements) {
-  console.log(elements);
   let initialDeadline = "", deadline = "", noDeadline = "", awarenessDate = "";
   for (const element of elements) {
     let currentTd = element;
@@ -232,6 +231,7 @@ async function batchFetch(pagesData, system2, circuit) {
         return { rawHTML: await response.text(), statusCode: 200 };
       } catch (error) {
         console.error("Erro no fetch:", error);
+        hideLoadingIcon();
         return { rawHTML: "", statusCode: 500 };
       }
     });
@@ -386,13 +386,80 @@ function getEPROCLegacyLawsuitsData(page, defenders) {
     return lawsuits;
   }
 }
+function renderLoadingIcon() {
+  if (document.querySelector(".loader-overlay")) {
+    const loading = document.querySelector(".loader-overlay");
+    loading.style.display = "block";
+    return;
+  }
+  const loader = document.createElement("div");
+  loader.className = "loader-overlay";
+  const style = document.createElement("style");
+  style.innerHTML = `
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+  }
+
+  .loader {
+  width: 120px;
+  height: 120px;
+  border: 10px solid rgba(255,255,255,0.2);
+  border-top: 10px solid ##4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader-text {
+    color: white;
+    margin-top: 20px;
+    font-size: 18px;
+    font-family: sans-serif;
+  }
+`;
+  document.head.appendChild(style);
+  const spinner = document.createElement("div");
+  spinner.className = "loader";
+  const text = document.createElement("div");
+  text.className = "loader-text";
+  text.textContent = "Carregando  ...";
+  loader.appendChild(spinner);
+  loader.appendChild(text);
+  document.body.appendChild(loader);
+}
+function hideLoadingIcon() {
+  if (document.querySelector(".loader-overlay")) {
+    const loading = document.querySelector(".loader-overlay");
+    loading.style.display = "none";
+  }
+}
 async function scrapeData() {
   system = currentPage.includes("pje.") ? 0 : currentPage.includes("v2") && currentPage.includes("solar") ? 1 : currentPage.includes("solar") ? 2 : -1;
+  renderLoadingIcon();
   if (system === 0) return getPJELawsuits();
   else if (system === 1 || system === 2) {
     const data = await getEPROCLawsuits(system);
     if (data) {
       let res = await sendMessage("SAVE_LAWSUITS", { lawsuits: data });
+      hideLoadingIcon();
     }
   }
 }

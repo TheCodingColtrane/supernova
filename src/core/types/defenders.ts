@@ -12,7 +12,7 @@ export type Defenders = {
         tipo: number
         titular: any
     }>
-
+    trabalhadores?: Worker[]
     cpf: string
     credenciais_expiradas: boolean
     data_expiracao_credenciais_mni: any

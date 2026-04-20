@@ -33,17 +33,17 @@ export function getNextBusinessDay(date: Date) {
 
 
 
-export function getBusinessDays(startDate: Date, endDate: Date, holidays?: Holidays[]) {
+export function getBusinessDays(startDate: Date, endDate: Date, holidays?: Holidays[], isElapsedDays = false) {
     if(!isBusinessDay(startDate))
         startDate = new Date(getNextBusinessDay(startDate))
     if(!isBusinessDay(endDate))
         endDate = new Date(getNextBusinessDay(endDate))
-    let bDays = differenceInBusinessDays(endDate, startDate)
+    let days = !isElapsedDays ? differenceInBusinessDays(endDate, startDate) : differenceInDays(endDate, startDate)
     let datesToIgnore = Array<string>()
     if (holidays) {
         const pendingHolidays = holidays.filter(h => h.startDate >= startDate && h.endDate <= endDate)
         const isEndDateHoliday = pendingHolidays.find(c => c.startDate === endDate)
-        if (isEndDateHoliday) endDate = new Date(getNextBusinessDay(endDate))
+        if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate))
         for (const holiday of pendingHolidays) {
                     let days = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate))
                     for (let i = 1; i < days; i++) {
@@ -53,12 +53,12 @@ export function getBusinessDays(startDate: Date, endDate: Date, holidays?: Holid
 
         }
 
-        bDays+=datesToIgnore.length
-        endDate = addDays(startDate, bDays)
+        days+=datesToIgnore.length
+        endDate = addDays(startDate, days)
     }
     
      
 
-    return { businessDays: bDays < 0 ? 0 : bDays , deadline: endDate }
+    return { days: days < 0 ? 0 : days , deadline: endDate }
 
 }

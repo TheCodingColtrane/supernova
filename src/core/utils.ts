@@ -78,7 +78,7 @@ export async function getHolidaysAPI(oldestYear: number) {
         }
 
         const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear)
-        if (holidaysResponse.status === 200) return await holidaysResponse.json()
+        if (holidaysResponse.status === 200) return await holidaysResponse.json() as Holidays[]
 
     } catch (error) {
         console.log(error)
