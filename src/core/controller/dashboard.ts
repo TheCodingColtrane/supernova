@@ -18,13 +18,15 @@ function getStatusClass(status: string) {
 }
 
 const activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
+let lawsuitsData = Array<Lawsuits>();
+let circuits = new Set("");
+
 (async function () {
   const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {}) as any
   const holidays = sendMessage("GET_HOLIDAYS", {}) as any
   const results = await Promise.all([lawsuits, holidays])
   const holidaysData = results[1].data as Holidays[]
-  const lawsuitsData = results[0].data as Lawsuits[]
-  const circuits = new Set("")
+ lawsuitsData = results[0].data as Lawsuits[]
 
   lawsuitsData.map(c => {
     if (!circuits.has(c.circuit)) {
@@ -37,12 +39,87 @@ const activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
     const opt = document.createElement("option")
     opt.textContent = c
     select.options.add(opt)
-    select!.appendChild(select!);
+    // select!.appendChild(select!);
   })
 
   sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData))
 
 }())
+
+async function getSolarLawsuit(number: string){
+  const response = await fetch("https://solar.defensoria.mg.def.br/processo/52181937920238130024/get/json/?grau=1")
+  if(response.status === 200){
+    const result = await response.json()
+  } 
+
+    else if(response.status === 401){
+      alert("Você precisa logar no solar.")
+    }
+
+} 
+
+
+function closePanel() {
+  document.querySelector('#sidePanel')?.classList.remove('open');
+  document.querySelector('#overlay')?.classList.remove('active');
+}
+
+async function saveLawsuit (lawsuit: Lawsuits) {
+
+} 
+
+async function deleteLawsuit(id: number) {
+
+}
+// Abre o painel e preenche com os dados da linha
+function openPanel(id: number) {
+
+  const data = [...lawsuitsData].find(c => c.id === id)
+  if(data){
+
+  const number = document.querySelector('#editNumber') as HTMLInputElement
+  number.value = data.number;
+  const assisted = document.querySelector('#editAssisted') as HTMLInputElement 
+  assisted.value = data.assisted;
+  const circuit = document.querySelector('#editCircuit') as HTMLSelectElement
+    circuits.forEach(c => {
+    const opt = document.createElement("option")
+    opt.textContent = c
+    circuit.options.add(opt)
+    if(data.circuit === c) opt.selected = true
+  })
+  const status = document.querySelector('#editStatus') as HTMLSelectElement
+  if(data.status === "Aberto") status.selectedIndex = 0
+  else status.selectedIndex = 1 
+  const side = document.querySelector('#editSide') as HTMLSelectElement
+  if(data.isDefendant) side.selectedIndex = 1
+  else side.selectedIndex = 0
+  const awareness = document.querySelector('#editAwarenessDate') as HTMLSelectElement
+  awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString()
+  const startDeadline = document.querySelector('#editStartDeadline') as HTMLSelectElement
+  startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString()
+  const endDeadline = document.querySelector('#editEndDeadline') as HTMLSelectElement
+  endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString()
+  document.querySelector('#sidePanel')?.classList.add('open');
+  document.querySelector('#overlay')?.classList.add('active');
+  document.querySelector(".btn-close")?.addEventListener("click", () => {
+      closePanel()
+  })
+   document.querySelector(".btn-save")?.addEventListener("click", async () => {
+      await saveLawsuit(lawsuitsData[0]!)
+  })
+
+   document.querySelector(".btn-delete")?.addEventListener("click", async () => {
+      await deleteLawsuit(-1)
+  })
+  }
+
+}
+
+
+// Exemplo de como anexar o evento no clique da linha (dentro do seu loop de renderização da tabela)
+// row.onclick = () => openPanel(processo);
+
 
 function changeSortOrder(propName: string, prop: keyof Lawsuits, sortOrder: string) {
   const props = { "number": "", "circuit": "", "assisted": "", "status": "", "isDefendant": "", "deadline": "" };
@@ -103,6 +180,9 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
+    tr.addEventListener("click", () => {
+      if(p.id) openPanel(p.id)
+    })
 
     //   tr.onclick = () => alert("Abrir processo: " + p.number);
 

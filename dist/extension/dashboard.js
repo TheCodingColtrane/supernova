@@ -292,13 +292,14 @@ function getStatusClass(status) {
   return "status-open";
 }
 var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
+var lawsuitsData = Array();
+var circuits = new Set("");
 (async function() {
   const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {});
   const holidays = sendMessage("GET_HOLIDAYS", {});
   const results = await Promise.all([lawsuits, holidays]);
   const holidaysData = results[1].data;
-  const lawsuitsData = results[0].data;
-  const circuits = new Set("");
+  lawsuitsData = results[0].data;
   lawsuitsData.map((c) => {
     if (!circuits.has(c.circuit)) {
       circuits.add(c.circuit);
@@ -309,10 +310,56 @@ var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
     const opt = document.createElement("option");
     opt.textContent = c;
     select.options.add(opt);
-    select.appendChild(select);
   });
   sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
 })();
+function closePanel() {
+  document.querySelector("#sidePanel")?.classList.remove("open");
+  document.querySelector("#overlay")?.classList.remove("active");
+}
+async function saveLawsuit(lawsuit) {
+}
+async function deleteLawsuit(id) {
+}
+function openPanel(id) {
+  const data = [...lawsuitsData].find((c) => c.id === id);
+  if (data) {
+    const number = document.querySelector("#editNumber");
+    number.value = data.number;
+    const assisted = document.querySelector("#editAssisted");
+    assisted.value = data.assisted;
+    const circuit = document.querySelector("#editCircuit");
+    circuits.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.textContent = c;
+      circuit.options.add(opt);
+      if (data.circuit === c) opt.selected = true;
+    });
+    const status = document.querySelector("#editStatus");
+    if (data.status === "Aberto") status.selectedIndex = 0;
+    else status.selectedIndex = 1;
+    const side = document.querySelector("#editSide");
+    if (data.isDefendant) side.selectedIndex = 1;
+    else side.selectedIndex = 0;
+    const awareness = document.querySelector("#editAwarenessDate");
+    awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString();
+    const startDeadline = document.querySelector("#editStartDeadline");
+    startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString();
+    const endDeadline = document.querySelector("#editEndDeadline");
+    endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString();
+    document.querySelector("#sidePanel")?.classList.add("open");
+    document.querySelector("#overlay")?.classList.add("active");
+    document.querySelector(".btn-close")?.addEventListener("click", () => {
+      closePanel();
+    });
+    document.querySelector(".btn-save")?.addEventListener("click", async () => {
+      await saveLawsuit(lawsuitsData[0]);
+    });
+    document.querySelector(".btn-delete")?.addEventListener("click", async () => {
+      await deleteLawsuit(-1);
+    });
+  }
+}
 function changeSortOrder(propName, prop, sortOrder) {
   const props = { "number": "", "circuit": "", "assisted": "", "status": "", "isDefendant": "", "deadline": "" };
   if (sortOrder === "" || sortOrder === "desc") sortOrder = "asc";
@@ -363,6 +410,9 @@ async function renderTable(data, holidays, isElapsedDays = false) {
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
+    tr.addEventListener("click", () => {
+      if (p.id) openPanel(p.id);
+    });
     table.appendChild(tr);
   });
 }

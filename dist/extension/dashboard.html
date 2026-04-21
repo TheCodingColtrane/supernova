@@ -18,6 +18,7 @@
       --success: #10b981;
       --info: #3b82f6;
       --white: #ffffff;
+      --border: #e2e8f0;
     }
 
     * {
@@ -36,8 +37,8 @@
     /* ── Header ── */
     header {
       background: var(--white);
-      padding: 1.25rem 2rem;
-      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -47,40 +48,18 @@
     }
 
     header h2 {
-      font-size: 1.25rem;
+      font-size: 1.1rem;
       font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    input[type="text"] {
-      padding: 10px 16px;
-      width: 320px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
 
     .btn-primary {
       background: var(--primary);
       color: white;
-      padding: 10px 20px;
+      padding: 8px 18px;
       border-radius: 8px;
       border: none;
       font-weight: 600;
+      font-size: 0.9rem;
       cursor: pointer;
       transition: background 0.2s;
     }
@@ -101,7 +80,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1.5rem;
-      margin-bottom: 2rem;
+      margin-bottom: 3rem;
     }
 
     .card {
@@ -109,17 +88,16 @@
       padding: 1.5rem;
       border-radius: 12px;
       border-left: 4px solid;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     .card .label {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
       margin-bottom: 8px;
+      display: block;
     }
 
     .card .value {
@@ -143,57 +121,50 @@
       border-left-color: var(--success);
     }
 
-    /* ── Table Styling ── */
-    .table-container {
-      background: var(--white);
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
+    /* ── SEÇÃO DE BUSCA (PROTAGONISTA) ── */
+    .search-section {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
     }
 
-    table {
+    .search-container {
       width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.9rem;
+      max-width: 700px;
+      position: relative;
     }
 
-    thead {
-      background: #f1f5f9;
+    input[type="text"]#search {
+      width: 100%;
+      padding: 16px 24px;
+      font-size: 1.05rem;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: var(--white);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      transition: all 0.2s ease;
     }
 
-    th {
-      padding: 16px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid #e2e8f0;
-      cursor: pointer;
+    input[type="text"]#search:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.08);
+      transform: translateY(-2px);
     }
 
-    td {
-      padding: 16px;
-      border-bottom: 1px solid #f1f5f9;
-      color: var(--text-main);
-    }
-
-    tbody tr:hover {
-      background-color: #f8fafc;
-    }
-
-    /* ── Filters Bar ── */
+    /* ── Barra de Filtros ── */
     .filters-bar {
       background: var(--white);
-      padding: 1.5rem;
+      padding: 1.25rem;
       border-radius: 12px;
       margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+
+    .filters-row-main {
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
-      align-items: flex-end;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      gap: 16px;
     }
 
     .filter-group {
@@ -201,11 +172,11 @@
       flex-direction: column;
       gap: 6px;
       flex: 1;
-      min-width: 150px;
+      min-width: 160px;
     }
 
     .filter-label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -213,65 +184,176 @@
 
     .filter-select {
       padding: 8px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background-color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       font-size: 0.85rem;
       color: var(--text-main);
-      outline: none;
+      background-color: #fcfcfc;
     }
 
-    .filter-select:focus {
-      border-color: var(--primary);
-    }
-
-    /* ── Custom Checkboxes ── */
+    /* ── Opções Secundárias (Checkboxes) ── */
     .filter-options {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
       display: flex;
-      gap: 20px;
-      padding-bottom: 10px;
+      gap: 24px;
+      justify-content: flex-end;
+      /* Alinhado à direita para ser menos intrusivo */
     }
 
     .checkbox-container {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-main);
+      font-size: 0.75rem;
+      color: var(--text-muted);
       cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .checkbox-container:hover {
+      color: var(--text-main);
     }
 
     .checkbox-container input {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
+      width: 14px;
+      height: 14px;
       accent-color: var(--primary);
-      /* Define a cor do checkbox nos navegadores modernos */
     }
 
-    /* ── Status Badges ── */
-    .badge {
-      padding: 4px 10px;
-      border-radius: 99px;
+    /* ── Tabela ── */
+    .table-container {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #f8fafc;
+      padding: 14px 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    /* ── Side Panel ── */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: -450px;
+      /* Escondido por padrão */
+      width: 400px;
+      height: 100%;
+      background: var(--white);
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: right 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-panel.open {
+      right: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: none;
+      z-index: 90;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
+    /* ── Conteúdo do Painel ── */
+    .panel-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
       font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    .panel-actions {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-save {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
       font-weight: 600;
     }
 
-    .status-open {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .status-closed {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    /* ── Critical Indicators ── */
-    .days-critical {
+    .btn-delete {
+      background: transparent;
       color: var(--danger);
-      font-weight: 700;
+      border: 1px solid var(--danger);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -281,7 +363,6 @@
   <header>
     <h2>Gestão de Prazos</h2>
     <div class="header-actions">
-      <input type="text" placeholder="Buscar por número ou assistido..." id="search" />
       <button class="btn-primary">+ Nova Tarefa</button>
     </div>
   </header>
@@ -305,51 +386,122 @@
         <span class="value" id="doneCount">0</span>
       </div>
     </div>
-    <div class="filters-bar">
-      <div class="filter-group">
-        <label class="filter-label">Vara</label>
-        <select class="filter-select" id="filterCircuit">
-          <option value="">Todas</option>
 
-        </select>
+    <div id="sidePanel" class="side-panel">
+      <div class="panel-header">
+        <h3>Detalhes do Processo</h3>
+        <button class="btn-close">&times;</button>
       </div>
-      <div class="filter-group">
-        <label class="filter-label">Status</label>
-        <select class="filter-select" id="filterStatus">
-          <option value="">Todos</option>
-          <option value="1">Aberto</option>
-          <option value="0">Aguardando Abertura</option>
-        </select>
+
+      <div class="panel-body">
+        <form id="editForm">
+          <div class="form-group">
+            <label>Número do Processo</label>
+            <input type="text" id="editNumber" readonly>
+          </div>
+          <div class="form-group">
+            <label>Vara</label>
+            <select id="editCircuit">
+              
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Assistido(a)</label>
+            <input type="text" id="editAssisted">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="editStatus">
+              <option value="1">Aberto</option>
+              <option value="0">Aguardando Abertura</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Polo</label>
+            <select id="editSide">
+              <option value="1">Ativo</option>
+              <option value="0">Passivo</option>
+            </select>
+          </div>
+           <div class="form-group">
+            <label>Data de ciência</label>
+            <input type="text" id="editAwarenessDate">
+          </div>
+           <div class="form-group">
+            <label>Inicio do Prazo</label>
+            <input type="text" id="editStartDeadline">
+          </div>
+           <div class="form-group">
+            <label>Final do Prazo</label>
+            <input type="text" id="editEndDeadline">
+          </div>
+          <div class="form-group">
+            <label>Observações Internas</label>
+            <textarea id="editNotes" rows="4"></textarea>
+          </div>
+
+          <div class="panel-actions">
+            <button type="button" class="btn-save">Salvar Alterações</button>
+            <button type="button" class="btn-delete">Excluir Processo</button>
+          </div>
+        </form>
       </div>
-      <div class="filter-group">
-        <label class="filter-label">Polo</label>
-        <select class="filter-select" id="filterSide">
-          <option value="">Todos</option>
-          <option value="ativo">Ativo</option>
-          <option value="passivo">Passivo</option>
-        </select>
+    </div>
+
+    <div id="overlay" class="overlay" onclick="closePanel()"></div>
+
+    <div class="search-section">
+      <div class="search-container">
+        <input type="text" placeholder="Pesquisar por número do processo ou nome do assistido..." id="search" />
       </div>
-      <div class="filter-group">
-        <label class="filter-label">Responsável</label>
-        <select class="filter-select" id="filterAssignedTo">
-          <option value="">Todos</option>
-          <option value="user1">Dr. João Silva</option>
-          <option value="user2">Dra. Maria Souza</option>
-        </select>
+    </div>
+
+    <div class="filters-bar">
+      <div class="filters-row-main">
+        <div class="filter-group">
+          <label class="filter-label">Vara</label>
+          <select class="filter-select" id="filterCircuit">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select class="filter-select" id="filterStatus">
+            <option value="">Todos</option>
+            <option value="1">Aberto</option>
+            <option value="0">Aguardando Abertura</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Polo</label>
+          <select class="filter-select" id="filterSide">
+            <option value="">Todos</option>
+            <option value="ativo">Ativo</option>
+            <option value="passivo">Passivo</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Responsável</label>
+          <select class="filter-select" id="filterAssignedTo">
+            <option value="">Todos</option>
+            <option value="user1">Dr. João Silva</option>
+            <option value="user2">Dra. Maria Souza</option>
+          </select>
+        </div>
       </div>
+
       <div class="filter-options">
         <label class="checkbox-container">
           <input type="checkbox" id="checkHolidays">
-          <span class="checkmark"></span>
           Considerar Feriados
         </label>
         <label class="checkbox-container">
           <input type="checkbox" id="checkCalendarDays">
-          <span class="checkmark"></span>
-          Dias Corridos
+          Considerar Dias Corridos
         </label>
       </div>
     </div>
+
     <div class="table-container">
       <table>
         <thead>
@@ -368,6 +520,7 @@
         </tbody>
       </table>
     </div>
+  </div>
   </div>
 
   <script src="dashboard.js" defer></script>
