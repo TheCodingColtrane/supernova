@@ -32,11 +32,11 @@ export async function getWeekLawsuitsData() {
         }
         const weekStartDate = curDate
         type WeekLawsuits = {
-        number: string;
-        assisted: string;
-        initialDeadline: string | Date;
-        deadline: string | Date;
-        status: string;
+            number: string;
+            assisted: string;
+            initialDeadline: string | Date;
+            deadline: string | Date;
+            status: string;
         }
         if (day > 1) {
             dates.startingDate = new Date(weekStartDate.setDate(curDate.getDate() - day)).toISOString().split("T")[0] ?? ""
@@ -47,18 +47,18 @@ export async function getWeekLawsuitsData() {
             dates.startingDate = weekStartDate.toISOString().split("T")[0] ?? ""
             dates.endingDate = new Date(weekStartDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0] ?? ""
         }
-        
-        const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto",dates.startingDate], ["Aberto",dates.endingDate]).limit(30).toArray()
+
+        const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", dates.startingDate], ["Aberto", dates.endingDate]).limit(30).toArray()
         const filteredLawsuits = Array<WeekLawsuits>()
         for (const lawsuit of lawsuits) {
             console.log(lawsuit)
-                filteredLawsuits.push({
-                    number: lawsuit.number,
-                    assisted: lawsuit.assisted,
-                    initialDeadline: lawsuit.initialDeadline,
-                    deadline: lawsuit.deadline,
-                    status: lawsuit.status
-                })
+            filteredLawsuits.push({
+                number: lawsuit.number,
+                assisted: lawsuit.assisted,
+                initialDeadline: lawsuit.initialDeadline,
+                deadline: lawsuit.deadline,
+                status: lawsuit.status
+            })
         }
         // const filteredLawsuits = lawsuits.map(({ number, assisted, initialDeadline, deadline, status }) => ({ number, assisted, initialDeadline, deadline, status }))
         const sortedLawsuits = [...filteredLawsuits].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
@@ -73,24 +73,58 @@ export async function getWeekLawsuitsData() {
 
 
 export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
-  try {
-    if (Array.isArray(lawsuits)) {
-        await db.lawsuits.bulkAdd(lawsuits);
-        return true
+    try {
+        if (Array.isArray(lawsuits)) {
+            await db.lawsuits.bulkAdd(lawsuits);
+            return true
+        }
+        else {
+            await db.lawsuits.add(lawsuits);
+            return true
+        }
+    } catch (error) {
+        console.log(error)
+        return false
     }
-    else {
-        await db.lawsuits.add(lawsuits);
-        return true
-    }
-  } catch (error) {
-    console.log(error)
-    return false
-  }
 
 }
 
+export async function updateLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
+    try {
+        if (Array.isArray(lawsuits)) {
+            await db.lawsuits.bulkPut(lawsuits);
+            return true
+        }
+        else {
+            await db.lawsuits.put(lawsuits);
+            return true
+        }
+    } catch (error) {
+        console.log(error)
+        return false
+    }
+}
 
-export async function getPendingLawsuitsData(){
+
+
+export async function deleteLawsuitsData(ids: number[] | number) {
+    try {
+        if (Array.isArray(ids)) {
+            await db.lawsuits.bulkDelete(ids);
+            return true
+        }
+        else {
+            await db.lawsuits.delete(ids);
+            return true
+        }
+    } catch (error) {
+        console.log(error)
+        return false
+    }
+}
+
+
+export async function getPendingLawsuitsData() {
     const today = new Date()
     const endDate = new Date(today.setDate(new Date().getDate() + 90)).toISOString().split("T")[0]
     const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray()

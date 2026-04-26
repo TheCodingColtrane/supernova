@@ -355,11 +355,78 @@
       border-radius: 8px;
       cursor: pointer;
     }
+
+    /* ── Sistema de Alertas (Toast) ── */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      min-width: 300px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--text-main);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 6px solid var(--primary);
+      animation: slideIn 0.3s ease-out forwards;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .toast.success {
+      border-left-color: var(--success);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger);
+    }
+
+    .toast.info {
+      border-left-color: var(--info);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+
+    .toast.hiding {
+      animation: fadeOut 0.5s ease-in forwards;
+    }
   </style>
 </head>
 
 <body>
-
+<div id="toastContainer" class="toast-container"></div>
   <header>
     <h2>Gestão de Prazos</h2>
     <div class="header-actions">
@@ -397,43 +464,43 @@
         <form id="editForm">
           <div class="form-group">
             <label>Número do Processo</label>
-            <input type="text" id="editNumber" readonly>
+            <input name="number" type="text" id="editNumber" readonly>
           </div>
           <div class="form-group">
             <label>Vara</label>
-            <select id="editCircuit">
-              
+            <select name="circuit" id="editCircuit">
+
             </select>
           </div>
           <div class="form-group">
             <label>Assistido(a)</label>
-            <input type="text" id="editAssisted">
+            <input name="assisted" type="text" id="editAssisted">
           </div>
           <div class="form-group">
             <label>Status</label>
-            <select id="editStatus">
+            <select name="status" id="editStatus">
               <option value="1">Aberto</option>
               <option value="0">Aguardando Abertura</option>
             </select>
           </div>
           <div class="form-group">
             <label>Polo</label>
-            <select id="editSide">
+            <select name="isDefendant" id="editSide">
               <option value="1">Ativo</option>
               <option value="0">Passivo</option>
             </select>
           </div>
-           <div class="form-group">
+          <div class="form-group">
             <label>Data de ciência</label>
-            <input type="text" id="editAwarenessDate">
+            <input name="awarenessDate" type="text" id="editAwarenessDate">
           </div>
-           <div class="form-group">
+          <div class="form-group">
             <label>Inicio do Prazo</label>
-            <input type="text" id="editStartDeadline">
+            <input type="text" name="initialDeadline" id="editStartDeadline">
           </div>
-           <div class="form-group">
+          <div class="form-group">
             <label>Final do Prazo</label>
-            <input type="text" id="editEndDeadline">
+            <input type="text" name="deadline" id="editEndDeadline">
           </div>
           <div class="form-group">
             <label>Observações Internas</label>
@@ -448,7 +515,7 @@
       </div>
     </div>
 
-    <div id="overlay" class="overlay" onclick="closePanel()"></div>
+    <div id="overlay" class="overlay" ></div>
 
     <div class="search-section">
       <div class="search-container">

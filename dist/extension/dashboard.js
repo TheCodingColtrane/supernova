@@ -91,28 +91,45 @@ async function sendMessage(message, data) {
     throw error;
   }
 }
-async function getHolidaysAPI(oldestYear) {
-  try {
-    const curYear = (/* @__PURE__ */ new Date()).getFullYear();
-    let holidays = [];
-    if (curYear - oldestYear > 0) {
-      for (let year = oldestYear; year <= curYear; year++) {
-        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year);
-        holidays.push(holiday);
-      }
-      const allHolidays = await Promise.all(holidays);
-      holidays = [];
-      for (const holiday of allHolidays) {
-        if (holiday.status === 200) holidays.push(holiday.json());
-      }
-      const holidaysResponse2 = await Promise.all(holidays);
-      return holidaysResponse2;
-    }
-    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear);
-    if (holidaysResponse.status === 200) return await holidaysResponse.json();
-  } catch (error) {
-    console.log(error);
+
+// node_modules/date-fns/isSaturday.js
+function isSaturday(date, options) {
+  return toDate(date, options?.in).getDay() === 6;
+}
+
+// node_modules/date-fns/isSunday.js
+function isSunday(date, options) {
+  return toDate(date, options?.in).getDay() === 0;
+}
+
+// node_modules/date-fns/isWeekend.js
+function isWeekend(date, options) {
+  const day = toDate(date, options?.in).getDay();
+  return day === 0 || day === 6;
+}
+
+// node_modules/date-fns/addBusinessDays.js
+function addBusinessDays(date, amount, options) {
+  const _date = toDate(date, options?.in);
+  const startedOnWeekend = isWeekend(_date, options);
+  if (isNaN(amount)) return constructFrom(options?.in, NaN);
+  const hours = _date.getHours();
+  const sign = amount < 0 ? -1 : 1;
+  const fullWeeks = Math.trunc(amount / 5);
+  _date.setDate(_date.getDate() + fullWeeks * 7);
+  let restDays = Math.abs(amount % 5);
+  while (restDays > 0) {
+    _date.setDate(_date.getDate() + sign);
+    if (!isWeekend(_date, options)) restDays -= 1;
   }
+  if (startedOnWeekend && isWeekend(_date, options) && amount !== 0) {
+    if (isSaturday(_date, options))
+      _date.setDate(_date.getDate() + (sign < 0 ? 2 : -1));
+    if (isSunday(_date, options))
+      _date.setDate(_date.getDate() + (sign < 0 ? 1 : -2));
+  }
+  _date.setHours(hours);
+  return _date;
 }
 
 // node_modules/date-fns/addDays.js
@@ -192,12 +209,6 @@ function isValid(date) {
   return !(!isDate(date) && typeof date !== "number" || isNaN(+toDate(date)));
 }
 
-// node_modules/date-fns/isWeekend.js
-function isWeekend(date, options) {
-  const day = toDate(date, options?.in).getDay();
-  return day === 0 || day === 6;
-}
-
 // node_modules/date-fns/differenceInBusinessDays.js
 function differenceInBusinessDays(laterDate, earlierDate, options) {
   const [laterDate_, earlierDate_] = normalizeDates(
@@ -244,6 +255,15 @@ function compareLocalAsc(laterDate, earlierDate) {
 }
 
 // src/core/utils/date.ts
+function localDateToIsoDate(date, time) {
+  date = date.replaceAll("/", "-");
+  if (time && date.includes(":")) {
+    const aux2 = date.substring(0, 10).split("-");
+    return aux2[2] + "-" + aux2[1] + "-" + aux2[0] + "T" + date.substring(10);
+  }
+  const aux = date.split("-");
+  return aux[2] + "-" + aux[1] + "-" + aux[0];
+}
 function isBusinessDay(date) {
   if (date.getDay() === 6 || date.getDay() === 0)
     return false;
@@ -261,26 +281,55 @@ function getBusinessDays(startDate, endDate, holidays, isElapsedDays = false) {
     startDate = new Date(getNextBusinessDay(startDate));
   if (!isBusinessDay(endDate))
     endDate = new Date(getNextBusinessDay(endDate));
+  if (startDate.getTime() > endDate.getTime())
+    return { days: 0, deadline: endDate, isDueDate: true };
   let days = !isElapsedDays ? differenceInBusinessDays(endDate, startDate) : differenceInDays(endDate, startDate);
   let datesToIgnore = Array();
-  if (holidays) {
-    const pendingHolidays = holidays.filter((h) => h.startDate >= startDate && h.endDate <= endDate);
-    const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === endDate);
-    if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate));
-    for (const holiday of pendingHolidays) {
-      let days2 = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
-      for (let i = 1; i < days2; i++) {
-        let currentDate = addDays(new Date(holiday.startDate), i);
-        datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
+  if (holidays?.length) {
+    const pendingHolidays = holidays.filter(
+      (h) => new Date(h.startDate).getTime() >= new Date(startDate).getTime() && new Date(h.endDate).getTime() <= new Date(endDate).getTime()
+    );
+    if (pendingHolidays?.length) {
+      const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === formatISO(endDate, { representation: "date" }));
+      if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate));
+      for (const holiday of pendingHolidays) {
+        let days2 = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
+        if (!days2) {
+          datesToIgnore.push(holiday.startDate);
+          continue;
+        }
+        for (let i = 1; i < days2; i++) {
+          let currentDate = addDays(new Date(holiday.startDate), i);
+          datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
+        }
       }
     }
-    days += datesToIgnore.length;
-    endDate = addDays(startDate, days);
+    days += !isElapsedDays ? differenceInBusinessDays(addBusinessDays(startDate, datesToIgnore.length), startDate) : differenceInDays(addDays(startDate, datesToIgnore.length), startDate);
+    endDate = !isElapsedDays ? addBusinessDays(startDate, days) : addDays(startDate, days);
   }
-  return { days: days < 0 ? 0 : days, deadline: endDate };
+  return { days: days < 0 ? 0 : days, deadline: endDate, isDueDate: false };
 }
 
 // src/core/controller/dashboard.ts
+function showAlert(message, type = "success", duration = 4e3) {
+  const container = document.querySelector("#toastContainer");
+  const toast = document.createElement("div");
+  toast.classList.add("toast", type);
+  toast.innerHTML = `
+    <span>${message}</span>
+    <button style="background:none; border:none; cursor:pointer; font-size:1.2rem; margin-left:10px; color:var(--text-muted)">&times;</button>
+  `;
+  const toastButton = toast.querySelector("button");
+  toastButton.onclick = () => removeToast(toast);
+  container?.appendChild(toast);
+  setTimeout(() => removeToast(toast), duration);
+}
+function removeToast(toast) {
+  toast.classList.add("hiding");
+  toast.addEventListener("animationend", () => {
+    toast.remove();
+  });
+}
 function getDeadlineClass(days) {
   if (days <= 0) return "deadline-danger";
   if (days <= 3) return "deadline-warning";
@@ -293,33 +342,40 @@ function getStatusClass(status) {
 }
 var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
 var lawsuitsData = Array();
+var holidaysData = Array();
 var circuits = new Set("");
 (async function() {
-  const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {});
-  const holidays = sendMessage("GET_HOLIDAYS", {});
-  const results = await Promise.all([lawsuits, holidays]);
-  const holidaysData = results[1].data;
-  lawsuitsData = results[0].data;
-  lawsuitsData.map((c) => {
-    if (!circuits.has(c.circuit)) {
-      circuits.add(c.circuit);
-    }
-  });
-  const select = document.querySelector("#filterCircuit");
-  circuits.forEach((c) => {
-    const opt = document.createElement("option");
-    opt.textContent = c;
-    select.options.add(opt);
-  });
-  sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
+  try {
+    const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {});
+    const holidays = sendMessage("GET_HOLIDAYS", {});
+    const results = await Promise.all([lawsuits, holidays]);
+    holidaysData = results[1].data;
+    lawsuitsData = results[0].data;
+    lawsuitsData.map((c) => {
+      if (!circuits.has(c.circuit)) {
+        circuits.add(c.circuit);
+      }
+    });
+    const select = document.querySelector("#filterCircuit");
+    circuits.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.textContent = c;
+      select.options.add(opt);
+    });
+    sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
+  } catch (error) {
+    console.log(error);
+  }
 })();
 function closePanel() {
   document.querySelector("#sidePanel")?.classList.remove("open");
   document.querySelector("#overlay")?.classList.remove("active");
 }
-async function saveLawsuit(lawsuit) {
+async function updateLawsuit(lawsuits) {
+  await sendMessage("UPDATE_LAWSUITS", { lawsuits });
 }
 async function deleteLawsuit(id) {
+  await sendMessage("DELETE_LAWSUITS", { ids: id });
 }
 function openPanel(id) {
   const data = [...lawsuitsData].find((c) => c.id === id);
@@ -353,10 +409,33 @@ function openPanel(id) {
       closePanel();
     });
     document.querySelector(".btn-save")?.addEventListener("click", async () => {
-      await saveLawsuit(lawsuitsData[0]);
+      const form = document.querySelector("#editForm");
+      const formData = Object.fromEntries(new FormData(form));
+      let awarenessDate = formData["awarenessDate"];
+      if (awarenessDate) awarenessDate = localDateToIsoDate(awarenessDate, false);
+      let initialDeadline = formData["initialDeadline"];
+      if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline, false);
+      let deadline = formData["deadline"];
+      if (deadline) deadline = localDateToIsoDate(deadline, false);
+      await updateLawsuit({
+        assisted: formData["assisted"],
+        awarenessDate,
+        circuit: formData["circuit"],
+        deadline,
+        defender: data.defender,
+        givenDeadLine: data.givenDeadLine,
+        initialDeadline,
+        isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
+        number: formData["number"],
+        source: data.source,
+        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
+        id
+      });
+      showAlert("Processo atualizado com sucesso.", "success");
     });
     document.querySelector(".btn-delete")?.addEventListener("click", async () => {
-      await deleteLawsuit(-1);
+      await deleteLawsuit(id);
+      showAlert("Processo deletado com sucesso.", "success");
     });
   }
 }
@@ -393,9 +472,11 @@ async function renderTable(data, holidays, isElapsedDays = false) {
   table?.replaceChildren();
   table.innerHTML = "";
   data.forEach((p) => {
-    let dates = { days: 0, deadline: /* @__PURE__ */ new Date() };
-    if (p.initialDeadline && p.deadline)
-      dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(p.deadline), holidays, isElapsedDays);
+    let dates = { days: 0, deadline: /* @__PURE__ */ new Date(), isDueDate: false };
+    if (p.initialDeadline && p.deadline) {
+      const dateComponents = p.deadline.toString().split("-");
+      dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays);
+    }
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString();
     tr.innerHTML = `
@@ -406,7 +487,7 @@ async function renderTable(data, holidays, isElapsedDays = false) {
         <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
         <td>${!p.deadline ? "N\xE3o definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
-          ${dates.days}
+          ${dates.isDueDate ? "Prazo Perdido" : dates.days}
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
@@ -460,45 +541,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.querySelector("#todayCount").innerHTML = lawsuits.filter((c) => c.deadline === today).length.toString();
         document.querySelector("#weekCount").innerHTML = lawsuits.length.toString();
         document.querySelector("#activeCount").innerHTML = lawsuits.length.toString();
-        document.querySelector("#checkHolidays")?.addEventListener("click", async (e) => {
-          let holidays = sessionStorage.getItem("holidays");
-          if (!holidays) {
-            let result = await sendMessage("GET_HOLIDAYS", { year: /* @__PURE__ */ new Date() });
-            if (!result.data) {
-              const year = (/* @__PURE__ */ new Date()).getFullYear();
-              const hasHolidays = lawsuits.some(
-                (x) => (/* @__PURE__ */ new Date()).getFullYear() < year || new Date(x.deadline).getFullYear() < year
-              );
-              const holidaysResult = await getHolidaysAPI(hasHolidays ? year - 1 : year);
-              if (hasHolidays) {
-                const holidays2 = holidaysResult;
-                let { data: data2 } = await sendMessage("SAVE_HOLIDAYS", { holidays: holidays2, year: hasHolidays ? year - 1 : year });
-                if (data2.success) sessionStorage.setItem("holidays", JSON.stringify(data2));
-              } else {
-                const holidays2 = holidaysResult;
-                let { data: data2 } = await sendMessage("SAVE_HOLIDAYS", { holidays: holidays2, year });
-                if (data2.success) sessionStorage.setItem("holidays", JSON.stringify(data2));
-              }
-              const isElapsedDays = document.querySelector("#checkCalendarDays");
-              const input = e.target;
-              if (input.checked) {
-                const data2 = JSON.parse(sessionStorage.getItem("holidays"));
-                renderTable(lawsuits, data2, isElapsedDays.checked);
-              }
-            } else {
-              const isElapsedDays = document.querySelector("#checkCalendarDays");
-              const data2 = JSON.parse(sessionStorage.getItem("holidays"));
-              renderTable(lawsuits, data2, isElapsedDays.checked);
-            }
+        document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
+          if (holidaysData) {
+            const isElapsedDays = document.querySelector("#checkCalendarDays");
+            const input = e.target;
+            renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked);
           }
         });
-        document.querySelector("#checkCalendarDays")?.addEventListener("click", (e) => {
-          const isElapsedDaysInput = e.target;
-          const holidaysData = JSON.parse(sessionStorage.getItem("holidays"));
-          if (isElapsedDaysInput.checked) {
-            return renderTable(data, holidaysData ? holidaysData : [], true);
+        document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
+          if (holidaysData) {
+            const isElapsedDaysInput = e.target;
+            const checkHolidaysInput = document.querySelector("#checkHolidays");
+            return renderTable(data, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked);
           }
-          return renderTable(data, holidaysData ? holidaysData : [], false);
         });
       }
     }

@@ -65,19 +65,18 @@ export async function getHolidaysAPI(oldestYear: number) {
         let holidays = []
         if (curYear - oldestYear > 0) {
             for (let year = oldestYear; year <= curYear; year++) {
-                let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year)
+                let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year.toString())
                 holidays.push(holiday)
             }
             const allHolidays = await Promise.all(holidays)
             holidays = []
             for (const holiday of allHolidays) {
-                if (holiday.status === 200) holidays.push(holiday.json())
+                if (holiday.status === 200) holidays.push(await holiday.json())
             }
-            const holidaysResponse = await Promise.all(holidays) as HolidaysAPIResponse[]
-            return holidaysResponse
+            return holidays.flatMap(c => c) as HolidaysAPIResponse[]
         }
 
-        const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear)
+        const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear.toString())
         if (holidaysResponse.status === 200) return await holidaysResponse.json() as Holidays[]
 
     } catch (error) {

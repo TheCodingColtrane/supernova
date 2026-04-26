@@ -1,5 +1,5 @@
 import { getHolidays, saveHolidays } from "../service/holidays";
-import { getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits } from "../service/lawsuits";
+import { deleteLawsuits, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "../service/lawsuits";
 
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -9,6 +9,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       switch (request.type) {
         case "SAVE_LAWSUITS":
           result = await saveLawsuits(request.payload.lawsuits);
+          break;
+        case "UPDATE_LAWSUITS":
+          result = await updateLawsuits(request.payload.lawsuits);
+          break;
+        case "DELETE_LAWSUITS":
+          result = await deleteLawsuits(request.payload.ids);
           break;
         case "GET_STATUS_COUNT":
           result = await getLawsuitStatusCount();
@@ -20,7 +26,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           result = await getPendingLawsuits()
           break;
         case "SAVE_HOLIDAYS":
-          result = await saveHolidays(request.payload.holidays, request.payload.year)
+          result = await saveHolidays(request.payload.holidays)
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year)
