@@ -2,8 +2,35 @@ import { formatISO } from "../../../node_modules/date-fns/formatISO";
 import type { Holidays, HolidaysAPIResponse } from "../types/holidays";
 import type { Lawsuits } from "../types/lawsuits"
 import { getHolidaysAPI, sendMessage } from "../utils"
-import { getBusinessDays } from "../utils/date";
+import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 
+function showAlert(message: string, type = 'success', duration = 4000) {
+  const container = document.querySelector('#toastContainer');
+
+  // Cria o elemento do toast
+  const toast = document.createElement('div');
+  toast.classList.add('toast', type);
+
+  // Define o ícone ou conteúdo (opcional: pode adicionar ícones aqui)
+  toast.innerHTML = `
+    <span>${message}</span>
+    <button style="background:none; border:none; cursor:pointer; font-size:1.2rem; margin-left:10px; color:var(--text-muted)">&times;</button>
+  `;
+
+  // Botão de fechar manual
+  const toastButton = toast.querySelector('button') as HTMLButtonElement
+  toastButton.onclick = () => removeToast(toast);
+  container?.appendChild(toast);
+  // Auto-remover após o tempo definido
+  setTimeout(() => removeToast(toast), duration);
+}
+
+function removeToast(toast: HTMLElement) {
+  toast.classList.add('hiding');
+  toast.addEventListener('animationend', () => {
+    toast.remove();
+  });
+}
 
 function getDeadlineClass(days: number) {
   if (days <= 0) return "deadline-danger";
@@ -19,44 +46,51 @@ function getStatusClass(status: string) {
 
 const activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
 let lawsuitsData = Array<Lawsuits>();
+let holidaysData = Array<Holidays>();
+
 let circuits = new Set("");
 
 (async function () {
-  const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {}) as any
-  const holidays = sendMessage("GET_HOLIDAYS", {}) as any
-  const results = await Promise.all([lawsuits, holidays])
-  const holidaysData = results[1].data as Holidays[]
- lawsuitsData = results[0].data as Lawsuits[]
+  try {
+    const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {}) as any
+    const holidays = sendMessage("GET_HOLIDAYS", {}) as any
+    const results = await Promise.all([lawsuits, holidays])
+    holidaysData = results[1].data as Holidays[]
+    lawsuitsData = results[0].data as Lawsuits[]
 
-  lawsuitsData.map(c => {
-    if (!circuits.has(c.circuit)) {
-      circuits.add(c.circuit)
-    }
-  })
-  const select = document.querySelector("#filterCircuit") as HTMLSelectElement
+    lawsuitsData.map(c => {
+      if (!circuits.has(c.circuit)) {
+        circuits.add(c.circuit)
+      }
+    })
+    const select = document.querySelector("#filterCircuit") as HTMLSelectElement
 
-  circuits.forEach(c => {
-    const opt = document.createElement("option")
-    opt.textContent = c
-    select.options.add(opt)
-    // select!.appendChild(select!);
-  })
+    circuits.forEach(c => {
+      const opt = document.createElement("option")
+      opt.textContent = c
+      select.options.add(opt)
+      // select!.appendChild(select!);
+    })
 
-  sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData))
+    sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData))
+  } catch (error) {
+    console.log(error)
+  }
+
 
 }())
 
-async function getSolarLawsuit(number: string){
+async function getSolarLawsuit(number: string) {
   const response = await fetch("https://solar.defensoria.mg.def.br/processo/52181937920238130024/get/json/?grau=1")
-  if(response.status === 200){
+  if (response.status === 200) {
     const result = await response.json()
-  } 
+  }
 
-    else if(response.status === 401){
-      alert("Você precisa logar no solar.")
-    }
+  else if (response.status === 401) {
+    alert("Você precisa logar no solar.")
+  }
 
-} 
+}
 
 
 function closePanel() {
@@ -64,54 +98,88 @@ function closePanel() {
   document.querySelector('#overlay')?.classList.remove('active');
 }
 
-async function saveLawsuit (lawsuit: Lawsuits) {
-
-} 
+async function updateLawsuit(lawsuits: Lawsuits) {
+  await sendMessage("UPDATE_LAWSUITS", { lawsuits })
+}
 
 async function deleteLawsuit(id: number) {
+  await sendMessage("DELETE_LAWSUITS", { ids: id })
 
 }
 // Abre o painel e preenche com os dados da linha
 function openPanel(id: number) {
 
   const data = [...lawsuitsData].find(c => c.id === id)
-  if(data){
+  if (data) {
 
-  const number = document.querySelector('#editNumber') as HTMLInputElement
-  number.value = data.number;
-  const assisted = document.querySelector('#editAssisted') as HTMLInputElement 
-  assisted.value = data.assisted;
-  const circuit = document.querySelector('#editCircuit') as HTMLSelectElement
+    const number = document.querySelector('#editNumber') as HTMLInputElement
+    number.value = data.number;
+    const assisted = document.querySelector('#editAssisted') as HTMLInputElement
+    assisted.value = data.assisted;
+    const circuit = document.querySelector('#editCircuit') as HTMLSelectElement
     circuits.forEach(c => {
-    const opt = document.createElement("option")
-    opt.textContent = c
-    circuit.options.add(opt)
-    if(data.circuit === c) opt.selected = true
-  })
-  const status = document.querySelector('#editStatus') as HTMLSelectElement
-  if(data.status === "Aberto") status.selectedIndex = 0
-  else status.selectedIndex = 1 
-  const side = document.querySelector('#editSide') as HTMLSelectElement
-  if(data.isDefendant) side.selectedIndex = 1
-  else side.selectedIndex = 0
-  const awareness = document.querySelector('#editAwarenessDate') as HTMLSelectElement
-  awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString()
-  const startDeadline = document.querySelector('#editStartDeadline') as HTMLSelectElement
-  startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString()
-  const endDeadline = document.querySelector('#editEndDeadline') as HTMLSelectElement
-  endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString()
-  document.querySelector('#sidePanel')?.classList.add('open');
-  document.querySelector('#overlay')?.classList.add('active');
-  document.querySelector(".btn-close")?.addEventListener("click", () => {
+      const opt = document.createElement("option")
+      opt.textContent = c
+      circuit.options.add(opt)
+      if (data.circuit === c) opt.selected = true
+    })
+    const status = document.querySelector('#editStatus') as HTMLSelectElement
+    if (data.status === "Aberto") status.selectedIndex = 0
+    else status.selectedIndex = 1
+    const side = document.querySelector('#editSide') as HTMLSelectElement
+    if (data.isDefendant) side.selectedIndex = 1
+    else side.selectedIndex = 0
+    const awareness = document.querySelector('#editAwarenessDate') as HTMLSelectElement
+    awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString()
+    const startDeadline = document.querySelector('#editStartDeadline') as HTMLSelectElement
+    startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString()
+    const endDeadline = document.querySelector('#editEndDeadline') as HTMLSelectElement
+    endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString()
+    document.querySelector('#sidePanel')?.classList.add('open');
+    document.querySelector('#overlay')?.classList.add('active');
+    document.querySelector(".btn-close")?.addEventListener("click", () => {
       closePanel()
-  })
-   document.querySelector(".btn-save")?.addEventListener("click", async () => {
-      await saveLawsuit(lawsuitsData[0]!)
-  })
+    })
+    document.querySelector(".btn-save")?.addEventListener("click", async () => {
+      const form = document.querySelector("#editForm") as HTMLFormElement
+      const formData = Object.fromEntries(new FormData(form))
+      let awarenessDate = formData["awarenessDate"] as string
+      if (awarenessDate) awarenessDate = localDateToIsoDate(awarenessDate!, false)
+      let initialDeadline = formData["initialDeadline"] as string
+      if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline!, false)
+      let deadline = formData["deadline"] as string
+      if (deadline) deadline = localDateToIsoDate(deadline!, false)
 
-   document.querySelector(".btn-delete")?.addEventListener("click", async () => {
-      await deleteLawsuit(-1)
-  })
+      const lawsuit: Lawsuits = {
+        assisted: formData["assisted"] as string,
+        awarenessDate,
+        circuit: formData["circuit"] as string,
+        deadline,
+        defender: data.defender,
+        givenDeadLine: data.givenDeadLine,
+        initialDeadline,
+        isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
+        number: formData["number"] as string,
+        source: data.source,
+        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
+        id: id
+      }
+      await updateLawsuit(lawsuit)
+      showAlert("Processo atualizado com sucesso.", "success")
+      const i = lawsuitsData.findIndex(c => c.id === id)
+      lawsuitsData[i] = {...lawsuit}
+      closePanel()
+      renderTableWithOptions()
+    })
+
+    document.querySelector(".btn-delete")?.addEventListener("click", async () => {
+      await deleteLawsuit(id)
+      showAlert("Processo deletado com sucesso.", "success")
+       const idx = lawsuitsData.findIndex(c => c.id === id)
+      lawsuitsData = lawsuitsData.splice(idx, 1)
+      closePanel()
+      renderTableWithOptions()
+    })
   }
 
 }
@@ -163,9 +231,13 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
   table!.innerHTML = "";
 
   data.forEach((p: Lawsuits) => {
-    let dates = { days: 0, deadline: new Date }
-    if (p.initialDeadline && p.deadline)
-      dates = getBusinessDays(new Date(), new Date(p.deadline), holidays, isElapsedDays)
+    let dates = { days: 0, deadline: new Date, isDueDate: false }
+    if (p.initialDeadline && p.deadline) {
+      const dateComponents = p.deadline.toString().split("-")
+      dates = getBusinessDays(new Date(), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays)
+    }
+
+
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
     tr.innerHTML = `
@@ -176,18 +248,24 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
         <td>${!p.deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
-          ${dates.days}
+          ${dates.isDueDate ? "Prazo Perdido" : dates.days}
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
     tr.addEventListener("click", () => {
-      if(p.id) openPanel(p.id)
+      if (p.id) openPanel(p.id)
     })
 
     //   tr.onclick = () => alert("Abrir processo: " + p.number);
 
     table!.appendChild(tr);
   })
+}
+
+function renderTableWithOptions() {
+  const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+  const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
+  renderTable(lawsuitsData, isHolidays.checked ? holidaysData : [], isElapsedDays.checked)
 }
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -237,47 +315,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.querySelector("#activeCount")!.innerHTML = lawsuits.length.toString()
 
 
-        document.querySelector("#checkHolidays")?.addEventListener("click", async (e) => {
-          let holidays = sessionStorage.getItem("holidays")
-          if (!holidays) {
-            let result = await sendMessage("GET_HOLIDAYS", { year: new Date() }) as any
-            if (!result.data) {
-              const year = new Date().getFullYear()
-              const hasHolidays = lawsuits.some(x =>
-                new Date().getFullYear() < year ||
-                new Date(x.deadline as string).getFullYear() < year
-              )
-              const holidaysResult = await getHolidaysAPI(hasHolidays ? (year - 1) : year)
-              if (hasHolidays) {
-                const holidays = holidaysResult as HolidaysAPIResponse[]
-                let { data } = await sendMessage("SAVE_HOLIDAYS", { holidays, year: hasHolidays ? (year - 1) : year }) as any
-                if (data.success) sessionStorage.setItem("holidays", JSON.stringify(data))
-              } else {
-                const holidays = holidaysResult as Holidays[]
-                let { data } = await sendMessage("SAVE_HOLIDAYS", { holidays, year }) as any
-                if (data.success) sessionStorage.setItem("holidays", JSON.stringify(data))
-              }
-              const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
-              const input = e.target as HTMLInputElement
-              if (input.checked as any) {
-                const data = JSON.parse(sessionStorage.getItem("holidays")!) as Holidays[]
-                renderTable(lawsuits, data, isElapsedDays.checked)
-              }
-            } else {
-              const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
-              const data = JSON.parse(sessionStorage.getItem("holidays")!) as Holidays[]
-              renderTable(lawsuits, data, isElapsedDays.checked)
-            }
+        document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
+          if (holidaysData) {
+            const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+            const input = e.target as HTMLInputElement
+            renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
           }
+
         })
 
-        document.querySelector("#checkCalendarDays")?.addEventListener("click", (e) => {
-          const isElapsedDaysInput = e.target as HTMLInputElement
-          const holidaysData = JSON.parse(sessionStorage.getItem("holidays")!) as Holidays[]
-          if (isElapsedDaysInput.checked) {
-            return renderTable(data, holidaysData ? holidaysData : [], true)
+        document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
+          if (holidaysData) {
+            const isElapsedDaysInput = e.target as HTMLInputElement
+            const checkHolidaysInput = document.querySelector("#checkHolidays") as HTMLInputElement
+            return renderTable(data, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked)
           }
-          return renderTable(data, holidaysData ? holidaysData : [], false)
         })
       }
     }

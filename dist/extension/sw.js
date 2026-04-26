@@ -6232,18 +6232,17 @@ async function getHolidaysAPI(oldestYear) {
     let holidays = [];
     if (curYear - oldestYear > 0) {
       for (let year = oldestYear; year <= curYear; year++) {
-        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year);
+        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year.toString());
         holidays.push(holiday);
       }
       const allHolidays = await Promise.all(holidays);
       holidays = [];
       for (const holiday of allHolidays) {
-        if (holiday.status === 200) holidays.push(holiday.json());
+        if (holiday.status === 200) holidays.push(await holiday.json());
       }
-      const holidaysResponse2 = await Promise.all(holidays);
-      return holidaysResponse2;
+      return holidays.flatMap((c) => c);
     }
-    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear);
+    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear.toString());
     if (holidaysResponse.status === 200) return await holidaysResponse.json();
   } catch (error) {
     console.log(error);
@@ -6351,37 +6350,41 @@ async function getHolidaysData(year) {
 }
 
 // src/core/service/holidays.ts
-async function saveHolidays(holidays, year) {
+async function saveHolidays(holidays) {
   try {
-    if (holidays.length > 1 || holidays.length === 0) {
-      if (!holidays) {
-        const holidaysResponse = await getHolidaysAPI(year);
-        holidays = new Array();
-        for (const holiday of holidaysResponse) {
-          holidays.push({
-            startDate: holiday.date,
-            endDate: holiday.date,
-            isNational: holiday.type === "national" ? true : false,
-            name: holiday.name
-          });
-        }
-      }
-      const isCreated = await saveHolidaysData(holidays);
-      if (isCreated) return true;
-    } else {
-      const isCreated = await saveHolidaysData(holidays);
-      if (isCreated) return true;
-    }
+    const isCreated = await saveHolidaysData(holidays);
+    if (isCreated) return true;
   } catch (error) {
     console.log(error);
   }
 }
 async function getHolidays(year) {
   try {
-    year.setDate(0);
-    year.setMonth(0);
-    const data = await getHolidaysData(year.toISOString().split("T")[0]);
-    return data;
+    if (year) {
+      year = new Date((/* @__PURE__ */ new Date()).getFullYear(), 0, 1);
+      const data = await getHolidaysData(year.toISOString().split("T")[0]);
+      return data;
+    } else {
+      const data = await getHolidaysData();
+      if (data.length === 0) {
+        const previousYear = (/* @__PURE__ */ new Date()).getFullYear() - 1;
+        const holidays = await getHolidaysAPI(previousYear);
+        if (holidays) {
+          const holidaysSchema = new Array();
+          for (const holiday of holidays) {
+            holidaysSchema.push({
+              startDate: holiday.date,
+              endDate: holiday.date,
+              isNational: holiday.type === "national",
+              name: holiday.name
+            });
+          }
+          await saveHolidays(holidaysSchema);
+          return holidaysSchema;
+        }
+      }
+      return data;
+    }
   } catch (error) {
     console.log(error);
   }
@@ -6451,6 +6454,34 @@ async function saveLawsuitsData(lawsuits) {
     return false;
   }
 }
+async function updateLawsuitsData(lawsuits) {
+  try {
+    if (Array.isArray(lawsuits)) {
+      await db2.lawsuits.bulkPut(lawsuits);
+      return true;
+    } else {
+      await db2.lawsuits.put(lawsuits);
+      return true;
+    }
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+async function deleteLawsuitsData(ids) {
+  try {
+    if (Array.isArray(ids)) {
+      await db2.lawsuits.bulkDelete(ids);
+      return true;
+    } else {
+      await db2.lawsuits.delete(ids);
+      return true;
+    }
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
 async function getPendingLawsuitsData() {
   const today = /* @__PURE__ */ new Date();
   const endDate = new Date(today.setDate((/* @__PURE__ */ new Date()).getDate() + 90)).toISOString().split("T")[0];
@@ -6484,6 +6515,46 @@ function constructFrom(date, value) {
 // node_modules/date-fns/toDate.js
 function toDate(argument, context) {
   return constructFrom(context || argument, argument);
+}
+
+// node_modules/date-fns/isSaturday.js
+function isSaturday(date, options) {
+  return toDate(date, options?.in).getDay() === 6;
+}
+
+// node_modules/date-fns/isSunday.js
+function isSunday(date, options) {
+  return toDate(date, options?.in).getDay() === 0;
+}
+
+// node_modules/date-fns/isWeekend.js
+function isWeekend(date, options) {
+  const day = toDate(date, options?.in).getDay();
+  return day === 0 || day === 6;
+}
+
+// node_modules/date-fns/addBusinessDays.js
+function addBusinessDays(date, amount, options) {
+  const _date = toDate(date, options?.in);
+  const startedOnWeekend = isWeekend(_date, options);
+  if (isNaN(amount)) return constructFrom(options?.in, NaN);
+  const hours = _date.getHours();
+  const sign = amount < 0 ? -1 : 1;
+  const fullWeeks = Math.trunc(amount / 5);
+  _date.setDate(_date.getDate() + fullWeeks * 7);
+  let restDays = Math.abs(amount % 5);
+  while (restDays > 0) {
+    _date.setDate(_date.getDate() + sign);
+    if (!isWeekend(_date, options)) restDays -= 1;
+  }
+  if (startedOnWeekend && isWeekend(_date, options) && amount !== 0) {
+    if (isSaturday(_date, options))
+      _date.setDate(_date.getDate() + (sign < 0 ? 2 : -1));
+    if (isSunday(_date, options))
+      _date.setDate(_date.getDate() + (sign < 0 ? 1 : -2));
+  }
+  _date.setHours(hours);
+  return _date;
 }
 
 // node_modules/date-fns/addDays.js
@@ -6561,12 +6632,6 @@ function isDate(value) {
 // node_modules/date-fns/isValid.js
 function isValid(date) {
   return !(!isDate(date) && typeof date !== "number" || isNaN(+toDate(date)));
-}
-
-// node_modules/date-fns/isWeekend.js
-function isWeekend(date, options) {
-  const day = toDate(date, options?.in).getDay();
-  return day === 0 || day === 6;
 }
 
 // node_modules/date-fns/differenceInBusinessDays.js
@@ -6678,23 +6743,33 @@ function getBusinessDays(startDate, endDate, holidays, isElapsedDays = false) {
     startDate = new Date(getNextBusinessDay(startDate));
   if (!isBusinessDay(endDate))
     endDate = new Date(getNextBusinessDay(endDate));
+  if (startDate.getTime() > endDate.getTime())
+    return { days: 0, deadline: endDate, isDueDate: true };
   let days = !isElapsedDays ? differenceInBusinessDays(endDate, startDate) : differenceInDays(endDate, startDate);
   let datesToIgnore = Array();
-  if (holidays) {
-    const pendingHolidays = holidays.filter((h) => h.startDate >= startDate && h.endDate <= endDate);
-    const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === endDate);
-    if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate));
-    for (const holiday of pendingHolidays) {
-      let days2 = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
-      for (let i = 1; i < days2; i++) {
-        let currentDate = addDays(new Date(holiday.startDate), i);
-        datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
+  if (holidays?.length) {
+    const pendingHolidays = holidays.filter(
+      (h) => new Date(h.startDate).getTime() >= new Date(startDate).getTime() && new Date(h.endDate).getTime() <= new Date(endDate).getTime()
+    );
+    if (pendingHolidays?.length) {
+      const isEndDateHoliday = pendingHolidays.find((c) => c.startDate === formatISO(endDate, { representation: "date" }));
+      if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate));
+      for (const holiday of pendingHolidays) {
+        let days2 = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate));
+        if (!days2) {
+          datesToIgnore.push(holiday.startDate);
+          continue;
+        }
+        for (let i = 1; i < days2; i++) {
+          let currentDate = addDays(new Date(holiday.startDate), i);
+          datesToIgnore.push(formatISO(currentDate, { representation: "date" }));
+        }
       }
     }
-    days += datesToIgnore.length;
-    endDate = addDays(startDate, days);
+    days += !isElapsedDays ? differenceInBusinessDays(addBusinessDays(startDate, datesToIgnore.length), startDate) : differenceInDays(addDays(startDate, datesToIgnore.length), startDate);
+    endDate = !isElapsedDays ? addBusinessDays(startDate, days) : addDays(startDate, days);
   }
-  return { days: days < 0 ? 0 : days, deadline: endDate };
+  return { days: days < 0 ? 0 : days, deadline: endDate, isDueDate: false };
 }
 
 // src/core/service/lawsuits.ts
@@ -6762,6 +6837,30 @@ async function saveLawsuits(lawsuits) {
     return false;
   }
 }
+async function updateLawsuits(lawsuits) {
+  try {
+    if (!Array.isArray(lawsuits)) {
+      if (lawsuits.id) {
+        await updateLawsuitsData(lawsuits);
+      }
+    } else {
+      await updateLawsuitsData(lawsuits);
+    }
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+async function deleteLawsuits(ids) {
+  try {
+    await deleteLawsuitsData(ids);
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
 
 // src/core/controller/sw.ts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -6771,6 +6870,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       switch (request.type) {
         case "SAVE_LAWSUITS":
           result = await saveLawsuits(request.payload.lawsuits);
+          break;
+        case "UPDATE_LAWSUITS":
+          result = await updateLawsuits(request.payload.lawsuits);
+          break;
+        case "DELETE_LAWSUITS":
+          result = await deleteLawsuits(request.payload.ids);
           break;
         case "GET_STATUS_COUNT":
           result = await getLawsuitStatusCount();
@@ -6782,7 +6887,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           result = await getPendingLawsuits();
           break;
         case "SAVE_HOLIDAYS":
-          result = await saveHolidays(request.payload.holidays, request.payload.year);
+          result = await saveHolidays(request.payload.holidays);
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year);
