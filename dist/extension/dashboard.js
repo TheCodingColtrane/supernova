@@ -1,10 +1,12 @@
 "use strict";
 
-// node_modules/date-fns/_lib/addLeadingZeros.js
-function addLeadingZeros(number, targetLength) {
-  const sign = number < 0 ? "-" : "";
-  const output = Math.abs(number).toString().padStart(targetLength, "0");
-  return sign + output;
+// node_modules/date-fns/_lib/getRoundingMethod.js
+function getRoundingMethod(method) {
+  return (number) => {
+    const round = method ? Math[method] : Math.trunc;
+    const result = round(number);
+    return result === 0 ? 0 : result;
+  };
 }
 
 // node_modules/date-fns/constants.js
@@ -12,6 +14,7 @@ var daysInYear = 365.2425;
 var maxTime = Math.pow(10, 8) * 24 * 60 * 60 * 1e3;
 var minTime = -maxTime;
 var millisecondsInDay = 864e5;
+var millisecondsInHour = 36e5;
 var secondsInHour = 3600;
 var secondsInDay = secondsInHour * 24;
 var secondsInWeek = secondsInDay * 7;
@@ -27,6 +30,33 @@ function constructFrom(date, value) {
     return date[constructFromSymbol](value);
   if (date instanceof Date) return new date.constructor(value);
   return new Date(value);
+}
+
+// node_modules/date-fns/_lib/normalizeDates.js
+function normalizeDates(context, ...dates) {
+  const normalize = constructFrom.bind(
+    null,
+    context || dates.find((date) => typeof date === "object")
+  );
+  return dates.map(normalize);
+}
+
+// node_modules/date-fns/differenceInHours.js
+function differenceInHours(laterDate, earlierDate, options) {
+  const [laterDate_, earlierDate_] = normalizeDates(
+    options?.in,
+    laterDate,
+    earlierDate
+  );
+  const diff = (+laterDate_ - +earlierDate_) / millisecondsInHour;
+  return getRoundingMethod(options?.roundingMethod)(diff);
+}
+
+// node_modules/date-fns/_lib/addLeadingZeros.js
+function addLeadingZeros(number, targetLength) {
+  const sign = number < 0 ? "-" : "";
+  const output = Math.abs(number).toString().padStart(targetLength, "0");
+  return sign + output;
 }
 
 // node_modules/date-fns/toDate.js
@@ -91,6 +121,38 @@ async function sendMessage(message, data) {
     throw error;
   }
 }
+async function getDefendersAPI() {
+  try {
+    const response = await fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000");
+    return await response.json();
+  } catch (error) {
+    console.log(error);
+  }
+}
+async function getDefenders() {
+  const THIRTY_DAYS = 1e3 * 60 * 60 * 24 * 30;
+  let data = await chrome.storage.local.get("nextUpdate");
+  if (!Object.hasOwn(data, "nextUpdate") || Date.now() >= data.nextUpdate) {
+    const currentDefenders = await getDefendersAPI();
+    if (currentDefenders) {
+      await chrome.storage.local.set({
+        defenders: currentDefenders.results,
+        cacheVersion: "1.0",
+        nextUpdate: Date.now() + THIRTY_DAYS
+      });
+      return currentDefenders.results;
+    }
+    return;
+  }
+  data = await chrome.storage.local.get("defenders");
+  return data.defenders;
+}
+function getUserCredentials() {
+  const creds = JSON.parse(localStorage.getItem("user") ?? "");
+  if (creds) {
+    return creds;
+  }
+}
 
 // node_modules/date-fns/isSaturday.js
 function isSaturday(date, options) {
@@ -139,15 +201,6 @@ function addDays(date, amount, options) {
   if (!amount) return _date;
   _date.setDate(_date.getDate() + amount);
   return _date;
-}
-
-// node_modules/date-fns/_lib/normalizeDates.js
-function normalizeDates(context, ...dates) {
-  const normalize = constructFrom.bind(
-    null,
-    context || dates.find((date) => typeof date === "object")
-  );
-  return dates.map(normalize);
 }
 
 // node_modules/date-fns/_lib/getTimezoneOffsetInMilliseconds.js
@@ -343,6 +396,7 @@ function getStatusClass(status) {
 var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
 var lawsuitsData = Array();
 var holidaysData = Array();
+var defender = {};
 var circuits = new Set("");
 (async function() {
   try {
@@ -362,6 +416,11 @@ var circuits = new Set("");
       opt.textContent = c;
       select.options.add(opt);
     });
+    const creds = getUserCredentials();
+    if (creds) {
+      const defenders = await getDefenders();
+      if (defenders) defender = defenders.find((d) => d.id === creds.id) ?? {};
+    }
     sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
   } catch (error) {
     console.log(error);
@@ -371,6 +430,9 @@ function closePanel() {
   document.querySelector("#sidePanel")?.classList.remove("open");
   document.querySelector("#overlay")?.classList.remove("active");
 }
+async function saveLawsuit(lawsuits) {
+  await sendMessage("SAVE_LAWSUITS", { lawsuits });
+}
 async function updateLawsuit(lawsuits) {
   await sendMessage("UPDATE_LAWSUITS", { lawsuits });
 }
@@ -378,37 +440,40 @@ async function deleteLawsuit(id) {
   await sendMessage("DELETE_LAWSUITS", { ids: id });
 }
 function openPanel(id) {
+  const number = document.querySelector("#editNumber");
+  const assisted = document.querySelector("#editAssisted");
+  const circuit = document.querySelector("#editCircuit");
+  const status = document.querySelector("#editStatus");
+  const side = document.querySelector("#editSide");
+  const awareness = document.querySelector("#editAwarenessDate");
+  const startDeadline = document.querySelector("#editStartDeadline");
+  const endDeadline = document.querySelector("#editEndDeadline");
+  const deleteBtn = document.querySelector(".btn-delete");
+  const saveBtn = document.querySelector(".btn-save");
+  document.querySelector("#sidePanel")?.classList.add("open");
+  document.querySelector("#overlay")?.classList.add("active");
+  document.querySelector(".btn-close")?.addEventListener("click", () => {
+    closePanel();
+  });
   const data = [...lawsuitsData].find((c) => c.id === id);
   if (data) {
-    const number = document.querySelector("#editNumber");
+    deleteBtn.disabled = false;
     number.value = data.number;
-    const assisted = document.querySelector("#editAssisted");
     assisted.value = data.assisted;
-    const circuit = document.querySelector("#editCircuit");
     circuits.forEach((c) => {
       const opt = document.createElement("option");
       opt.textContent = c;
       circuit.options.add(opt);
       if (data.circuit === c) opt.selected = true;
     });
-    const status = document.querySelector("#editStatus");
     if (data.status === "Aberto") status.selectedIndex = 0;
     else status.selectedIndex = 1;
-    const side = document.querySelector("#editSide");
     if (data.isDefendant) side.selectedIndex = 1;
     else side.selectedIndex = 0;
-    const awareness = document.querySelector("#editAwarenessDate");
     awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString();
-    const startDeadline = document.querySelector("#editStartDeadline");
     startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString();
-    const endDeadline = document.querySelector("#editEndDeadline");
     endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString();
-    document.querySelector("#sidePanel")?.classList.add("open");
-    document.querySelector("#overlay")?.classList.add("active");
-    document.querySelector(".btn-close")?.addEventListener("click", () => {
-      closePanel();
-    });
-    document.querySelector(".btn-save")?.addEventListener("click", async () => {
+    saveBtn?.addEventListener("click", async () => {
       const form = document.querySelector("#editForm");
       const formData = Object.fromEntries(new FormData(form));
       let awarenessDate = formData["awarenessDate"];
@@ -417,7 +482,7 @@ function openPanel(id) {
       if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline, false);
       let deadline = formData["deadline"];
       if (deadline) deadline = localDateToIsoDate(deadline, false);
-      await updateLawsuit({
+      const lawsuit = {
         assisted: formData["assisted"],
         awarenessDate,
         circuit: formData["circuit"],
@@ -430,12 +495,56 @@ function openPanel(id) {
         source: data.source,
         status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
         id
-      });
+      };
+      await updateLawsuit(lawsuit);
       showAlert("Processo atualizado com sucesso.", "success");
+      const i = lawsuitsData.findIndex((c) => c.id === id);
+      lawsuitsData[i] = { ...lawsuit };
+      closePanel();
+      renderTableWithOptions();
     });
-    document.querySelector(".btn-delete")?.addEventListener("click", async () => {
+    deleteBtn?.addEventListener("click", async () => {
       await deleteLawsuit(id);
       showAlert("Processo deletado com sucesso.", "success");
+      const idx = lawsuitsData.findIndex((c) => c.id === id);
+      lawsuitsData = lawsuitsData.splice(idx, 1);
+      closePanel();
+      renderTableWithOptions();
+    });
+  } else {
+    circuits.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.textContent = c;
+      circuit.options.add(opt);
+    });
+    deleteBtn.disabled = true;
+    saveBtn?.addEventListener("click", async () => {
+      const form = document.querySelector("#editForm");
+      const formData = Object.fromEntries(new FormData(form));
+      let awarenessDate = formData["awarenessDate"];
+      if (awarenessDate) awarenessDate = localDateToIsoDate(awarenessDate, false);
+      let initialDeadline = formData["initialDeadline"];
+      if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline, false);
+      let deadline = formData["deadline"];
+      if (deadline) deadline = localDateToIsoDate(deadline, false);
+      const lawsuit = {
+        assisted: formData["assisted"],
+        awarenessDate,
+        circuit: formData["circuit"],
+        deadline,
+        defender,
+        givenDeadLine: 15,
+        initialDeadline,
+        isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
+        number: formData["number"],
+        source: "EPROC-1G-MG",
+        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto"
+      };
+      await saveLawsuit(lawsuit);
+      showAlert("Processo cadastrado com sucesso.", "success");
+      lawsuitsData.push({ ...lawsuit });
+      closePanel();
+      renderTableWithOptions();
     });
   }
 }
@@ -471,15 +580,20 @@ async function renderTable(data, holidays, isElapsedDays = false) {
   const table = document.getElementById("processTable");
   table?.replaceChildren();
   table.innerHTML = "";
+  const today = /* @__PURE__ */ new Date();
   data.forEach((p) => {
     let dates = { days: 0, deadline: /* @__PURE__ */ new Date(), isDueDate: false };
     if (p.initialDeadline && p.deadline) {
       const dateComponents = p.deadline.toString().split("-");
-      dates = getBusinessDays(/* @__PURE__ */ new Date(), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays);
+      dates = getBusinessDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays);
     }
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString();
+    const timeLeft = differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes";
     tr.innerHTML = `
+        <td class="row-action">
+         <span class="action-icon">Editar</span>
+        </td>
         <td>${p.number}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted}</td>
@@ -487,7 +601,7 @@ async function renderTable(data, holidays, isElapsedDays = false) {
         <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
         <td>${!p.deadline ? "N\xE3o definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
-          ${dates.isDueDate ? "Prazo Perdido" : dates.days}
+          ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dias" : timeLeft}
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
@@ -496,6 +610,11 @@ async function renderTable(data, holidays, isElapsedDays = false) {
     });
     table.appendChild(tr);
   });
+}
+function renderTableWithOptions() {
+  const isElapsedDays = document.querySelector("#checkCalendarDays");
+  const isHolidays = document.querySelector("#checkHolidays");
+  renderTable(lawsuitsData, isHolidays.checked ? holidaysData : [], isElapsedDays.checked);
 }
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -604,6 +723,9 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
     activeFilters.assignedTo = select.selectedOptions.item(0)?.textContent;
     searchLawsuits(search.value);
   }
+});
+document.querySelector("#new-lawsuit")?.addEventListener("click", async (e) => {
+  openPanel(0);
 });
 function updateCards(data) {
   const today = formatISO(/* @__PURE__ */ new Date(), { representation: "date" });

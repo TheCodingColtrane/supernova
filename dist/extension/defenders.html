@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Equipe - Hierarquia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --main: #7c3aed;
+            --main-hover: #8f59ee;
+            --bg-body: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 2rem;
+        }
+
+        .container-equipe {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        /* Card Principal */
+        .card-gestao {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            display: block;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-add {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-finish {
+            background: var(--main);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-next {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-add:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-finish:hover {
+            background: var(--main-hover);
+        }
+
+        /* Lista de Subordinados */
+        .subordinates-list {
+            margin-top: 2rem;
+            list-style: none;
+        }
+
+        .subordinate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #fcfcfc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .subordinate-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .subordinate-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .subordinate-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+        }
+
+        .actions {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-equipe">
+        <header>
+            <h2>Configuração de Hierarquia</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Vincule novos colaboradores aos seus respectivos
+                gestores</p>
+        </header>
+
+        <div class="card-gestao">
+            <span class="section-title">Vínculo de Funcionários</span>
+
+            <div class="form-group" id="defenders-area">
+                <label for="defenderSelect">Selecione o defensor</label>
+                <select id="defenderSelect">
+                    <option value="">-- Escolha um defensor --</option>
+                </select>
+
+                <div class="form-group">
+                    <label for="defenderEmail">E-mail</label>
+                    <input type="email" id="defenderEmail" placeholder="dpmg@defensoria.mg.def.br">
+                </div>
+            </div>
+            <button class="btn-next" id="btnNextStep">Prosseguir</button>
+
+            <div id="registrationArea" style="display: none;">
+                <div class="form-group">
+                    <label for="subordinateName">Nome</label>
+                    <input type="text" id="subordinateName" placeholder="João Pedro">
+                </div>
+                <div class="form-group">
+                    <label for="subordinateEmail">E-mail</label>
+                    <input type="email" id="subordinateEmail" placeholder="dpmg@defensoria.mg.def.br">
+                </div>
+                <div class="form-group">
+                    <label for="subordinateRole">Atribuição</label>
+                    <select id="roleSelect">
+                        <option value="0">Estagiário(a)</option>
+                        <option value="1">Servidor(a)</option>
+                        <option value="2">Defensor(a)</option>
+                    </select>
+                </div>
+                <div class="actions">
+                    <button class="btn-add" id="saveBtn">Cadastrar e Vincular</button>
+                    <button class="btn-finish" id="finishBtn">Concluir Cadastro</button>
+                </div>
+
+
+                <div class="subordinates-list" id="listContainer">
+                    <span class="section-title">Subordinados Atuais</span>
+                    <div id="subList">
+                        <div class="empty-state">Nenhum subordinado vinculado a este gestor.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <script src="defenders.js">
+
+            //         document.addEventListener("DOMContentLoaded", async (e) => {
+            //             try {
+            //                 const response = await fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=false&limit=1000")
+            //                 if (response.ok) {
+            //                     const data = await response.json()
+            //                     const defendersSelect = document.querySelector("#defenderSelect")
+            //                     data.results.map((d, i) => {
+            //                         let opt = document.createElement("option")
+            //                         opt.value = i.toString()
+            //                         opt.textContent = d.nome
+            //                         defendersSelect.add(opt)
+            //                     })
+
+            //                 }
+            //             } catch (error) {
+
+            //             }
+            //         })
+            //         const defenderSelect = document.getElementById('defenderSelect');
+            //         const registrationArea = document.getElementById('registrationArea');
+            //         const subNameInput = document.getElementById('subordinateName');
+            //         const saveBtn = document.getElementById('saveBtn');
+            //         const subList = document.getElementById('subList');
+
+            //         // Simulação de banco de dados
+            //         const database = {
+            //             "1": ["Carlos Eduardo", "Ana Beatriz"],
+            //             "2": ["Lucas Oliveira"]
+            //         };
+
+            //         defenderSelect.addEventListener('change', () => {
+            //             const val = defenderSelect.value;
+            //             if (val) {
+            //                 registrationArea.style.display = 'block';
+            //                 updateList(val);
+            //             } else {
+            //                 registrationArea.style.display = 'none';
+            //             }
+            //         });
+
+            //         function updateList(managerId) {
+            //             const subs = database[managerId] || [];
+            //             if (subs.length === 0) {
+            //                 subList.innerHTML = '<div class="empty-state">Nenhum subordinado vinculado a este gestor.</div>';
+            //                 return;
+            //             }
+
+            //             subList.innerHTML = subs.map(name => `
+            //   <div class="subordinate-item">
+            //     <div class="subordinate-info">
+            //       <span class="subordinate-name">${name}</span>
+            //       <span class="subordinate-role">Colaborador</span>
+            //     </div>
+            //     <span style="color: var(--success); font-size: 0.7rem; font-weight: 700;">ATIVO</span>
+            //   </div>
+            // `).join('');
+            //         }
+
+            //         saveBtn.addEventListener('click', () => {
+            //             const name = subNameInput.value.trim();
+            //             const managerId = defenderSelect.value;
+
+            //             if (!name) return alert("Digite o nome do funcionário.");
+
+            //             // Salva no objeto local
+            //             if (!database[managerId]) database[managerId] = [];
+            //             database[managerId].push(name);
+
+            //             // Limpa e atualiza
+            //             subNameInput.value = '';
+            //             updateList(managerId);
+            //         });
+        </script>
+
+</body>
+
+</html>
