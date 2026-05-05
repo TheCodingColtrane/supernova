@@ -1,3 +1,5 @@
+import type { Worker } from "./workers"
+
 export type Defenders = {
     ativo: boolean
     atuacoes: Array<{
@@ -12,7 +14,7 @@ export type Defenders = {
         tipo: number
         titular: any
     }>
-    trabalhadores?: Worker[]
+    trabalhadores: Worker[]
     cpf: string
     credenciais_expiradas: boolean
     data_expiracao_credenciais_mni: any

@@ -2,7 +2,7 @@ export type Worker = {
     id?: number
     name: string
     email: string
-    role: "INTERN" | "PUBLIC_EMPLOYEE" | "PUBLIC_DEFENDER"
+    role: "Estagiário(a)" | "Servidor(a)" | "Defensor(a)"
     joinedAt: Date
 
 }

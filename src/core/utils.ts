@@ -1,6 +1,7 @@
 import type { Holidays } from "./db/schemas/holidays";
 import type { HolidaysAPIResponse } from "./types/holidays";
 import type { Defenders, DefendersAPIResponse } from "./types/defenders";
+import type { User } from "./types/user";
 
 export async function sendMessage<T>(message: string, data: T) {
     try {
@@ -115,6 +116,12 @@ export async function getDefenders() {
     return data.defenders as Defenders[]
 
 }
+
+export function getUserCredentials(){
+ const creds = JSON.parse(localStorage.getItem("user") ?? "") 
+    if(creds){
+        return creds as User
+    }}
 
 
 export function renderTable<T>(headers: string[], data: T[]) {

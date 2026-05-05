@@ -1,7 +1,12 @@
+import type { User } from "../types/user"
 import { sendMessage } from "../utils"
 
 
-document.addEventListener("DOMContentLoaded", (e) => {
+document.addEventListener("DOMContentLoaded", async (e) => {
+    const userCreds = JSON.parse(localStorage.getItem("user") ?? "") as User
+    if(!userCreds){
+        chrome.tabs.create({url: "defenders.html?onboard=1"})
+    }
     const cards = Array.from(document.querySelectorAll(".status-card"))
     for (const card of cards) {
         const status =  card.className.split(" ")[1]

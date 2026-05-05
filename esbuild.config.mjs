@@ -7,7 +7,8 @@ build({
     content: "src/core/controller/content.ts",
     sw: "src/core/controller/sw.ts",
     popup: "src/core/controller/popup.ts",
-    dashboard: "src/core/controller/dashboard.ts"
+    dashboard: "src/core/controller/dashboard.ts",
+    defenders: "src/core/controller/defenders.ts"
   },
   bundle: true,
   outdir: 'dist/extension',
