@@ -677,8 +677,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const navItems = document.querySelectorAll(".nav-item");
     if (navItems) {
+      const title = document.querySelector("#page-title");
       navItems.forEach((item, i) => {
         item.addEventListener("click", (e) => {
+          if (i === 0) title.textContent = "Processos";
+          else if (i === 1) title.textContent = "Tarefas";
+          else title.textContent = "Configura\xE7\xF5es";
           goToPage(i);
         });
       });
@@ -731,8 +735,13 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
     searchLawsuits(search.value);
   }
 });
-document.querySelector("#new-lawsuit")?.addEventListener("click", async (e) => {
-  openPanel(0);
+document.querySelector("#toggleable-actions")?.addEventListener("click", async (e) => {
+  const items = document.querySelector(".nav-links");
+  if (items.children.item(0)?.className.includes("active"))
+    openPanel(0);
+  else if (items.children.item(1)?.className.includes("active")) console.log("oi");
+  else {
+  }
 });
 function updateCards(data) {
   const today = formatISO(/* @__PURE__ */ new Date(), { representation: "date" });

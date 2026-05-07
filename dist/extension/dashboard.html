@@ -675,13 +675,13 @@
 <body>
   <div id="toastContainer" class="toast-container"></div>
   <header>
-    <h2>Gestão de Prazos</h2>
+    <h2 id="page-title">Gestão de Prazos</h2>
     <!-- <div class="header-actions">
       <button class="btn-primary">+ Nova Tarefa</button>
     </div> -->
     <nav class="nav-links">
-      <span class="nav-item active">Dashboard</span>
-      <span class="nav-item">Processos</span>
+      <span class="nav-item active">Processos</span>
+      <span class="nav-item">Tarefas</span>
       <span class="nav-item">Configurações</span>
     </nav>
   </header>
@@ -843,13 +843,31 @@
             </table>
           </div>
         </div>
-        <button id="new-lawsuit" class="fab">+</button>
       </section>
       <section class="page">
         <div class="container">
-          <div class="search-section">
+          <div class="cards">
+            <div class="card red">
+              <span class="label">Vencendo hoje</span>
+              <span class="value" id="todayCount">0</span>
+            </div>
+            <div class="card yellow">
+              <span class="label">Esta semana</span>
+              <span class="value" id="weekCount">0</span>
+            </div>
+            <div class="card blue">
+              <span class="label">Processos Ativos</span>
+              <span class="value" id="activeCount">0</span>
+            </div>
+            <div class="card green">
+              <span class="label">Finalizados</span>
+              <span class="value" id="doneCount">0</span>
+            </div>
+          </div>
+
+        <div class="search-section">
             <div class="search-container">
-              <input type="text" placeholder="Pesquisar tarefas..." id="searchTasks" />
+              <input type="text" placeholder="Pesquisar por titulo" id="search" />
             </div>
           </div>
 
@@ -899,11 +917,12 @@
                 </div>
               </div>
             </div>
-            <!-- Fim do Exemplo -->
           </div>
         </div>
+          <!-- <button id="new-task" class="fab">+</button> -->
       </section>
     </div>
+        <button id="toggleable-actions" class="fab">+</button>
   </div>
 
   </div>
@@ -911,3 +930,4 @@
 
 </html>
 <script src="dashboard.js" defer></script>
+<script src="tasks.js" defer></script>
