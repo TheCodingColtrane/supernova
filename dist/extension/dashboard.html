@@ -461,6 +461,214 @@
       opacity: 1;
       transform: scale(1.2);
     }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      /* Espaçamento maior entre os textos */
+    }
+
+    .nav-item {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.3s ease;
+      padding: 4px 0;
+    }
+
+    /* Efeito Hover */
+    .nav-item:hover {
+      color: var(--primary);
+    }
+
+    /* Indicador de página ativa (Linha embaixo do texto) */
+    .nav-item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: -22px;
+      /* Alinha exatamente com a borda do header */
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Container de Navegação */
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      /* Espaçamento maior entre os textos */
+    }
+
+    .nav-item {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.3s ease;
+      padding: 4px 0;
+    }
+
+    /* Efeito Hover */
+    .nav-item:hover {
+      color: var(--primary);
+    }
+
+    /* Indicador de página ativa (Linha embaixo do texto) */
+    .nav-item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: -22px;
+      /* Alinha exatamente com a borda do header */
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Estrutura do Slider (Mesma lógica anterior) */
+    .slider-viewport {
+      width: 100%;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .slider-wrapper {
+      display: flex;
+      width: 300%;
+      /* Largura total para 3 páginas */
+      transform: translateX(0);
+      /* Garante que comece na primeira página */
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      align-items: flex-start;
+    }
+
+    .page {
+      width: 100vw;
+      /* Cada página ocupa exatamente a largura da tela */
+      flex-shrink: 0;
+      min-height: 100vh;
+    }
+
+    .todo-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .todo-item {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .todo-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+      border-color: var(--primary);
+    }
+
+    .todo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .todo-process {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .todo-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .todo-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      /* Corta o texto em 2 linhas */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .todo-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .todo-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .info-value {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Badges de Status */
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge.info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
   </style>
 </head>
 
@@ -471,167 +679,235 @@
     <!-- <div class="header-actions">
       <button class="btn-primary">+ Nova Tarefa</button>
     </div> -->
+    <nav class="nav-links">
+      <span class="nav-item active">Dashboard</span>
+      <span class="nav-item">Processos</span>
+      <span class="nav-item">Configurações</span>
+    </nav>
   </header>
-
-  <div class="container">
-    <div class="cards">
-      <div class="card red">
-        <span class="label">Vencendo hoje</span>
-        <span class="value" id="todayCount">0</span>
-      </div>
-      <div class="card yellow">
-        <span class="label">Esta semana</span>
-        <span class="value" id="weekCount">0</span>
-      </div>
-      <div class="card blue">
-        <span class="label">Processos Ativos</span>
-        <span class="value" id="activeCount">0</span>
-      </div>
-      <div class="card green">
-        <span class="label">Finalizados</span>
-        <span class="value" id="doneCount">0</span>
-      </div>
-    </div>
-
-    <div id="sidePanel" class="side-panel">
-      <div class="panel-header">
-        <h3>Detalhes do Processo</h3>
-        <button class="btn-close">&times;</button>
-      </div>
-
-      <div class="panel-body">
-        <form id="editForm">
-          <div class="form-group">
-            <label>Número do Processo</label>
-            <input name="number" type="text" id="editNumber" readonly>
-          </div>
-          <div class="form-group">
-            <label>Vara</label>
-            <select name="circuit" id="editCircuit">
-
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Assistido(a)</label>
-            <input name="assisted" type="text" id="editAssisted">
-          </div>
-          <div class="form-group">
-            <label>Status</label>
-            <select name="status" id="editStatus">
-              <option value="1">Aberto</option>
-              <option value="0">Aguardando Abertura</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Polo</label>
-            <select name="isDefendant" id="editSide">
-              <option value="1">Ativo</option>
-              <option value="0">Passivo</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Data de ciência</label>
-            <input name="awarenessDate" type="text" id="editAwarenessDate">
-          </div>
-          <div class="form-group">
-            <label>Inicio do Prazo</label>
-            <input type="text" name="initialDeadline" id="editStartDeadline">
-          </div>
-          <div class="form-group">
-            <label>Final do Prazo</label>
-            <input type="text" name="deadline" id="editEndDeadline">
-          </div>
-          <div class="form-group">
-            <label>Observações Internas</label>
-            <textarea id="editNotes" rows="4"></textarea>
+  <div class="slider-viewport">
+    <div class="slider-wrapper" id="mainSlider">
+      <section class="page">
+        <div class="container">
+          <div class="cards">
+            <div class="card red">
+              <span class="label">Vencendo hoje</span>
+              <span class="value" id="todayCount">0</span>
+            </div>
+            <div class="card yellow">
+              <span class="label">Esta semana</span>
+              <span class="value" id="weekCount">0</span>
+            </div>
+            <div class="card blue">
+              <span class="label">Processos Ativos</span>
+              <span class="value" id="activeCount">0</span>
+            </div>
+            <div class="card green">
+              <span class="label">Finalizados</span>
+              <span class="value" id="doneCount">0</span>
+            </div>
           </div>
 
-          <div class="panel-actions">
-            <button type="button" class="btn-save">Salvar Alterações</button>
-            <button type="button" class="btn-delete">Excluir Processo</button>
+          <div id="sidePanel" class="side-panel">
+            <div class="panel-header">
+              <h3>Detalhes do Processo</h3>
+              <button class="btn-close">&times;</button>
+            </div>
+
+            <div class="panel-body">
+              <form id="editForm">
+                <div class="form-group">
+                  <label>Número do Processo</label>
+                  <input name="number" type="text" id="editNumber" readonly>
+                </div>
+                <div class="form-group">
+                  <label>Vara</label>
+                  <select name="circuit" id="editCircuit">
+
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Assistido(a)</label>
+                  <input name="assisted" type="text" id="editAssisted">
+                </div>
+                <div class="form-group">
+                  <label>Status</label>
+                  <select name="status" id="editStatus">
+                    <option value="1">Aberto</option>
+                    <option value="0">Aguardando Abertura</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Polo</label>
+                  <select name="isDefendant" id="editSide">
+                    <option value="1">Ativo</option>
+                    <option value="0">Passivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Data de ciência</label>
+                  <input name="awarenessDate" type="text" id="editAwarenessDate">
+                </div>
+                <div class="form-group">
+                  <label>Inicio do Prazo</label>
+                  <input type="text" name="initialDeadline" id="editStartDeadline">
+                </div>
+                <div class="form-group">
+                  <label>Final do Prazo</label>
+                  <input type="text" name="deadline" id="editEndDeadline">
+                </div>
+                <div class="form-group">
+                  <label>Observações Internas</label>
+                  <textarea id="editNotes" rows="4"></textarea>
+                </div>
+
+                <div class="panel-actions">
+                  <button type="button" class="btn-save">Salvar Alterações</button>
+                  <button type="button" class="btn-delete">Excluir Processo</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
 
-    <div id="overlay" class="overlay"></div>
+          <div id="overlay" class="overlay"></div>
 
-    <div class="search-section">
-      <div class="search-container">
-        <input type="text" placeholder="Pesquisar por número do processo ou nome do assistido..." id="search" />
-      </div>
-    </div>
+          <div class="search-section">
+            <div class="search-container">
+              <input type="text" placeholder="Pesquisar por número do processo ou nome do assistido..." id="search" />
+            </div>
+          </div>
 
-    <div class="filters-bar">
-      <div class="filters-row-main">
-        <div class="filter-group">
-          <label class="filter-label">Vara</label>
-          <select class="filter-select" id="filterCircuit">
-            <option value="">Todas</option>
-          </select>
+          <div class="filters-bar">
+            <div class="filters-row-main">
+              <div class="filter-group">
+                <label class="filter-label">Vara</label>
+                <select class="filter-select" id="filterCircuit">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select" id="filterStatus">
+                  <option value="">Todos</option>
+                  <option value="1">Aberto</option>
+                  <option value="0">Aguardando Abertura</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Polo</label>
+                <select class="filter-select" id="filterSide">
+                  <option value="">Todos</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="passivo">Passivo</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Responsável</label>
+                <select class="filter-select" id="filterAssignedTo">
+                  <option value="">Todos</option>
+                  <option value="user1">Dr. João Silva</option>
+                  <option value="user2">Dra. Maria Souza</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="filter-options">
+              <label class="checkbox-container">
+                <input type="checkbox" id="checkHolidays">
+                Considerar Feriados
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="checkCalendarDays">
+                Considerar Dias Corridos
+              </label>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th data-nm="number" data-sort="">Processo</th>
+                  <th data-nm="circuit" data-sort="">Vara</th>
+                  <th data-nm="assisted" data-sort="">Assistido(a)</th>
+                  <th data-nm="status" data-sort="">Status</th>
+                  <th data-nm="side" data-sort="">Polo</th>
+                  <th data-nm="deadline" data-sort="">Prazo</th>
+                  <th data-nm="daysLeft" data-sort="">Restante</th>
+                  <th data-nm="">Responsável</th>
+                </tr>
+              </thead>
+              <tbody id="processTable">
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Status</label>
-          <select class="filter-select" id="filterStatus">
-            <option value="">Todos</option>
-            <option value="1">Aberto</option>
-            <option value="0">Aguardando Abertura</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Polo</label>
-          <select class="filter-select" id="filterSide">
-            <option value="">Todos</option>
-            <option value="ativo">Ativo</option>
-            <option value="passivo">Passivo</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Responsável</label>
-          <select class="filter-select" id="filterAssignedTo">
-            <option value="">Todos</option>
-            <option value="user1">Dr. João Silva</option>
-            <option value="user2">Dra. Maria Souza</option>
-          </select>
-        </div>
-      </div>
+        <button id="new-lawsuit" class="fab">+</button>
+      </section>
+      <section class="page">
+        <div class="container">
+          <div class="search-section">
+            <div class="search-container">
+              <input type="text" placeholder="Pesquisar tarefas..." id="searchTasks" />
+            </div>
+          </div>
 
-      <div class="filter-options">
-        <label class="checkbox-container">
-          <input type="checkbox" id="checkHolidays">
-          Considerar Feriados
-        </label>
-        <label class="checkbox-container">
-          <input type="checkbox" id="checkCalendarDays">
-          Considerar Dias Corridos
-        </label>
-      </div>
-    </div>
+          <!-- Filtros de Tarefas -->
+          <div class="filters-bar">
+            <div class="filters-row-main">
+              <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select">
+                  <option value="">Todos</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="em_andamento">Em Andamento</option>
+                  <option value="concluido">Concluído</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Responsável</label>
+                <select class="filter-select">
+                  <option value="">Todos</option>
+                  <option value="me">Atribuídas a mim</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th data-nm="number" data-sort="">Processo</th>
-            <th data-nm="circuit" data-sort="">Vara</th>
-            <th data-nm="assisted" data-sort="">Assistido(a)</th>
-            <th data-nm="status" data-sort="">Status</th>
-            <th data-nm="side" data-sort="">Polo</th>
-            <th data-nm="deadline" data-sort="">Prazo</th>
-            <th data-nm="daysLeft" data-sort="">Restante</th>
-            <th data-nm="">Responsável</th>
-          </tr>
-        </thead>
-        <tbody id="processTable">
-        </tbody>
-      </table>
+          <!-- Lista de Tarefas Estilizada -->
+          <div class="todo-list" id="todoContainer">
+            <!-- Exemplo de Card de Tarefa -->
+            <div class="todo-item">
+              <div class="todo-header">
+                <span class="todo-process">Proc: 0012345-67.2024.8.19.0001</span>
+                <span class="badge warning">Pendente</span>
+              </div>
+              <div class="todo-body">
+                <h3 class="todo-title">Protocolar Réplica</h3>
+                <p class="todo-desc">Verificar os documentos anexados pelo réu e contestar a validade da procuração
+                  apresentada.</p>
+              </div>
+              <div class="todo-footer">
+                <div class="todo-info">
+                  <span class="info-label">Responsável:</span>
+                  <span class="info-value">Dr. João Silva</span>
+                </div>
+                <div class="todo-info">
+                  <span class="info-label">Prazo:</span>
+                  <span class="info-value">15/10/2026</span>
+                </div>
+              </div>
+            </div>
+            <!-- Fim do Exemplo -->
+          </div>
+        </div>
+      </section>
     </div>
   </div>
-  </div>
 
-  <script src="dashboard.js" defer></script>
-  <button id="new-lawsuit" class="fab">+</button>
+  </div>
 </body>
 
 </html>
+<script src="dashboard.js" defer></script>

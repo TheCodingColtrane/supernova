@@ -117,11 +117,13 @@ export async function getDefenders() {
 
 }
 
-export function getUserCredentials(){
- const creds = JSON.parse(localStorage.getItem("user") ?? "") 
-    if(creds){
-        return creds as User
-    }}
+export async function getUserCredentials(){
+ const creds = JSON.parse(localStorage.getItem("user") ?? "{}") 
+    if(Object.hasOwn(creds, "id")) return creds as User
+    await chrome.tabs.create({url: "defenders.html?onboard=1"})
+    
+    
+}
 
 
 export function renderTable<T>(headers: string[], data: T[]) {

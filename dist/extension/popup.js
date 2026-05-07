@@ -18,13 +18,15 @@ async function sendMessage(message, data) {
     throw error;
   }
 }
+async function getUserCredentials() {
+  const creds = JSON.parse(localStorage.getItem("user") ?? "{}");
+  if (Object.hasOwn(creds, "id")) return creds;
+  await chrome.tabs.create({ url: "defenders.html?onboard=1" });
+}
 
 // src/core/controller/popup.ts
 document.addEventListener("DOMContentLoaded", async (e) => {
-  const userCreds = JSON.parse(localStorage.getItem("user") ?? "");
-  if (!userCreds) {
-    chrome.tabs.create({ url: "defenders.html?onboard=1" });
-  }
+  const userCreds = await getUserCredentials();
   const cards = Array.from(document.querySelectorAll(".status-card"));
   for (const card of cards) {
     const status = card.className.split(" ")[1];
