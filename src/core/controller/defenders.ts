@@ -1,6 +1,7 @@
 import type { Defenders, DefendersAPIResponse } from "../types/defenders"
 import type { User } from "../types/user";
 import type { Worker } from "../types/workers"
+import { getUserCredentials } from "../utils";
 const url = new URLSearchParams(document.location.search)
 const defenderSelect = document.getElementById('defenderSelect') as HTMLSelectElement;
 const defenderEmailInput = document.getElementById('defenderEmail') as HTMLInputElement;
@@ -138,8 +139,8 @@ saveBtn?.addEventListener('click', () => {
     updateList();
 })
 
-finishBtn?.addEventListener("click", (e) => {
-    const user = JSON.parse(localStorage.getItem("user") ?? "") as User
+finishBtn?.addEventListener("click", async (e) => {
+    const user = await getUserCredentials()
     if (user) {
         const defenders = JSON.parse(localStorage.getItem("defenders") ?? "") as Defenders[]
         const defender = defenders.findIndex(c => c.id === user.id)

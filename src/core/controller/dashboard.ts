@@ -73,7 +73,7 @@ let circuits = new Set("");
       select.options.add(opt)
       // select!.appendChild(select!);
     })
-    const creds = getUserCredentials()
+    const creds = await getUserCredentials()
     if(creds) {
       const defenders = await getDefenders()
       if(defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
@@ -387,6 +387,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
       }
     }
+
+    const navItems = document.querySelectorAll(".nav-item")
+    if(navItems){
+      navItems.forEach((item, i) => {
+        item.addEventListener("click", (e) =>{
+            goToPage(i)
+        })
+      })
+    }
+ 
   } catch (error) {
     console.error(error)
   }
@@ -490,3 +500,31 @@ function searchLawsuits(term: string) {
   renderTable(filtered);
 }
 
+function goToPage(index: number) {
+  const slider = document.getElementById('mainSlider');
+  const items = document.querySelectorAll('.nav-item');
+  
+  // Deslocamento suave
+  if(slider) {
+    slider.style.transform = `translateX(-${index * 100}vw)`;
+  
+  // Atualiza o estado visual do texto
+  items.forEach((item, i) => {
+    if(i === index) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+  // const percentage = index * (100 / 3);
+  // slider.style.transform = `translateX(-${percentage}%)`;
+  
+  // // Atualiza os textos
+  // items.forEach((item, i) => {
+  //   item.classList.toggle('active', i === index);
+  // });
+
+  // Melhora a UX: volta ao topo ao trocar de seção
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+}

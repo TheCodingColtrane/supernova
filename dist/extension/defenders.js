@@ -1,5 +1,12 @@
 "use strict";
 
+// src/core/utils.ts
+async function getUserCredentials() {
+  const creds = JSON.parse(localStorage.getItem("user") ?? "{}");
+  if (Object.hasOwn(creds, "id")) return creds;
+  await chrome.tabs.create({ url: "defenders.html?onboard=1" });
+}
+
 // src/core/controller/defenders.ts
 var url = new URLSearchParams(document.location.search);
 var defenderSelect = document.getElementById("defenderSelect");
@@ -126,8 +133,8 @@ saveBtn?.addEventListener("click", () => {
   subRoleInput.selectedIndex = 0;
   updateList();
 });
-finishBtn?.addEventListener("click", (e) => {
-  const user = JSON.parse(localStorage.getItem("user") ?? "");
+finishBtn?.addEventListener("click", async (e) => {
+  const user = await getUserCredentials();
   if (user) {
     const defenders = JSON.parse(localStorage.getItem("defenders") ?? "");
     const defender = defenders.findIndex((c) => c.id === user.id);

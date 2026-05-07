@@ -147,11 +147,10 @@ async function getDefenders() {
   data = await chrome.storage.local.get("defenders");
   return data.defenders;
 }
-function getUserCredentials() {
-  const creds = JSON.parse(localStorage.getItem("user") ?? "");
-  if (creds) {
-    return creds;
-  }
+async function getUserCredentials() {
+  const creds = JSON.parse(localStorage.getItem("user") ?? "{}");
+  if (Object.hasOwn(creds, "id")) return creds;
+  await chrome.tabs.create({ url: "defenders.html?onboard=1" });
 }
 
 // node_modules/date-fns/isSaturday.js
@@ -416,7 +415,7 @@ var circuits = new Set("");
       opt.textContent = c;
       select.options.add(opt);
     });
-    const creds = getUserCredentials();
+    const creds = await getUserCredentials();
     if (creds) {
       const defenders = await getDefenders();
       if (defenders) defender = defenders.find((d) => d.id === creds.id) ?? {};
@@ -676,6 +675,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       }
     }
+    const navItems = document.querySelectorAll(".nav-item");
+    if (navItems) {
+      navItems.forEach((item, i) => {
+        item.addEventListener("click", (e) => {
+          goToPage(i);
+        });
+      });
+    }
   } catch (error) {
     console.error(error);
   }
@@ -754,5 +761,20 @@ function searchLawsuits(term) {
   }
   updateCards(filtered);
   renderTable(filtered);
+}
+function goToPage(index) {
+  const slider = document.getElementById("mainSlider");
+  const items = document.querySelectorAll(".nav-item");
+  if (slider) {
+    slider.style.transform = `translateX(-${index * 100}vw)`;
+    items.forEach((item, i) => {
+      if (i === index) {
+        item.classList.add("active");
+      } else {
+        item.classList.remove("active");
+      }
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 //# sourceMappingURL=dashboard.js.map
