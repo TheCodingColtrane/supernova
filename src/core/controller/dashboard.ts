@@ -390,8 +390,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const navItems = document.querySelectorAll(".nav-item")
     if(navItems){
+      const title = document.querySelector("#page-title") as HTMLHeadingElement
       navItems.forEach((item, i) => {
         item.addEventListener("click", (e) =>{
+          if(i ===  0) title.textContent = "Processos"
+          else if(i === 1) title.textContent = "Tarefas"
+          else title.textContent = "Configurações"
             goToPage(i)
         })
       })
@@ -450,8 +454,14 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
   }
 })
 
-document.querySelector("#new-lawsuit")?.addEventListener("click", async (e) => {
+document.querySelector("#toggleable-actions")?.addEventListener("click", async (e) => {
+  const items = document.querySelector(".nav-links") as HTMLElement
+  if(items.children.item(0)?.className.includes("active"))
   openPanel(0)
+  else if(items.children.item(1)?.className.includes("active")) console.log("oi")
+  else {
+
+} 
 })
 
 
@@ -516,6 +526,8 @@ function goToPage(index: number) {
       item.classList.remove('active');
     }
   });
+
+  
   // const percentage = index * (100 / 3);
   // slider.style.transform = `translateX(-${percentage}%)`;
   

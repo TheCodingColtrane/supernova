@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Supernova",
+  "name": "Eclipse",
   "version": "1.0",
   "description": "Scrapes lawsuit data from PJe and saves to CSV",
   "permissions": ["scripting", "activeTab", "downloads", "storage"],
