@@ -69,7 +69,8 @@ btnNextStep.addEventListener("click", async () => {
       defenderId: Number(val),
       email,
       joinedAt: /* @__PURE__ */ new Date(),
-      role: "Defensor(a)"
+      role: "Defensor(a)",
+      id: 1
     });
     updateList();
   }
@@ -126,7 +127,8 @@ saveBtn?.addEventListener("click", () => {
     email,
     defenderId,
     role: role === "Estagi\xE1rio(a)" ? "Estagi\xE1rio(a)" : role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)",
-    joinedAt: /* @__PURE__ */ new Date()
+    joinedAt: /* @__PURE__ */ new Date(),
+    id: workers.length + 1
   });
   subNameInput.value = "";
   subEmailInput.value = "";

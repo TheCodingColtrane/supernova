@@ -1,5 +1,7 @@
+import { saveTask } from "../repository/tasks";
 import { getHolidays, saveHolidays } from "../service/holidays";
 import { deleteLawsuits, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "../service/lawsuits";
+import { deleteTaskData, getTaskData, saveTaskData, updateTaskData } from "../service/tasks";
 
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -30,6 +32,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year)
+        break
+        case "SAVE_TASK":
+          result = await saveTaskData(request.payload.task)
+        break;
+         case "UPDATE_TASK":
+          result = await updateTaskData(request.payload.task)
+        break;
+         case "DELETE_TASK":
+          result = await deleteTaskData(request.payload.id)
+        break;
+        case "GET_TASKS":
+          result = await getTaskData()
+        break;
       }
       sendResponse({ success: true, data: result });
 

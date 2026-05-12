@@ -3,22 +3,18 @@ tasks: `
     ++id,
     title,
     status,
+    description,
     dueDate,
-    businessDaysLeft,
     createdAt,
-    updatedAt,
-
-    lawsuitNumber,
-    lawsuitParties,
-    circuit,
-    rankingPriority,
-
-    assignedToEmail,
-    assignedRole,
+    updatedAt,                                  
+    lawsuitNumber,                                                                                                            
+    workerId,
     ttl,
     [lawsuitNumber+status],
-    [rankingPriority+status],
-    [dueDate+status]
+    [workerId+status],
+    [dueDate+status],
+    [status+title],
+    [description+status]
   `,
   lawsuits: `
   ++id, 
