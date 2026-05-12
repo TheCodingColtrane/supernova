@@ -2,8 +2,10 @@ import { differenceInHours } from "../../../node_modules/date-fns/differenceInHo
 import { formatISO } from "../../../node_modules/date-fns/formatISO";
 import type { Defenders } from "../types/defenders";
 import type { Holidays } from "../types/holidays";
+import type { Worker } from "../types/workers";
 import type { Lawsuits } from "../types/lawsuits"
-import { getDefenders, getUserCredentials, sendMessage } from "../utils"
+import type { Tasks } from "../types/tasks";
+import { getDefenders, getUserCredentials, getWorkers, renderModal, sendMessage } from "../utils"
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 
 function showAlert(message: string, type = 'success', duration = 4000) {
@@ -49,21 +51,26 @@ function getStatusClass(status: string) {
 const activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
+let tasksData = Array<Tasks>()
 let defender: Partial<Defenders> = {}
 let circuits = new Set("");
-
+let workersData = Array<Worker>();
 (async function () {
   try {
     const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {}) as any
     const holidays = sendMessage("GET_HOLIDAYS", {}) as any
-    const results = await Promise.all([lawsuits, holidays])
-    holidaysData = results[1].data as Holidays[]
+    const tasks = sendMessage("GET_TASKS", {}) as any
+    const workers = getWorkers()
+    const results = await Promise.all([lawsuits, holidays, tasks, workers])
     lawsuitsData = results[0].data as Lawsuits[]
-
+    holidaysData = results[1].data as Holidays[]
+    tasksData = results[2].data as Tasks[]
+    workersData = results[3] as Worker[]
     lawsuitsData.map(c => {
       if (!circuits.has(c.circuit)) {
         circuits.add(c.circuit)
       }
+
     })
     const select = document.querySelector("#filterCircuit") as HTMLSelectElement
 
@@ -74,11 +81,12 @@ let circuits = new Set("");
       // select!.appendChild(select!);
     })
     const creds = await getUserCredentials()
-    if(creds) {
+    if (creds) {
       const defenders = await getDefenders()
-      if(defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
+      if (defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
     }
     sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData))
+    await renderTasks()
   } catch (error) {
     console.log(error)
   }
@@ -86,22 +94,15 @@ let circuits = new Set("");
 
 }())
 
-async function getSolarLawsuit(number: string) {
-  const response = await fetch("https://solar.defensoria.mg.def.br/processo/52181937920238130024/get/json/?grau=1")
-  if (response.status === 200) {
-    const result = await response.json()
-  }
-
-  else if (response.status === 401) {
-    alert("Você precisa logar no solar.")
-  }
-
-}
-
 
 function closePanel() {
   document.querySelector('#sidePanel')?.classList.remove('open');
   document.querySelector('#overlay')?.classList.remove('active');
+}
+
+function closeModal() {
+  const closeBtn = document.querySelector(".modal-close") as HTMLElement
+  closeBtn.click()
 }
 
 
@@ -195,13 +196,13 @@ function openPanel(id: number) {
       renderTableWithOptions()
     })
   } else {
-      circuits.forEach(c => {
+    circuits.forEach(c => {
       const opt = document.createElement("option")
       opt.textContent = c
       circuit.options.add(opt)
     })
     deleteBtn.disabled = true
-      saveBtn?.addEventListener("click", async () => {
+    saveBtn?.addEventListener("click", async () => {
       const form = document.querySelector("#editForm") as HTMLFormElement
       const formData = Object.fromEntries(new FormData(form))
       let awarenessDate = formData["awarenessDate"] as string
@@ -210,7 +211,7 @@ function openPanel(id: number) {
       if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline!, false)
       let deadline = formData["deadline"] as string
       if (deadline) deadline = localDateToIsoDate(deadline!, false)
-      
+
       const lawsuit: Lawsuits = {
         assisted: formData["assisted"] as string,
         awarenessDate,
@@ -229,9 +230,10 @@ function openPanel(id: number) {
       showAlert("Processo cadastrado com sucesso.", "success")
       lawsuitsData.push({ ...lawsuit })
       closePanel()
-      renderTableWithOptions()  })
+      renderTableWithOptions()
+    })
 
-}
+  }
 }
 
 
@@ -290,7 +292,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
-    const timeLeft =  differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
+    const timeLeft = differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
     tr.innerHTML = `
         <td class="row-action">
          <span class="action-icon">Editar</span>
@@ -389,18 +391,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const navItems = document.querySelectorAll(".nav-item")
-    if(navItems){
+    if (navItems) {
       const title = document.querySelector("#page-title") as HTMLHeadingElement
       navItems.forEach((item, i) => {
-        item.addEventListener("click", (e) =>{
-          if(i ===  0) title.textContent = "Processos"
-          else if(i === 1) title.textContent = "Tarefas"
+        item.addEventListener("click", (e) => {
+          if (i === 0) title.textContent = "Processos"
+          else if (i === 1) title.textContent = "Tarefas"
           else title.textContent = "Configurações"
-            goToPage(i)
+          goToPage(i)
         })
       })
     }
- 
+
   } catch (error) {
     console.error(error)
   }
@@ -456,12 +458,12 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
 
 document.querySelector("#toggleable-actions")?.addEventListener("click", async (e) => {
   const items = document.querySelector(".nav-links") as HTMLElement
-  if(items.children.item(0)?.className.includes("active"))
-  openPanel(0)
-  else if(items.children.item(1)?.className.includes("active")) console.log("oi")
+  if (items.children.item(0)?.className.includes("active"))
+    openPanel(0)
+  else if (items.children.item(1)?.className.includes("active")) await openEditModal()
   else {
 
-} 
+  }
 })
 
 
@@ -513,30 +515,181 @@ function searchLawsuits(term: string) {
 function goToPage(index: number) {
   const slider = document.getElementById('mainSlider');
   const items = document.querySelectorAll('.nav-item');
-  
+
   // Deslocamento suave
-  if(slider) {
+  if (slider) {
     slider.style.transform = `translateX(-${index * 100}vw)`;
-  
-  // Atualiza o estado visual do texto
-  items.forEach((item, i) => {
-    if(i === index) {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
-  });
 
-  
-  // const percentage = index * (100 / 3);
-  // slider.style.transform = `translateX(-${percentage}%)`;
-  
-  // // Atualiza os textos
-  // items.forEach((item, i) => {
-  //   item.classList.toggle('active', i === index);
-  // });
+    // Atualiza o estado visual do texto
+    items.forEach((item, i) => {
+      if (i === index) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
 
-  // Melhora a UX: volta ao topo ao trocar de seção
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
+
+async function openEditModal(task?: Tasks) {
+  const workers = await getWorkers()
+  if (!workers) return
+  let officeWorkers = ""
+  workers.map((w, i) => {
+    officeWorkers += `<option value=${i}>${w.name}</option>\n`
+
+  })
+  renderModal().open({
+    title: task ? "Atualize sua tarefa" : "Crie sua tarefa",
+    content: `
+     <form id="taskForm" data-id=${task?.id}>
+        <div class="form-group">
+          <label>Número do Processo</label>
+          <input name="number" type="text" id="editNumber" value=${task?.lawsuit?.number ?? ""}>
+        </div>
+        <div class="form-group">
+          <label>Titulo da tarefa</label>
+          <input name="title" type="text" id="editNumber" value=${task?.title ?? ""}>
+        </div>
+         <div class="form-group">
+          <label>Descrição da tarefa</label>
+          <textarea name="description" rows="4">${task?.description ?? ""}</textarea>
+        </div>
+        ${task ? `<div class="form-group">
+          <label>Status</label>
+          <select name="status" id="editSide">
+            <option>Não Iniciada</option>
+            <option>Em Andamento</option>
+            <option>Concluida</option>
+            </option>Vencida</option>
+          </select>
+        </div>`: ``
+      }
+         <div class="form-group">
+          <label>Prazo</label>
+          <input name="dueDate" type="text" id="editNumber" value=${task?.dueDate ?? ""}>
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <select name="assignedTo" id="editSide">
+           ${officeWorkers}
+          </select>        
+        </div>  
+        </form>
+    
+    `,
+    actions: task ? [
+      { label: 'Deletar tarefa', className: 'btn-delete', callback: async () => await deleteTask() },
+      { label: 'Atualizar tarefa', className: 'btn-primary', callback: async () => await saveTask(workers, true) }
+    ] : [
+      { label: 'Salvar tarefa', className: 'btn-primary', callback: async () => await saveTask(workers, false) }
+    ]
+  })
+}
+
+async function saveTask(workers: Worker[], edit: boolean) {
+  const form = document.querySelector("#taskForm") as HTMLFormElement
+  const formFields = Object.fromEntries(new FormData(form))
+  const lawsuit = lawsuitsData.find(c => c.number === formFields["number"])!
+  const id = parseInt(form.dataset.id ?? "")
+  switch (formFields["status"]) {
+    case "0":
+      status = "Não Iniciada"
+      break
+    case "1":
+      status = "Em Andamento"
+      break
+    case "2":
+      status = "Concluida"
+      break
+    case "3":
+      status = "Vencida"
+      break
+  }
+  const task: Tasks = {
+    assignedTo: workers.find(c => c.id === Number(formFields["assignedTo"])) ?? workers[0]!,
+    createdAt: new Date(),
+    description: formFields["description"] as string,
+    dueDate: formFields["dueDate"] as string,
+    lawsuit,
+    status: edit ?
+      formFields["status"] === "0" ? "Não Iniciada" :
+        formFields["status"] === "1" ? "Em Andamento" :
+          formFields["status"] === "2" ? "Concluida" :
+            "Vencida" : "Não Iniciada",
+    title: formFields["title"] as string,
+
+
+    id: isNaN(id) ? 0 : id
+  }
+
+  if (edit) {
+    await sendMessage("UPDATE_TASK", { task })
+    showAlert("Tarefa atualizada com sucesso.", "success")
+
+  }
+  else {
+    await sendMessage("SAVE_TASK", { task })
+    showAlert("Tarefa criada com sucesso.", "success")
+
+  }
+}
+
+
+async function deleteTask() {
+  const form = document.querySelector("#taskForm") as HTMLFormElement
+  const id = parseInt(form.dataset.id ?? "")
+  await sendMessage("DELETE_TASK", { id })
+  showAlert("Tarefa deletada com sucesso.", "success")
+
+  closeModal()
+
+}
+
+async function renderTasks() {
+  const todoList = document.querySelector(".todo-list") as HTMLElement
+  todoList.innerHTML = tasksData.map(t =>
+    `<div class="todo-item" data-task-id=${t.id}>
+              <div class="todo-header">
+                <span class="todo-lawsuit">${t.lawsuit?.number}</span>
+                <span class="badge ${t.status === "Não Iniciada" ?
+      "warning" : t.status === "Em Andamento" ?
+        "info" : t.status === "Concluida" ?
+          "success" : "danger"}">${t.status}</span>
+              </div>
+              <div class="todo-body">
+                <h3 class="todo-title">${t.title}</h3>
+                <p class="todo-desc">${t.description.length > 100 ? t.description.substring(0, 99) + "..." : t.description}</p>
+              </div>
+              <div class="todo-footer">
+                <div class="todo-info">
+                  <span class="info-label">Responsável:</span>
+                  <span class="info-value">${t.assignedTo ? t.assignedTo.name : ""}</span>
+                </div>
+                <div class="todo-info">
+                  <span class="info-label">Prazo:</span>
+                  <span class="info-value">${t.dueDate}</span>
+                </div>
+              </div>
+            </div> `
+  ).join("")
+
+  for await (const task of tasksData) {
+    document.querySelector(`[data-task-id="${task.id}"]`)?.addEventListener("click", async () => {
+      await openEditModal(task)
+    })
+  }
+
+
+
+  // const items = Array.from(document.querySelectorAll(".todo-item"))
+  // items.map(i => {
+  //   i.addEventListener("click", (e) => {
+  //     openEditModal()
+  //   })
+  // })
+
 }

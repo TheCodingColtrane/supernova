@@ -1131,30 +1131,30 @@ var require_dexie = __commonJS({
         }
       }
       var rejection = DexiePromise.reject;
-      function tempTransaction(db3, mode, storeNames, fn) {
-        if (!db3.idbdb || !db3._state.openComplete && !PSD.letThrough && !db3._vip) {
-          if (db3._state.openComplete) {
-            return rejection(new exceptions.DatabaseClosed(db3._state.dbOpenError));
+      function tempTransaction(db4, mode, storeNames, fn) {
+        if (!db4.idbdb || !db4._state.openComplete && !PSD.letThrough && !db4._vip) {
+          if (db4._state.openComplete) {
+            return rejection(new exceptions.DatabaseClosed(db4._state.dbOpenError));
           }
-          if (!db3._state.isBeingOpened) {
-            if (!db3._state.autoOpen)
+          if (!db4._state.isBeingOpened) {
+            if (!db4._state.autoOpen)
               return rejection(new exceptions.DatabaseClosed());
-            db3.open().catch(nop);
+            db4.open().catch(nop);
           }
-          return db3._state.dbReadyPromise.then(function() {
-            return tempTransaction(db3, mode, storeNames, fn);
+          return db4._state.dbReadyPromise.then(function() {
+            return tempTransaction(db4, mode, storeNames, fn);
           });
         } else {
-          var trans = db3._createTransaction(mode, storeNames, db3._dbSchema);
+          var trans = db4._createTransaction(mode, storeNames, db4._dbSchema);
           try {
             trans.create();
-            db3._state.PR1398_maxLoop = 3;
+            db4._state.PR1398_maxLoop = 3;
           } catch (ex) {
-            if (ex.name === errnames.InvalidState && db3.isOpen() && --db3._state.PR1398_maxLoop > 0) {
+            if (ex.name === errnames.InvalidState && db4.isOpen() && --db4._state.PR1398_maxLoop > 0) {
               console.warn("Dexie: Need to reopen db");
-              db3.close({ disableAutoOpen: false });
-              return db3.open().then(function() {
-                return tempTransaction(db3, mode, storeNames, fn);
+              db4.close({ disableAutoOpen: false });
+              return db4.open().then(function() {
+                return tempTransaction(db4, mode, storeNames, fn);
               });
             }
             return rejection(ex);
@@ -1490,7 +1490,7 @@ var require_dexie = __commonJS({
           return this.toCollection().reverse();
         };
         Table2.prototype.mapToClass = function(constructor) {
-          var _a2 = this, db3 = _a2.db, tableName = _a2.name;
+          var _a2 = this, db4 = _a2.db, tableName = _a2.name;
           this.schema.mappedClass = constructor;
           if (constructor.prototype instanceof Entity) {
             constructor = (function(_super) {
@@ -1500,7 +1500,7 @@ var require_dexie = __commonJS({
               }
               Object.defineProperty(class_1.prototype, "db", {
                 get: function() {
-                  return db3;
+                  return db4;
                 },
                 enumerable: false,
                 configurable: true
@@ -1862,13 +1862,13 @@ var require_dexie = __commonJS({
         derive(constructor).from({ prototype });
         return constructor;
       }
-      function createTableConstructor(db3) {
+      function createTableConstructor(db4) {
         return makeClassConstructor(Table.prototype, function Table2(name, tableSchema, trans) {
-          this.db = db3;
+          this.db = db4;
           this._tx = trans;
           this.name = name;
           this.schema = tableSchema;
-          this.hook = db3._allTables[name] ? db3._allTables[name].hook : Events(null, {
+          this.hook = db4._allTables[name] ? db4._allTables[name].hook : Events(null, {
             creating: [hookCreatingChain, nop],
             reading: [pureFunctionChain, mirror],
             updating: [hookUpdatingChain, nop],
@@ -2381,9 +2381,9 @@ var require_dexie = __commonJS({
       var deleteCallback = function(value, ctx) {
         return ctx.value = null;
       };
-      function createCollectionConstructor(db3) {
+      function createCollectionConstructor(db4) {
         return makeClassConstructor(Collection.prototype, function Collection2(whereClause, keyRangeGenerator) {
-          this.db = db3;
+          this.db = db4;
           var keyRange = AnyRange, error = null;
           if (keyRangeGenerator)
             try {
@@ -2807,9 +2807,9 @@ var require_dexie = __commonJS({
         };
         return WhereClause2;
       })();
-      function createWhereClauseConstructor(db3) {
+      function createWhereClauseConstructor(db4) {
         return makeClassConstructor(WhereClause.prototype, function WhereClause2(table, index, orCollection) {
-          this.db = db3;
+          this.db = db4;
           this._ctx = {
             table,
             index: index === ":id" ? null : index,
@@ -2825,7 +2825,7 @@ var require_dexie = __commonJS({
           this._min = function(a, b) {
             return cmp(a, b) < 0 ? a : b;
           };
-          this._IDBKeyRange = db3._deps.IDBKeyRange;
+          this._IDBKeyRange = db4._deps.IDBKeyRange;
           if (!this._IDBKeyRange)
             throw new exceptions.MissingAPI();
         });
@@ -3013,7 +3013,7 @@ var require_dexie = __commonJS({
         };
         return Transaction2;
       })();
-      function createTransactionConstructor(db3) {
+      function createTransactionConstructor(db4) {
         return makeClassConstructor(Transaction.prototype, function Transaction2(mode, storeNames, dbschema, chromeTransactionDurability, parent) {
           var _this = this;
           if (mode !== "readonly")
@@ -3025,7 +3025,7 @@ var require_dexie = __commonJS({
                   return p.updatesTable;
                 }));
             });
-          this.db = db3;
+          this.db = db4;
           this.mode = mode;
           this.storeNames = storeNames;
           this.schema = dbschema;
@@ -3132,13 +3132,13 @@ var require_dexie = __commonJS({
       function getKeyPathAlias(keyPath) {
         return keyPath == null ? ":id" : typeof keyPath === "string" ? keyPath : "[".concat(keyPath.join("+"), "]");
       }
-      function createDBCore(db3, IdbKeyRange, tmpTrans) {
-        function extractSchema(db4, trans) {
-          var tables2 = arrayify(db4.objectStoreNames);
+      function createDBCore(db4, IdbKeyRange, tmpTrans) {
+        function extractSchema(db5, trans) {
+          var tables2 = arrayify(db5.objectStoreNames);
           var tempStore = tables2.length > 0 ? trans.objectStore(tables2[0]) : {};
           return {
             schema: {
-              name: db4.name,
+              name: db5.name,
               tables: tables2.map(function(table) {
                 return trans.objectStore(table);
               }).map(function(store) {
@@ -3470,7 +3470,7 @@ var require_dexie = __commonJS({
             }
           };
         }
-        var _a2 = extractSchema(db3, tmpTrans), schema = _a2.schema, hasGetAll = _a2.hasGetAll, hasIdb3Features = _a2.hasIdb3Features;
+        var _a2 = extractSchema(db4, tmpTrans), schema = _a2.schema, hasGetAll = _a2.hasGetAll, hasIdb3Features = _a2.hasIdb3Features;
         var tables = schema.tables.map(function(tableSchema) {
           return createDbCoreTable(tableSchema);
         });
@@ -3480,7 +3480,7 @@ var require_dexie = __commonJS({
         });
         return {
           stack: "dbcore",
-          transaction: db3.transaction.bind(db3),
+          transaction: db4.transaction.bind(db4),
           table: function(name) {
             var result = tableMap[name];
             if (!result)
@@ -3506,29 +3506,29 @@ var require_dexie = __commonJS({
           dbcore
         };
       }
-      function generateMiddlewareStacks(db3, tmpTrans) {
+      function generateMiddlewareStacks(db4, tmpTrans) {
         var idbdb = tmpTrans.db;
-        var stacks = createMiddlewareStacks(db3._middlewares, idbdb, db3._deps, tmpTrans);
-        db3.core = stacks.dbcore;
-        db3.tables.forEach(function(table) {
+        var stacks = createMiddlewareStacks(db4._middlewares, idbdb, db4._deps, tmpTrans);
+        db4.core = stacks.dbcore;
+        db4.tables.forEach(function(table) {
           var tableName = table.name;
-          if (db3.core.schema.tables.some(function(tbl) {
+          if (db4.core.schema.tables.some(function(tbl) {
             return tbl.name === tableName;
           })) {
-            table.core = db3.core.table(tableName);
-            if (db3[tableName] instanceof db3.Table) {
-              db3[tableName].core = table.core;
+            table.core = db4.core.table(tableName);
+            if (db4[tableName] instanceof db4.Table) {
+              db4[tableName].core = table.core;
             }
           }
         });
       }
-      function setApiOnPlace(db3, objs, tableNames, dbschema) {
+      function setApiOnPlace(db4, objs, tableNames, dbschema) {
         tableNames.forEach(function(tableName) {
           var schema = dbschema[tableName];
           objs.forEach(function(obj) {
             var propDesc = getPropertyDescriptor(obj, tableName);
             if (!propDesc || "value" in propDesc && propDesc.value === void 0) {
-              if (obj === db3.Transaction.prototype || obj instanceof db3.Transaction) {
+              if (obj === db4.Transaction.prototype || obj instanceof db4.Transaction) {
                 setProp(obj, tableName, {
                   get: function() {
                     return this.table(tableName);
@@ -3543,16 +3543,16 @@ var require_dexie = __commonJS({
                   }
                 });
               } else {
-                obj[tableName] = new db3.Table(tableName, schema);
+                obj[tableName] = new db4.Table(tableName, schema);
               }
             }
           });
         });
       }
-      function removeTablesApi(db3, objs) {
+      function removeTablesApi(db4, objs) {
         objs.forEach(function(obj) {
           for (var key in obj) {
-            if (obj[key] instanceof db3.Table)
+            if (obj[key] instanceof db4.Table)
               delete obj[key];
           }
         });
@@ -3560,13 +3560,13 @@ var require_dexie = __commonJS({
       function lowerVersionFirst(a, b) {
         return a._cfg.version - b._cfg.version;
       }
-      function runUpgraders(db3, oldVersion, idbUpgradeTrans, reject) {
-        var globalSchema = db3._dbSchema;
+      function runUpgraders(db4, oldVersion, idbUpgradeTrans, reject) {
+        var globalSchema = db4._dbSchema;
         if (idbUpgradeTrans.objectStoreNames.contains("$meta") && !globalSchema.$meta) {
           globalSchema.$meta = createTableSchema("$meta", parseIndexSyntax("")[0], []);
-          db3._storeNames.push("$meta");
+          db4._storeNames.push("$meta");
         }
-        var trans = db3._createTransaction("readwrite", db3._storeNames, globalSchema);
+        var trans = db4._createTransaction("readwrite", db4._storeNames, globalSchema);
         trans.create(idbUpgradeTrans);
         trans._completion.catch(reject);
         var rejectTransaction = trans._reject.bind(trans);
@@ -3578,26 +3578,26 @@ var require_dexie = __commonJS({
             keys(globalSchema).forEach(function(tableName) {
               createTable(idbUpgradeTrans, tableName, globalSchema[tableName].primKey, globalSchema[tableName].indexes);
             });
-            generateMiddlewareStacks(db3, idbUpgradeTrans);
+            generateMiddlewareStacks(db4, idbUpgradeTrans);
             DexiePromise.follow(function() {
-              return db3.on.populate.fire(trans);
+              return db4.on.populate.fire(trans);
             }).catch(rejectTransaction);
           } else {
-            generateMiddlewareStacks(db3, idbUpgradeTrans);
-            return getExistingVersion(db3, trans, oldVersion).then(function(oldVersion2) {
-              return updateTablesAndIndexes(db3, oldVersion2, trans, idbUpgradeTrans);
+            generateMiddlewareStacks(db4, idbUpgradeTrans);
+            return getExistingVersion(db4, trans, oldVersion).then(function(oldVersion2) {
+              return updateTablesAndIndexes(db4, oldVersion2, trans, idbUpgradeTrans);
             }).catch(rejectTransaction);
           }
         });
       }
-      function patchCurrentVersion(db3, idbUpgradeTrans) {
-        createMissingTables(db3._dbSchema, idbUpgradeTrans);
+      function patchCurrentVersion(db4, idbUpgradeTrans) {
+        createMissingTables(db4._dbSchema, idbUpgradeTrans);
         if (idbUpgradeTrans.db.version % 10 === 0 && !idbUpgradeTrans.objectStoreNames.contains("$meta")) {
           idbUpgradeTrans.db.createObjectStore("$meta").add(Math.ceil(idbUpgradeTrans.db.version / 10 - 1), "version");
         }
-        var globalSchema = buildGlobalSchema(db3, db3.idbdb, idbUpgradeTrans);
-        adjustToExistingIndexNames(db3, db3._dbSchema, idbUpgradeTrans);
-        var diff = getSchemaDiff(globalSchema, db3._dbSchema);
+        var globalSchema = buildGlobalSchema(db4, db4.idbdb, idbUpgradeTrans);
+        adjustToExistingIndexNames(db4, db4._dbSchema, idbUpgradeTrans);
+        var diff = getSchemaDiff(globalSchema, db4._dbSchema);
         var _loop_1 = function(tableChange2) {
           if (tableChange2.change.length || tableChange2.recreate) {
             console.warn("Unable to patch indexes of table ".concat(tableChange2.name, " because it has changes on the type of index or primary key."));
@@ -3617,7 +3617,7 @@ var require_dexie = __commonJS({
             return state_1.value;
         }
       }
-      function getExistingVersion(db3, trans, oldVersion) {
+      function getExistingVersion(db4, trans, oldVersion) {
         if (trans.storeNames.includes("$meta")) {
           return trans.table("$meta").get("version").then(function(metaVersion) {
             return metaVersion != null ? metaVersion : oldVersion;
@@ -3626,10 +3626,10 @@ var require_dexie = __commonJS({
           return DexiePromise.resolve(oldVersion);
         }
       }
-      function updateTablesAndIndexes(db3, oldVersion, trans, idbUpgradeTrans) {
+      function updateTablesAndIndexes(db4, oldVersion, trans, idbUpgradeTrans) {
         var queue = [];
-        var versions = db3._versions;
-        var globalSchema = db3._dbSchema = buildGlobalSchema(db3, db3.idbdb, idbUpgradeTrans);
+        var versions = db4._versions;
+        var globalSchema = db4._dbSchema = buildGlobalSchema(db4, db4.idbdb, idbUpgradeTrans);
         var versToRun = versions.filter(function(v) {
           return v._cfg.version >= oldVersion;
         });
@@ -3640,9 +3640,9 @@ var require_dexie = __commonJS({
           queue.push(function() {
             var oldSchema = globalSchema;
             var newSchema = version._cfg.dbschema;
-            adjustToExistingIndexNames(db3, oldSchema, idbUpgradeTrans);
-            adjustToExistingIndexNames(db3, newSchema, idbUpgradeTrans);
-            globalSchema = db3._dbSchema = newSchema;
+            adjustToExistingIndexNames(db4, oldSchema, idbUpgradeTrans);
+            adjustToExistingIndexNames(db4, newSchema, idbUpgradeTrans);
+            globalSchema = db4._dbSchema = newSchema;
             var diff = getSchemaDiff(oldSchema, newSchema);
             diff.add.forEach(function(tuple) {
               createTable(idbUpgradeTrans, tuple[0], tuple[1].primKey, tuple[1].indexes);
@@ -3666,14 +3666,14 @@ var require_dexie = __commonJS({
             });
             var contentUpgrade = version._cfg.contentUpgrade;
             if (contentUpgrade && version._cfg.version > oldVersion) {
-              generateMiddlewareStacks(db3, idbUpgradeTrans);
+              generateMiddlewareStacks(db4, idbUpgradeTrans);
               trans._memoizedTables = {};
               var upgradeSchema_1 = shallowClone(newSchema);
               diff.del.forEach(function(table) {
                 upgradeSchema_1[table] = oldSchema[table];
               });
-              removeTablesApi(db3, [db3.Transaction.prototype]);
-              setApiOnPlace(db3, [db3.Transaction.prototype], keys(upgradeSchema_1), upgradeSchema_1);
+              removeTablesApi(db4, [db4.Transaction.prototype]);
+              setApiOnPlace(db4, [db4.Transaction.prototype], keys(upgradeSchema_1), upgradeSchema_1);
               trans.schema = upgradeSchema_1;
               var contentUpgradeIsAsync_1 = isAsyncFunction(contentUpgrade);
               if (contentUpgradeIsAsync_1) {
@@ -3697,16 +3697,16 @@ var require_dexie = __commonJS({
           queue.push(function(idbtrans) {
             var newSchema = version._cfg.dbschema;
             deleteRemovedTables(newSchema, idbtrans);
-            removeTablesApi(db3, [db3.Transaction.prototype]);
-            setApiOnPlace(db3, [db3.Transaction.prototype], db3._storeNames, db3._dbSchema);
-            trans.schema = db3._dbSchema;
+            removeTablesApi(db4, [db4.Transaction.prototype]);
+            setApiOnPlace(db4, [db4.Transaction.prototype], db4._storeNames, db4._dbSchema);
+            trans.schema = db4._dbSchema;
           });
           queue.push(function(idbtrans) {
-            if (db3.idbdb.objectStoreNames.contains("$meta")) {
-              if (Math.ceil(db3.idbdb.version / 10) === version._cfg.version) {
-                db3.idbdb.deleteObjectStore("$meta");
-                delete db3._dbSchema.$meta;
-                db3._storeNames = db3._storeNames.filter(function(name) {
+            if (db4.idbdb.objectStoreNames.contains("$meta")) {
+              if (Math.ceil(db4.idbdb.version / 10) === version._cfg.version) {
+                db4.idbdb.deleteObjectStore("$meta");
+                delete db4._dbSchema.$meta;
+                db4._storeNames = db4._storeNames.filter(function(name) {
                   return name !== "$meta";
                 });
               } else {
@@ -3799,7 +3799,7 @@ var require_dexie = __commonJS({
           multiEntry: idx.multi
         });
       }
-      function buildGlobalSchema(db3, idbdb, tmpTrans) {
+      function buildGlobalSchema(db4, idbdb, tmpTrans) {
         var globalSchema = {};
         var dbStoreNames = slice(idbdb.objectStoreNames, 0);
         dbStoreNames.forEach(function(storeName) {
@@ -3817,25 +3817,25 @@ var require_dexie = __commonJS({
         });
         return globalSchema;
       }
-      function readGlobalSchema(db3, idbdb, tmpTrans) {
-        db3.verno = idbdb.version / 10;
-        var globalSchema = db3._dbSchema = buildGlobalSchema(db3, idbdb, tmpTrans);
-        db3._storeNames = slice(idbdb.objectStoreNames, 0);
-        setApiOnPlace(db3, [db3._allTables], keys(globalSchema), globalSchema);
+      function readGlobalSchema(db4, idbdb, tmpTrans) {
+        db4.verno = idbdb.version / 10;
+        var globalSchema = db4._dbSchema = buildGlobalSchema(db4, idbdb, tmpTrans);
+        db4._storeNames = slice(idbdb.objectStoreNames, 0);
+        setApiOnPlace(db4, [db4._allTables], keys(globalSchema), globalSchema);
       }
-      function verifyInstalledSchema(db3, tmpTrans) {
-        var installedSchema = buildGlobalSchema(db3, db3.idbdb, tmpTrans);
-        var diff = getSchemaDiff(installedSchema, db3._dbSchema);
+      function verifyInstalledSchema(db4, tmpTrans) {
+        var installedSchema = buildGlobalSchema(db4, db4.idbdb, tmpTrans);
+        var diff = getSchemaDiff(installedSchema, db4._dbSchema);
         return !(diff.add.length || diff.change.some(function(ch) {
           return ch.add.length || ch.change.length;
         }));
       }
-      function adjustToExistingIndexNames(db3, schema, idbtrans) {
+      function adjustToExistingIndexNames(db4, schema, idbtrans) {
         var storeNames = idbtrans.db.objectStoreNames;
         for (var i = 0; i < storeNames.length; ++i) {
           var storeName = storeNames[i];
           var store = idbtrans.objectStore(storeName);
-          db3._hasGetAll = "getAll" in store;
+          db4._hasGetAll = "getAll" in store;
           for (var j = 0; j < store.indexNames.length; ++j) {
             var indexName = store.indexNames[j];
             var keyPath = store.index(indexName).keyPath;
@@ -3851,7 +3851,7 @@ var require_dexie = __commonJS({
           }
         }
         if (typeof navigator !== "undefined" && /Safari/.test(navigator.userAgent) && !/(Chrome\/|Edge\/)/.test(navigator.userAgent) && _global.WorkerGlobalScope && _global instanceof _global.WorkerGlobalScope && [].concat(navigator.userAgent.match(/Safari\/(\d*)/))[1] < 604) {
-          db3._hasGetAll = false;
+          db4._hasGetAll = false;
         }
       }
       function parseIndexSyntax(primKeyAndIndexes) {
@@ -3898,9 +3898,9 @@ var require_dexie = __commonJS({
           });
         };
         Version2.prototype.stores = function(stores) {
-          var db3 = this.db;
+          var db4 = this.db;
           this._cfg.storesSource = this._cfg.storesSource ? extend(this._cfg.storesSource, stores) : stores;
-          var versions = db3._versions;
+          var versions = db4._versions;
           var storesSpec = {};
           var dbschema = {};
           versions.forEach(function(version) {
@@ -3908,10 +3908,10 @@ var require_dexie = __commonJS({
             dbschema = version._cfg.dbschema = {};
             version._parseStoresSpec(storesSpec, dbschema);
           });
-          db3._dbSchema = dbschema;
-          removeTablesApi(db3, [db3._allTables, db3, db3.Transaction.prototype]);
-          setApiOnPlace(db3, [db3._allTables, db3, db3.Transaction.prototype, this._cfg.tables], keys(dbschema), dbschema);
-          db3._storeNames = keys(dbschema);
+          db4._dbSchema = dbschema;
+          removeTablesApi(db4, [db4._allTables, db4, db4.Transaction.prototype]);
+          setApiOnPlace(db4, [db4._allTables, db4, db4.Transaction.prototype, this._cfg.tables], keys(dbschema), dbschema);
+          db4._storeNames = keys(dbschema);
           return this;
         };
         Version2.prototype.upgrade = function(upgradeFunction) {
@@ -3920,9 +3920,9 @@ var require_dexie = __commonJS({
         };
         return Version2;
       })();
-      function createVersionConstructor(db3) {
+      function createVersionConstructor(db4) {
         return makeClassConstructor(Version.prototype, function Version2(versionNumber) {
-          this.db = db3;
+          this.db = db4;
           this._cfg = {
             version: versionNumber,
             storesSource: null,
@@ -3942,28 +3942,28 @@ var require_dexie = __commonJS({
           var toArray = function() {
             return Array.from(_refs_1).map(function(ref) {
               return ref.deref();
-            }).filter(function(db3) {
-              return db3 !== void 0;
+            }).filter(function(db4) {
+              return db4 !== void 0;
             });
           };
-          var add2 = function(db3) {
-            var ref = new WeakRef(db3._novip);
+          var add2 = function(db4) {
+            var ref = new WeakRef(db4._novip);
             _refs_1.add(ref);
-            _registry_1.register(db3._novip, ref, ref);
-            if (_refs_1.size > db3._options.maxConnections) {
+            _registry_1.register(db4._novip, ref, ref);
+            if (_refs_1.size > db4._options.maxConnections) {
               var oldestRef = _refs_1.values().next().value;
               _refs_1.delete(oldestRef);
               _registry_1.unregister(oldestRef);
             }
           };
-          var remove2 = function(db3) {
-            if (!db3)
+          var remove2 = function(db4) {
+            if (!db4)
               return;
             var iterator = _refs_1.values();
             var result = iterator.next();
             while (!result.done) {
               var ref = result.value;
-              if (ref.deref() === db3._novip) {
+              if (ref.deref() === db4._novip) {
                 _refs_1.delete(ref);
                 _registry_1.unregister(ref);
                 return;
@@ -3977,13 +3977,13 @@ var require_dexie = __commonJS({
           var toArray = function() {
             return connections_1;
           };
-          var add2 = function(db3) {
-            connections_1.push(db3._novip);
+          var add2 = function(db4) {
+            connections_1.push(db4._novip);
           };
-          var remove2 = function(db3) {
-            if (!db3)
+          var remove2 = function(db4) {
+            if (!db4)
               return;
-            var index = connections_1.indexOf(db3._novip);
+            var index = connections_1.indexOf(db4._novip);
             if (index !== -1) {
               connections_1.splice(index, 1);
             }
@@ -4281,18 +4281,18 @@ var require_dexie = __commonJS({
           }
         }
       }
-      function dexieOpen(db3) {
-        var state = db3._state;
-        var indexedDB2 = db3._deps.indexedDB;
-        if (state.isBeingOpened || db3.idbdb)
+      function dexieOpen(db4) {
+        var state = db4._state;
+        var indexedDB2 = db4._deps.indexedDB;
+        if (state.isBeingOpened || db4.idbdb)
           return state.dbReadyPromise.then(function() {
-            return state.dbOpenError ? rejection(state.dbOpenError) : db3;
+            return state.dbOpenError ? rejection(state.dbOpenError) : db4;
           });
         state.isBeingOpened = true;
         state.dbOpenError = null;
         state.openComplete = false;
         var openCanceller = state.openCanceller;
-        var nativeVerToOpen = Math.round(db3.verno * 10);
+        var nativeVerToOpen = Math.round(db4.verno * 10);
         var schemaPatchMode = false;
         function throwIfCancelled() {
           if (state.openCanceller !== openCanceller)
@@ -4304,15 +4304,15 @@ var require_dexie = __commonJS({
             throwIfCancelled();
             if (!indexedDB2)
               throw new exceptions.MissingAPI();
-            var dbName = db3.name;
+            var dbName = db4.name;
             var req = state.autoSchema || !nativeVerToOpen ? indexedDB2.open(dbName) : indexedDB2.open(dbName, nativeVerToOpen);
             if (!req)
               throw new exceptions.MissingAPI();
             req.onerror = eventRejectHandler(reject);
-            req.onblocked = wrap(db3._fireOnBlocked);
+            req.onblocked = wrap(db4._fireOnBlocked);
             req.onupgradeneeded = wrap(function(e) {
               upgradeTransaction = req.transaction;
-              if (state.autoSchema && !db3._options.allowEmptyDB) {
+              if (state.autoSchema && !db4._options.allowEmptyDB) {
                 req.onerror = preventDefault;
                 upgradeTransaction.abort();
                 req.result.close();
@@ -4324,25 +4324,25 @@ var require_dexie = __commonJS({
                 upgradeTransaction.onerror = eventRejectHandler(reject);
                 var oldVer = e.oldVersion > Math.pow(2, 62) ? 0 : e.oldVersion;
                 wasCreated = oldVer < 1;
-                db3.idbdb = req.result;
+                db4.idbdb = req.result;
                 if (schemaPatchMode) {
-                  patchCurrentVersion(db3, upgradeTransaction);
+                  patchCurrentVersion(db4, upgradeTransaction);
                 }
-                runUpgraders(db3, oldVer / 10, upgradeTransaction, reject);
+                runUpgraders(db4, oldVer / 10, upgradeTransaction, reject);
               }
             }, reject);
             req.onsuccess = wrap(function() {
               upgradeTransaction = null;
-              var idbdb = db3.idbdb = req.result;
+              var idbdb = db4.idbdb = req.result;
               var objectStoreNames = slice(idbdb.objectStoreNames);
               if (objectStoreNames.length > 0)
                 try {
                   var tmpTrans = idbdb.transaction(safariMultiStoreFix(objectStoreNames), "readonly");
                   if (state.autoSchema)
-                    readGlobalSchema(db3, idbdb, tmpTrans);
+                    readGlobalSchema(db4, idbdb, tmpTrans);
                   else {
-                    adjustToExistingIndexNames(db3, db3._dbSchema, tmpTrans);
-                    if (!verifyInstalledSchema(db3, tmpTrans) && !schemaPatchMode) {
+                    adjustToExistingIndexNames(db4, db4._dbSchema, tmpTrans);
+                    if (!verifyInstalledSchema(db4, tmpTrans) && !schemaPatchMode) {
                       console.warn("Dexie SchemaDiff: Schema was extended without increasing the number passed to db.version(). Dexie will add missing parts and increment native version number to workaround this.");
                       idbdb.close();
                       nativeVerToOpen = idbdb.version + 1;
@@ -4350,19 +4350,19 @@ var require_dexie = __commonJS({
                       return resolve(tryOpenDB());
                     }
                   }
-                  generateMiddlewareStacks(db3, tmpTrans);
+                  generateMiddlewareStacks(db4, tmpTrans);
                 } catch (e) {
                 }
-              connections.add(db3);
+              connections.add(db4);
               idbdb.onversionchange = wrap(function(ev) {
                 state.vcFired = true;
-                db3.on("versionchange").fire(ev);
+                db4.on("versionchange").fire(ev);
               });
               idbdb.onclose = wrap(function() {
-                db3.close({ disableAutoOpen: false });
+                db4.close({ disableAutoOpen: false });
               });
               if (wasCreated)
-                _onDatabaseCreated(db3._deps, dbName);
+                _onDatabaseCreated(db4._deps, dbName);
               resolve();
             }, reject);
           }).catch(function(err) {
@@ -4391,13 +4391,13 @@ var require_dexie = __commonJS({
           throwIfCancelled();
           state.onReadyBeingFired = [];
           return DexiePromise.resolve(vip(function() {
-            return db3.on.ready.fire(db3.vip);
+            return db4.on.ready.fire(db4.vip);
           })).then(function fireRemainders() {
             if (state.onReadyBeingFired.length > 0) {
               var remainders_1 = state.onReadyBeingFired.reduce(promisableChain, nop);
               state.onReadyBeingFired = [];
               return DexiePromise.resolve(vip(function() {
-                return remainders_1(db3.vip);
+                return remainders_1(db4.vip);
               })).then(fireRemainders);
             }
           });
@@ -4413,7 +4413,7 @@ var require_dexie = __commonJS({
           } catch (_a2) {
           }
           if (openCanceller === state.openCanceller) {
-            db3._close();
+            db4._close();
           }
           return rejection(err);
         }).finally(function() {
@@ -4422,17 +4422,17 @@ var require_dexie = __commonJS({
         }).then(function() {
           if (wasCreated) {
             var everything_1 = {};
-            db3.tables.forEach(function(table) {
+            db4.tables.forEach(function(table) {
               table.schema.indexes.forEach(function(idx) {
                 if (idx.name)
-                  everything_1["idb://".concat(db3.name, "/").concat(table.name, "/").concat(idx.name)] = new RangeSet(-Infinity, [[[]]]);
+                  everything_1["idb://".concat(db4.name, "/").concat(table.name, "/").concat(idx.name)] = new RangeSet(-Infinity, [[[]]]);
               });
-              everything_1["idb://".concat(db3.name, "/").concat(table.name, "/")] = everything_1["idb://".concat(db3.name, "/").concat(table.name, "/:dels")] = new RangeSet(-Infinity, [[[]]]);
+              everything_1["idb://".concat(db4.name, "/").concat(table.name, "/")] = everything_1["idb://".concat(db4.name, "/").concat(table.name, "/:dels")] = new RangeSet(-Infinity, [[[]]]);
             });
             globalEvents(DEXIE_STORAGE_MUTATED_EVENT_NAME).fire(everything_1);
             signalSubscribersNow(everything_1, true);
           }
-          return db3;
+          return db4;
         });
       }
       function awaitIterator(iterator) {
@@ -4460,10 +4460,10 @@ var require_dexie = __commonJS({
         var tables = flatten(args);
         return [mode, tables, scopeFunc];
       }
-      function enterTransactionScope(db3, mode, storeNames, parentTransaction, scopeFunc) {
+      function enterTransactionScope(db4, mode, storeNames, parentTransaction, scopeFunc) {
         return DexiePromise.resolve().then(function() {
           var transless = PSD.transless || PSD;
-          var trans = db3._createTransaction(mode, storeNames, db3._dbSchema, parentTransaction);
+          var trans = db4._createTransaction(mode, storeNames, db4._dbSchema, parentTransaction);
           trans.explicit = true;
           var zoneProps = {
             trans,
@@ -4475,13 +4475,13 @@ var require_dexie = __commonJS({
             try {
               trans.create();
               trans.idbtrans._explicit = true;
-              db3._state.PR1398_maxLoop = 3;
+              db4._state.PR1398_maxLoop = 3;
             } catch (ex) {
-              if (ex.name === errnames.InvalidState && db3.isOpen() && --db3._state.PR1398_maxLoop > 0) {
+              if (ex.name === errnames.InvalidState && db4.isOpen() && --db4._state.PR1398_maxLoop > 0) {
                 console.warn("Dexie: Need to reopen db");
-                db3.close({ disableAutoOpen: false });
-                return db3.open().then(function() {
-                  return enterTransactionScope(db3, mode, storeNames, null, scopeFunc);
+                db4.close({ disableAutoOpen: false });
+                return db4.open().then(function() {
+                  return enterTransactionScope(db4, mode, storeNames, null, scopeFunc);
                 });
               }
               return rejection(ex);
@@ -6021,12 +6021,12 @@ var require_dexie = __commonJS({
       var Dexie2 = Dexie$1;
       props(Dexie2, __assign(__assign({}, fullNameExceptions), {
         delete: function(databaseName) {
-          var db3 = new Dexie2(databaseName, { addons: [] });
-          return db3.delete();
+          var db4 = new Dexie2(databaseName, { addons: [] });
+          return db4.delete();
         },
         exists: function(name) {
-          return new Dexie2(name, { addons: [] }).open().then(function(db3) {
-            db3.close();
+          return new Dexie2(name, { addons: [] }).open().then(function(db4) {
+            db4.close();
             return true;
           }).catch("NoSuchDatabaseError", function() {
             return false;
@@ -6178,8 +6178,8 @@ var require_dexie = __commonJS({
               console.debug("Dexie: handling persisted pagehide");
             bc === null || bc === void 0 ? void 0 : bc.close();
             for (var _i = 0, _a2 = connections.toArray(); _i < _a2.length; _i++) {
-              var db3 = _a2[_i];
-              db3.close({ disableAutoOpen: false });
+              var db4 = _a2[_i];
+              db4.close({ disableAutoOpen: false });
             }
           }
         });
@@ -6225,30 +6225,6 @@ var require_dexie = __commonJS({
   }
 });
 
-// src/core/utils.ts
-async function getHolidaysAPI(oldestYear) {
-  try {
-    const curYear = (/* @__PURE__ */ new Date()).getFullYear();
-    let holidays = [];
-    if (curYear - oldestYear > 0) {
-      for (let year = oldestYear; year <= curYear; year++) {
-        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year.toString());
-        holidays.push(holiday);
-      }
-      const allHolidays = await Promise.all(holidays);
-      holidays = [];
-      for (const holiday of allHolidays) {
-        if (holiday.status === 200) holidays.push(await holiday.json());
-      }
-      return holidays.flatMap((c) => c);
-    }
-    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear.toString());
-    if (holidaysResponse.status === 200) return await holidaysResponse.json();
-  } catch (error) {
-    console.log(error);
-  }
-}
-
 // src/core/db/index.ts
 var import_dexie = __toESM(require_dexie());
 
@@ -6258,22 +6234,18 @@ var baseSchema = {
     ++id,
     title,
     status,
+    description,
     dueDate,
-    businessDaysLeft,
     createdAt,
-    updatedAt,
-
-    lawsuitNumber,
-    lawsuitParties,
-    circuit,
-    rankingPriority,
-
-    assignedToEmail,
-    assignedRole,
+    updatedAt,                                  
+    lawsuitNumber,                                                                                                            
+    workerId,
     ttl,
     [lawsuitNumber+status],
-    [rankingPriority+status],
-    [dueDate+status]
+    [workerId+status],
+    [dueDate+status],
+    [status+title],
+    [description+status]
   `,
   lawsuits: `
   ++id, 
@@ -6318,19 +6290,101 @@ var baseSchema = {
 
 // src/core/db/index.ts
 function dbInstance() {
-  const db3 = new import_dexie.default("supernova");
-  db3.version(1).stores(baseSchema);
-  return db3;
+  const db4 = new import_dexie.default("supernova");
+  db4.version(1).stores(baseSchema);
+  return db4;
+}
+
+// src/core/repository/tasks.ts
+var db = dbInstance();
+async function saveTask(task) {
+  try {
+    const id = await db.tasks.add({
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status,
+      lawsuitNumber: task.lawsuit?.number ?? "",
+      workerId: task.assignedTo.id ?? 0,
+      createdAt: /* @__PURE__ */ new Date(),
+      assignedTo: task.assignedTo,
+      lawsuit: task.lawsuit
+    });
+    return id;
+  } catch (error) {
+    console.log(error);
+    return 0;
+  }
+}
+async function updateTask(task) {
+  try {
+    const id = await db.tasks.put({
+      id: task.id ?? 0,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status,
+      lawsuitNumber: task.lawsuit?.number ?? "",
+      workerId: task.assignedTo.id ?? 0,
+      assignedTo: task.assignedTo,
+      lawsuit: task.lawsuit,
+      updatedAt: /* @__PURE__ */ new Date()
+    });
+    return id;
+  } catch (error) {
+    console.log(error);
+    return 0;
+  }
+}
+async function deleteTask(id) {
+  try {
+    await db.tasks.delete(id);
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+async function getTask() {
+  try {
+    return await db.tasks.toArray();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+// src/core/utils.ts
+async function getHolidaysAPI(oldestYear) {
+  try {
+    const curYear = (/* @__PURE__ */ new Date()).getFullYear();
+    let holidays = [];
+    if (curYear - oldestYear > 0) {
+      for (let year = oldestYear; year <= curYear; year++) {
+        let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year.toString());
+        holidays.push(holiday);
+      }
+      const allHolidays = await Promise.all(holidays);
+      holidays = [];
+      for (const holiday of allHolidays) {
+        if (holiday.status === 200) holidays.push(await holiday.json());
+      }
+      return holidays.flatMap((c) => c);
+    }
+    const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear.toString());
+    if (holidaysResponse.status === 200) return await holidaysResponse.json();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 // src/core/repository/holidays.ts
-var db = dbInstance();
+var db2 = dbInstance();
 async function saveHolidaysData(holidays) {
   try {
     if (Array.isArray(holidays)) {
-      await db.holidays.bulkAdd(holidays);
+      await db2.holidays.bulkAdd(holidays);
       return true;
-    } else await db.holidays.add(holidays);
+    } else await db2.holidays.add(holidays);
     return true;
   } catch (error) {
     console.log(error);
@@ -6340,9 +6394,9 @@ async function saveHolidaysData(holidays) {
 async function getHolidaysData(year) {
   try {
     if (year)
-      return await db.holidays.where(["startDate", "endDate"]).between(year, (/* @__PURE__ */ new Date()).toISOString().split("T")[0]).toArray();
+      return await db2.holidays.where(["startDate", "endDate"]).between(year, (/* @__PURE__ */ new Date()).toISOString().split("T")[0]).toArray();
     else
-      return await db.holidays.toArray();
+      return await db2.holidays.toArray();
   } catch (error) {
     console.log(error);
     return [];
@@ -6391,11 +6445,11 @@ async function getHolidays(year) {
 }
 
 // src/core/repository/lawsuits.ts
-var db2 = dbInstance();
+var db3 = dbInstance();
 async function getLawsuitStatusCountData() {
   try {
     const statusCount = { "Aberto": 0, "Aguardando Abertura": 0, "Decurso de Prazo": 0, "Fechado": 0 };
-    await db2.lawsuits.orderBy("status").each((lawsuit) => {
+    await db3.lawsuits.orderBy("status").each((lawsuit) => {
       const k = lawsuit.status;
       statusCount[k] = (statusCount[k] || 0) + 1;
     });
@@ -6421,7 +6475,7 @@ async function getWeekLawsuitsData() {
       dates.startingDate = weekStartDate.toISOString().split("T")[0] ?? "";
       dates.endingDate = new Date(weekStartDate.setDate(weekStartDate.getDate() + 7)).toISOString().split("T")[0] ?? "";
     }
-    const lawsuits = await db2.lawsuits.where(["status", "deadline"]).between(["Aberto", dates.startingDate], ["Aberto", dates.endingDate]).limit(30).toArray();
+    const lawsuits = await db3.lawsuits.where(["status", "deadline"]).between(["Aberto", dates.startingDate], ["Aberto", dates.endingDate]).limit(30).toArray();
     const filteredLawsuits = Array();
     for (const lawsuit of lawsuits) {
       console.log(lawsuit);
@@ -6443,10 +6497,10 @@ async function getWeekLawsuitsData() {
 async function saveLawsuitsData(lawsuits) {
   try {
     if (Array.isArray(lawsuits)) {
-      await db2.lawsuits.bulkAdd(lawsuits);
+      await db3.lawsuits.bulkAdd(lawsuits);
       return true;
     } else {
-      await db2.lawsuits.add(lawsuits);
+      await db3.lawsuits.add(lawsuits);
       return true;
     }
   } catch (error) {
@@ -6457,10 +6511,10 @@ async function saveLawsuitsData(lawsuits) {
 async function updateLawsuitsData(lawsuits) {
   try {
     if (Array.isArray(lawsuits)) {
-      await db2.lawsuits.bulkPut(lawsuits);
+      await db3.lawsuits.bulkPut(lawsuits);
       return true;
     } else {
-      await db2.lawsuits.put(lawsuits);
+      await db3.lawsuits.put(lawsuits);
       return true;
     }
   } catch (error) {
@@ -6471,10 +6525,10 @@ async function updateLawsuitsData(lawsuits) {
 async function deleteLawsuitsData(ids) {
   try {
     if (Array.isArray(ids)) {
-      await db2.lawsuits.bulkDelete(ids);
+      await db3.lawsuits.bulkDelete(ids);
       return true;
     } else {
-      await db2.lawsuits.delete(ids);
+      await db3.lawsuits.delete(ids);
       return true;
     }
   } catch (error) {
@@ -6485,7 +6539,7 @@ async function deleteLawsuitsData(ids) {
 async function getPendingLawsuitsData() {
   const today = /* @__PURE__ */ new Date();
   const endDate = new Date(today.setDate((/* @__PURE__ */ new Date()).getDate() + 90)).toISOString().split("T")[0];
-  const lawsuits = await db2.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray();
+  const lawsuits = await db3.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray();
   console.log("SDADASD", lawsuits);
   return lawsuits;
 }
@@ -6862,6 +6916,44 @@ async function deleteLawsuits(ids) {
   }
 }
 
+// src/core/service/tasks.ts
+async function saveTaskData(task) {
+  try {
+    const id = await saveTask(task);
+    return id ?? 0;
+  } catch (error) {
+    console.log(error);
+    return 0;
+  }
+}
+async function updateTaskData(task) {
+  try {
+    if (!task.id) return 0;
+    return await updateTask(task);
+  } catch (error) {
+    console.log(error);
+    return 0;
+  }
+}
+async function deleteTaskData(id) {
+  try {
+    const isDeleted = await deleteTask(id);
+    return isDeleted;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+async function getTaskData() {
+  try {
+    const tasks = await getTask();
+    return tasks ?? [];
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
+
 // src/core/controller/sw.ts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   (async () => {
@@ -6891,6 +6983,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year);
+          break;
+        case "SAVE_TASK":
+          result = await saveTaskData(request.payload.task);
+          break;
+        case "UPDATE_TASK":
+          result = await updateTaskData(request.payload.task);
+          break;
+        case "DELETE_TASK":
+          result = await deleteTaskData(request.payload.id);
+          break;
+        case "GET_TASKS":
+          result = await getTaskData();
+          break;
       }
       sendResponse({ success: true, data: result });
     } catch (error) {

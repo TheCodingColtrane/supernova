@@ -2,6 +2,7 @@ import type { Holidays } from "./db/schemas/holidays";
 import type { HolidaysAPIResponse } from "./types/holidays";
 import type { Defenders, DefendersAPIResponse } from "./types/defenders";
 import type { User } from "./types/user";
+import type { ModalBody } from "./types/modal";
 
 export async function sendMessage<T>(message: string, data: T) {
     try {
@@ -121,8 +122,16 @@ export async function getUserCredentials(){
  const creds = JSON.parse(localStorage.getItem("user") ?? "{}") 
     if(Object.hasOwn(creds, "id")) return creds as User
     await chrome.tabs.create({url: "defenders.html?onboard=1"})
-    
-    
+}
+
+export async function getWorkers(){
+    const crendentials = await getUserCredentials()
+    if(crendentials){
+        const defenders = JSON.parse(localStorage.getItem("defenders") ?? "{}") as Defenders[]
+        if(defenders) {
+            return defenders.find(c=> c.id === crendentials.id)?.trabalhadores
+        } 
+    }
 }
 
 
@@ -148,3 +157,61 @@ export function renderTable<T>(headers: string[], data: T[]) {
   }
   document.body.appendChild(table);
 }
+
+
+export function renderModal() {
+
+return {
+  el: document.getElementById('customModal') as HTMLElement,
+  title: document.getElementById('modalTitle') as HTMLElement,
+  closeBtn: document.querySelector(".modal-close") as HTMLElement,
+  body: document.getElementById('modalBody') as HTMLElement,
+  footer: document.getElementById('modalFooter') as HTMLElement,
+
+  open(options: ModalBody) {
+    // 1. Define o Título
+    this.title.innerText = options.title || 'Alerta';
+
+    // 2. Define o Conteúdo (Pode ser HTML ou String)
+    this.body.innerHTML = options.content || '';
+
+    // 3. Define os Botões do Rodapé
+    this.footer.innerHTML = ''; // Limpa botões anteriores
+    const buttonPanel = document.createElement("div")
+    buttonPanel.className = "panel-actions"
+    buttonPanel.style.marginTop = "0"
+    if (options.actions) {
+      options.actions.forEach((action:any) => {
+
+        const btn = document.createElement('button');
+        btn.innerText = action.label;
+        btn.className = action.className || 'btn-primary';
+        btn.onclick = () => {
+          action.callback();
+          if (!action.preventClose) this.close();
+        };
+        buttonPanel.appendChild(btn)
+      });
+
+    this.footer.appendChild(buttonPanel);
+
+    }
+
+    // 4. Exibe o Modal
+    this.el.classList.add('active');
+    
+    // UX: Fechar ao clicar fora
+    this.el.onclick = (e) => {
+      if (e.target === this.el) this.close();
+    };
+
+    this.closeBtn.addEventListener("click", (e) => {
+        this.close()
+    })
+  },
+
+  close() {
+    this.el.classList.remove('active');
+  }
+}
+};

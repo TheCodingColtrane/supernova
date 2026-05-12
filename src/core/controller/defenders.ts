@@ -68,7 +68,8 @@ btnNextStep.addEventListener('click', async () => {
             defenderId: Number(val),
             email,
             joinedAt: new Date(),
-            role: "Defensor(a)"
+            role: "Defensor(a)",
+            id: 1
         })
         updateList()
 
@@ -131,7 +132,8 @@ saveBtn?.addEventListener('click', () => {
     if (!name) return alert("Digite o nome do funcionário.");
     workers.push({
         name, email, defenderId, role: role === "Estagiário(a)" ? "Estagiário(a)" :
-            role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date()
+            role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date(),
+            id: workers.length + 1
     })
     subNameInput.value = '';
     subEmailInput.value = ''

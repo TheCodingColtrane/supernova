@@ -152,6 +152,55 @@ async function getUserCredentials() {
   if (Object.hasOwn(creds, "id")) return creds;
   await chrome.tabs.create({ url: "defenders.html?onboard=1" });
 }
+async function getWorkers() {
+  const crendentials = await getUserCredentials();
+  if (crendentials) {
+    const defenders = JSON.parse(localStorage.getItem("defenders") ?? "{}");
+    if (defenders) {
+      return defenders.find((c) => c.id === crendentials.id)?.trabalhadores;
+    }
+  }
+}
+function renderModal() {
+  return {
+    el: document.getElementById("customModal"),
+    title: document.getElementById("modalTitle"),
+    closeBtn: document.querySelector(".modal-close"),
+    body: document.getElementById("modalBody"),
+    footer: document.getElementById("modalFooter"),
+    open(options) {
+      this.title.innerText = options.title || "Alerta";
+      this.body.innerHTML = options.content || "";
+      this.footer.innerHTML = "";
+      const buttonPanel = document.createElement("div");
+      buttonPanel.className = "panel-actions";
+      buttonPanel.style.marginTop = "0";
+      if (options.actions) {
+        options.actions.forEach((action) => {
+          const btn = document.createElement("button");
+          btn.innerText = action.label;
+          btn.className = action.className || "btn-primary";
+          btn.onclick = () => {
+            action.callback();
+            if (!action.preventClose) this.close();
+          };
+          buttonPanel.appendChild(btn);
+        });
+        this.footer.appendChild(buttonPanel);
+      }
+      this.el.classList.add("active");
+      this.el.onclick = (e) => {
+        if (e.target === this.el) this.close();
+      };
+      this.closeBtn.addEventListener("click", (e) => {
+        this.close();
+      });
+    },
+    close() {
+      this.el.classList.remove("active");
+    }
+  };
+}
 
 // node_modules/date-fns/isSaturday.js
 function isSaturday(date, options) {
@@ -387,23 +436,29 @@ function getDeadlineClass(days) {
   if (days <= 3) return "deadline-warning";
   return "deadline-ok";
 }
-function getStatusClass(status) {
-  if (status === "late") return "status-late";
-  if (status === "closed") return "status-closed";
+function getStatusClass(status2) {
+  if (status2 === "late") return "status-late";
+  if (status2 === "closed") return "status-closed";
   return "status-open";
 }
 var activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
 var lawsuitsData = Array();
 var holidaysData = Array();
+var tasksData = Array();
 var defender = {};
 var circuits = new Set("");
+var workersData = Array();
 (async function() {
   try {
     const lawsuits = sendMessage("GET_PENDING_LAWSUITS", {});
     const holidays = sendMessage("GET_HOLIDAYS", {});
-    const results = await Promise.all([lawsuits, holidays]);
-    holidaysData = results[1].data;
+    const tasks = sendMessage("GET_TASKS", {});
+    const workers = getWorkers();
+    const results = await Promise.all([lawsuits, holidays, tasks, workers]);
     lawsuitsData = results[0].data;
+    holidaysData = results[1].data;
+    tasksData = results[2].data;
+    workersData = results[3];
     lawsuitsData.map((c) => {
       if (!circuits.has(c.circuit)) {
         circuits.add(c.circuit);
@@ -421,6 +476,7 @@ var circuits = new Set("");
       if (defenders) defender = defenders.find((d) => d.id === creds.id) ?? {};
     }
     sessionStorage.setItem("lawsuits", JSON.stringify(lawsuitsData));
+    await renderTasks();
   } catch (error) {
     console.log(error);
   }
@@ -428,6 +484,10 @@ var circuits = new Set("");
 function closePanel() {
   document.querySelector("#sidePanel")?.classList.remove("open");
   document.querySelector("#overlay")?.classList.remove("active");
+}
+function closeModal() {
+  const closeBtn = document.querySelector(".modal-close");
+  closeBtn.click();
 }
 async function saveLawsuit(lawsuits) {
   await sendMessage("SAVE_LAWSUITS", { lawsuits });
@@ -442,7 +502,7 @@ function openPanel(id) {
   const number = document.querySelector("#editNumber");
   const assisted = document.querySelector("#editAssisted");
   const circuit = document.querySelector("#editCircuit");
-  const status = document.querySelector("#editStatus");
+  const status2 = document.querySelector("#editStatus");
   const side = document.querySelector("#editSide");
   const awareness = document.querySelector("#editAwarenessDate");
   const startDeadline = document.querySelector("#editStartDeadline");
@@ -465,8 +525,8 @@ function openPanel(id) {
       circuit.options.add(opt);
       if (data.circuit === c) opt.selected = true;
     });
-    if (data.status === "Aberto") status.selectedIndex = 0;
-    else status.selectedIndex = 1;
+    if (data.status === "Aberto") status2.selectedIndex = 0;
+    else status2.selectedIndex = 1;
     if (data.isDefendant) side.selectedIndex = 1;
     else side.selectedIndex = 0;
     awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString();
@@ -739,7 +799,7 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
   const items = document.querySelector(".nav-links");
   if (items.children.item(0)?.className.includes("active"))
     openPanel(0);
-  else if (items.children.item(1)?.className.includes("active")) console.log("oi");
+  else if (items.children.item(1)?.className.includes("active")) await openEditModal();
   else {
   }
 });
@@ -784,6 +844,134 @@ function goToPage(index) {
       }
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+async function openEditModal(task) {
+  const workers = await getWorkers();
+  if (!workers) return;
+  let officeWorkers = "";
+  workers.map((w, i) => {
+    officeWorkers += `<option value=${i}>${w.name}</option>
+`;
+  });
+  renderModal().open({
+    title: task ? "Atualize sua tarefa" : "Crie sua tarefa",
+    content: `
+     <form id="taskForm" data-id=${task?.id}>
+        <div class="form-group">
+          <label>N\xFAmero do Processo</label>
+          <input name="number" type="text" id="editNumber" value=${task?.lawsuit?.number ?? ""}>
+        </div>
+        <div class="form-group">
+          <label>Titulo da tarefa</label>
+          <input name="title" type="text" id="editNumber" value=${task?.title ?? ""}>
+        </div>
+         <div class="form-group">
+          <label>Descri\xE7\xE3o da tarefa</label>
+          <textarea name="description" rows="4">${task?.description ?? ""}</textarea>
+        </div>
+        ${task ? `<div class="form-group">
+          <label>Status</label>
+          <select name="status" id="editSide">
+            <option>N\xE3o Iniciada</option>
+            <option>Em Andamento</option>
+            <option>Concluida</option>
+            </option>Vencida</option>
+          </select>
+        </div>` : ``}
+         <div class="form-group">
+          <label>Prazo</label>
+          <input name="dueDate" type="text" id="editNumber" value=${task?.dueDate ?? ""}>
+        </div>
+        <div class="form-group">
+          <label>Respons\xE1vel</label>
+          <select name="assignedTo" id="editSide">
+           ${officeWorkers}
+          </select>        
+        </div>  
+        </form>
+    
+    `,
+    actions: task ? [
+      { label: "Deletar tarefa", className: "btn-delete", callback: async () => await deleteTask() },
+      { label: "Atualizar tarefa", className: "btn-primary", callback: async () => await saveTask(workers, true) }
+    ] : [
+      { label: "Salvar tarefa", className: "btn-primary", callback: async () => await saveTask(workers, false) }
+    ]
+  });
+}
+async function saveTask(workers, edit) {
+  const form = document.querySelector("#taskForm");
+  const formFields = Object.fromEntries(new FormData(form));
+  const lawsuit = lawsuitsData.find((c) => c.number === formFields["number"]);
+  const id = parseInt(form.dataset.id ?? "");
+  switch (formFields["status"]) {
+    case "0":
+      status = "N\xE3o Iniciada";
+      break;
+    case "1":
+      status = "Em Andamento";
+      break;
+    case "2":
+      status = "Concluida";
+      break;
+    case "3":
+      status = "Vencida";
+      break;
+  }
+  const task = {
+    assignedTo: workers.find((c) => c.id === Number(formFields["assignedTo"])) ?? workers[0],
+    createdAt: /* @__PURE__ */ new Date(),
+    description: formFields["description"],
+    dueDate: formFields["dueDate"],
+    lawsuit,
+    status: edit ? formFields["status"] === "0" ? "N\xE3o Iniciada" : formFields["status"] === "1" ? "Em Andamento" : formFields["status"] === "2" ? "Concluida" : "Vencida" : "N\xE3o Iniciada",
+    title: formFields["title"],
+    id: isNaN(id) ? 0 : id
+  };
+  if (edit) {
+    await sendMessage("UPDATE_TASK", { task });
+    showAlert("Tarefa atualizada com sucesso.", "success");
+  } else {
+    await sendMessage("SAVE_TASK", { task });
+    showAlert("Tarefa criada com sucesso.", "success");
+  }
+}
+async function deleteTask() {
+  const form = document.querySelector("#taskForm");
+  const id = parseInt(form.dataset.id ?? "");
+  await sendMessage("DELETE_TASK", { id });
+  showAlert("Tarefa deletada com sucesso.", "success");
+  closeModal();
+}
+async function renderTasks() {
+  const todoList = document.querySelector(".todo-list");
+  todoList.innerHTML = tasksData.map(
+    (t) => `<div class="todo-item" data-task-id=${t.id}>
+              <div class="todo-header">
+                <span class="todo-lawsuit">${t.lawsuit?.number}</span>
+                <span class="badge ${t.status === "N\xE3o Iniciada" ? "warning" : t.status === "Em Andamento" ? "info" : t.status === "Concluida" ? "success" : "danger"}">${t.status}</span>
+              </div>
+              <div class="todo-body">
+                <h3 class="todo-title">${t.title}</h3>
+                <p class="todo-desc">${t.description.length > 100 ? t.description.substring(0, 99) + "..." : t.description}</p>
+              </div>
+              <div class="todo-footer">
+                <div class="todo-info">
+                  <span class="info-label">Respons\xE1vel:</span>
+                  <span class="info-value">${t.assignedTo ? t.assignedTo.name : ""}</span>
+                </div>
+                <div class="todo-info">
+                  <span class="info-label">Prazo:</span>
+                  <span class="info-value">${t.dueDate}</span>
+                </div>
+              </div>
+            </div> `
+  ).join("");
+  for await (const task of tasksData) {
+    document.querySelector(`[data-task-id="${task.id}"]`)?.addEventListener("click", async () => {
+      await openEditModal(task);
+    });
   }
 }
 //# sourceMappingURL=dashboard.js.map
