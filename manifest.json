@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "DPMG",
+  "version": "2.0",
+  "description": "Adiciona novos recursos ao Pje e Solar. Adiciona seu próprio gestor de gabinete.",
+  "permissions": ["scripting", "activeTab", "tabs", "downloads", "webNavigation", "offscreen", "storage", "cookies"],
+  "host_permissions": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*"],
+  "background": {
+    "service_worker": "src/sw.ts",
+    "type":"module"
+  },
+  "action": {
+    "default_popup": "src/pages/popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*"],
+      "js": ["src/content.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}
