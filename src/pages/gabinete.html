@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Prazos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-body: #f8fafc;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --info: #3b82f6;
+      --white: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--white);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* ── Layout Container ── */
+    .container {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    /* ── Dashboard Cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background: var(--white);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border-left: 4px solid;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .card .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .card.red {
+      border-left-color: var(--danger);
+    }
+
+    .card.yellow {
+      border-left-color: var(--warning);
+    }
+
+    .card.blue {
+      border-left-color: var(--info);
+    }
+
+    .card.green {
+      border-left-color: var(--success);
+    }
+
+    /* ── SEÇÃO DE BUSCA (PROTAGONISTA) ── */
+    .search-section {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-container {
+      width: 100%;
+      max-width: 700px;
+      position: relative;
+    }
+
+    input[type="text"]#search {
+      width: 100%;
+      padding: 16px 24px;
+      font-size: 1.05rem;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: var(--white);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]#search:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.08);
+      transform: translateY(-2px);
+    }
+
+    /* ── Barra de Filtros ── */
+    .filters-bar {
+      background: var(--white);
+      padding: 1.25rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+
+    .filters-row-main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .filter-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      background-color: #fcfcfc;
+    }
+
+    /* ── Opções Secundárias (Checkboxes) ── */
+    .filter-options {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      gap: 24px;
+      justify-content: flex-end;
+      /* Alinhado à direita para ser menos intrusivo */
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .checkbox-container:hover {
+      color: var(--text-main);
+    }
+
+    .checkbox-container input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--primary);
+    }
+
+    /* ── Tabela ── */
+    .table-container {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #f8fafc;
+      padding: 14px 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    /* ── Side Panel ── */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: -450px;
+      /* Escondido por padrão */
+      width: 400px;
+      height: 100%;
+      background: var(--white);
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: right 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-panel.open {
+      right: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: none;
+      z-index: 90;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
+    /* ── Conteúdo do Painel ── */
+    .panel-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    .panel-actions {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-save {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-delete {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* ── Sistema de Alertas (Toast) ── */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      min-width: 300px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--text-main);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 6px solid var(--primary);
+      animation: slideIn 0.3s ease-out forwards;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .toast.success {
+      border-left-color: var(--success);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger);
+    }
+
+    .toast.info {
+      border-left-color: var(--info);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+
+    .toast.hiding {
+      animation: fadeOut 0.5s ease-in forwards;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s, background 0.2s;
+      z-index: 1000;
+    }
+
+    .fab:hover {
+      background: var(--primary-hover);
+      transform: scale(1.1);
+    }
+
+    .row-action {
+      width: 40px;
+      text-align: center;
+    }
+
+    .action-icon {
+      opacity: 0;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    tbody tr:hover .action-icon {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      /* Espaçamento maior entre os textos */
+    }
+
+    .nav-item {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.3s ease;
+      padding: 4px 0;
+    }
+
+    /* Efeito Hover */
+    .nav-item:hover {
+      color: var(--primary);
+    }
+
+    /* Indicador de página ativa (Linha embaixo do texto) */
+    .nav-item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: -22px;
+      /* Alinha exatamente com a borda do header */
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Container de Navegação */
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      /* Espaçamento maior entre os textos */
+    }
+
+    .nav-item {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.3s ease;
+      padding: 4px 0;
+    }
+
+    /* Efeito Hover */
+    .nav-item:hover {
+      color: var(--primary);
+    }
+
+    /* Indicador de página ativa (Linha embaixo do texto) */
+    .nav-item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: -22px;
+      /* Alinha exatamente com a borda do header */
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Estrutura do Slider (Mesma lógica anterior) */
+    .slider-viewport {
+      width: 100%;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .slider-wrapper {
+      display: flex;
+      width: 300%;
+      /* Largura total para 3 páginas */
+      transform: translateX(0);
+      /* Garante que comece na primeira página */
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      align-items: flex-start;
+    }
+
+    .page {
+      width: 100vw;
+      /* Cada página ocupa exatamente a largura da tela */
+      flex-shrink: 0;
+      min-height: 100vh;
+    }
+
+    .todo-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .todo-item {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .todo-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+      border-color: var(--primary);
+    }
+
+    .todo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .todo-lawsuit {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .todo-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .todo-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: -webkit-box;
+      /* -webkit-line-clamp: 2; */
+      /* Corta o texto em 2 linhas */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .todo-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .todo-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .info-value {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Badges de Status */
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge.info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge.danger {
+      background: #dbeafe;
+      color: #ef4444;
+    }
+
+    /* Estilização do Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      /* Overlay levemente azulado/escuro */
+      backdrop-filter: blur(4px);
+      /* Efeito de vidro moderno */
+      display: none;
+      /* Escondido por padrão */
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: var(--white);
+      width: 90%;
+      max-width: 550px;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: translateY(20px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow: hidden;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 5px;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--danger);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      /* display: flex; */
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8fafc;
+    }
+
+    /* Botão Secundário para o Modal */
+    .btn-secondary {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+  </style>
+</head>
+
+<body>
+  <div id="toastContainer" class="toast-container"></div>
+  <div id="sidePanel" class="side-panel">
+    <div class="panel-header">
+      <h3>Detalhes do Processo</h3>
+      <button class="btn-close">&times;</button>
+    </div>
+    <div class="panel-body">
+      <form id="editForm">
+        <div class="form-group">
+          <label>Número do Processo</label>
+          <input name="number" type="text" id="editNumber" readonly>
+        </div>
+        <div class="form-group">
+          <label>Vara</label>
+          <select name="circuit" id="editCircuit">
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assistido(a)</label>
+          <input name="assisted" type="text" id="editAssisted">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status" id="editStatus">
+            <option value="1">Aberto</option>
+            <option value="0">Aguardando Abertura</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Polo</label>
+          <select name="isDefendant" id="editSide">
+            <option value="1">Ativo</option>
+            <option value="0">Passivo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data de ciência</label>
+          <input name="awarenessDate" type="text" id="editAwarenessDate">
+        </div>
+        <div class="form-group">
+          <label>Inicio do Prazo</label>
+          <input type="text" name="initialDeadline" id="editStartDeadline">
+        </div>
+        <div class="form-group">
+          <label>Final do Prazo</label>
+          <input type="text" name="deadline" id="editEndDeadline">
+        </div>
+        <div class="form-group">
+          <label>Observações Internas</label>
+          <textarea id="editNotes" rows="4"></textarea>
+        </div>
+
+        <div class="panel-actions">
+          <button type="button" class="btn-save">Salvar Alterações</button>
+          <button type="button" class="btn-delete">Excluir Processo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="overlay" class="overlay"></div>
+  <!-- Estrutura do Modal Reutilizável -->
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Título do Modal</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Conteúdo dinâmico entra aqui -->
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <!-- Botões dinâmicos entram aqui -->
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <h2 id="page-title">Gestão de Prazos</h2>
+    <!-- <div class="header-actions">
+      <button class="btn-primary">+ Nova Tarefa</button>
+    </div> -->
+    <nav class="nav-links">
+      <span class="nav-item active">Processos</span>
+      <span class="nav-item">Tarefas</span>
+      <span class="nav-item">Configurações</span>
+    </nav>
+  </header>
+  <div class="slider-viewport">
+    <div class="slider-wrapper" id="mainSlider">
+      <section class="page">
+        <div class="container">
+          <div class="cards">
+            <div class="card red">
+              <span class="label">Vencendo hoje</span>
+              <span class="value" id="todayCount">0</span>
+            </div>
+            <div class="card yellow">
+              <span class="label">Esta semana</span>
+              <span class="value" id="weekCount">0</span>
+            </div>
+            <div class="card blue">
+              <span class="label">Processos Ativos</span>
+              <span class="value" id="activeCount">0</span>
+            </div>
+            <div class="card green">
+              <span class="label">Finalizados</span>
+              <span class="value" id="doneCount">0</span>
+            </div>
+          </div>
+
+
+
+          <div class="search-section">
+            <div class="search-container">
+              <input type="text" placeholder="Pesquisar por número do processo ou nome do assistido..." id="search" />
+            </div>
+            <div class="update-btn-container" style="padding: 15px;">
+              <button class="btn-primary" id="update-lawsuit-btn">
+                <i class="bi bi-arrow-clockwise"></i>
+                Atualizar processos
+              </button>
+            </div>
+          </div>
+
+          <div class="filters-bar">
+            <div class="filters-row-main">
+              <div class="filter-group">
+                <label class="filter-label">Vara</label>
+                <select class="filter-select" id="filterCircuit">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select" id="filterStatus">
+                  <option value="">Todos</option>
+                  <option value="1">Aberto</option>
+                  <option value="0">Aguardando Abertura</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Polo</label>
+                <select class="filter-select" id="filterSide">
+                  <option value="">Todos</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="passivo">Passivo</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Responsável</label>
+                <select class="filter-select" id="filterAssignedTo">
+                  <option value="">Todos</option>
+                  <option value="user1">Dr. João Silva</option>
+                  <option value="user2">Dra. Maria Souza</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="filter-options">
+              <label class="checkbox-container">
+                <input type="checkbox" id="checkHolidays">
+                Considerar Feriados
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="checkCalendarDays">
+                Considerar Dias Corridos
+              </label>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th data-nm="number" data-sort="">Processo</th>
+                  <th data-nm="number" data-sort="">Classe</th>
+                  <th data-nm="circuit" data-sort="">Vara</th>
+                  <th data-nm="assisted" data-sort="">Assistido(a)</th>
+                  <th data-nm="status" data-sort="">Status</th>
+                  <th data-nm="side" data-sort="">Polo</th>
+                  <th data-nm="deadline" data-sort="">Prazo</th>
+                  <th data-nm="daysLeft" data-sort="">Restante</th>
+                  <th data-nm="">Responsável</th>
+                </tr>
+              </thead>
+              <tbody id="processTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section class="page">
+        <div class="container">
+          <div class="cards">
+            <div class="card red">
+              <span class="label">Vencendo hoje</span>
+              <span class="value" id="todayCount">0</span>
+            </div>
+            <div class="card yellow">
+              <span class="label">Esta semana</span>
+              <span class="value" id="weekCount">0</span>
+            </div>
+            <div class="card blue">
+              <span class="label">Processos Ativos</span>
+              <span class="value" id="activeCount">0</span>
+            </div>
+            <div class="card green">
+              <span class="label">Finalizados</span>
+              <span class="value" id="doneCount">0</span>
+            </div>
+          </div>
+
+          <div class="search-section">
+            <div class="search-container">
+              <input type="text" placeholder="Pesquisar por titulo" id="search" />
+            </div>
+          </div>
+
+          <!-- Filtros de Tarefas -->
+          <div class="filters-bar">
+            <div class="filters-row-main">
+              <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select">
+                  <option value="">Todos</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="em_andamento">Em Andamento</option>
+                  <option value="concluido">Concluído</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Responsável</label>
+                <select class="filter-select">
+                  <option value="">Todos</option>
+                  <option value="me">Atribuídas a mim</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Tarefas Estilizada -->
+          <div class="todo-list" id="todoContainer">
+            <!-- Exemplo de Card de Tarefa -->
+            <!-- <div class="todo-item">
+              <div class="todo-header">
+                <span class="todo-lawsuit">Proc: 0012345-67.2024.8.19.0001</span>
+                <span class="badge warning">Pendente</span>
+              </div>
+              <div class="todo-body">
+                <h3 class="todo-title">Protocolar Réplica</h3>
+                <p class="todo-desc">Verificar os documentos anexados pelo réu e contestar a validade da procuração
+                  apresentada.</p>
+              </div>
+              <div class="todo-footer">
+                <div class="todo-info">
+                  <span class="info-label">Responsável:</span>
+                  <span class="info-value">Dr. João Silva</span>
+                </div>
+                <div class="todo-info">
+                  <span class="info-label">Prazo:</span>
+                  <span class="info-value">15/10/2026</span>
+                </div>
+              </div>
+            </div> -->
+          </div>
+        </div>
+        <!-- <button id="new-task" class="fab">+</button> -->
+      </section>
+    </div>
+    <button id="toggleable-actions" class="fab">+</button>
+  </div>
+
+  </div>
+</body>
+
+</html>
+<script type="module" src="../eclipse/dashboard/index.ts" defer></script>
+<!-- <script src="tasks.js" defer></script> -->

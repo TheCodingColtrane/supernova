@@ -1,0 +1,23 @@
+{
+  "name": "pje-downloadeer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@crxjs/vite-plugin": "^2.6.1",
+    "@types/chrome": "^0.1.43",
+    "date-fns": "^4.4.0",
+    "dexie": "^4.4.4",
+    "jspdf": "^4.2.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
