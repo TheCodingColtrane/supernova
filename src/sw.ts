@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case "DELETE_WORKER":
           result = await deleteWorkerData(request.payload.id)
           break;
-        case "GET_WORKER":
+        case "GET_WORKERS":
           result = await getWorkerData()
           break;
         

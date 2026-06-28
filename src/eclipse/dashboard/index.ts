@@ -9,7 +9,10 @@ import { getDefenders, getUserCredentials, getWorkers, renderModal, sendMessage 
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 import { getDefensories, updateLawsuitDashboard } from "../service/fetcher";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
-
+const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
+const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
+const iframeTitle = document.querySelector("#iframeTitle") as HTMLHeadingElement
+const filterAssignedTo = document.querySelector("#filterAssignedTo ") as HTMLSelectElement
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
 
@@ -67,7 +70,7 @@ let workersData = Array<Worker>();
     lawsuitsData = results[0].data as Lawsuits[]
     holidaysData = results[1].data as Holidays[]
     tasksData = results[2].data as Tasks[]
-    workersData = results[3] as Worker[]
+    workersData = results[3].data as Worker[]
     console.log(workersData)
     lawsuitsData.map(c => {
       if (!circuits.has(c.circuit)) {
@@ -83,6 +86,14 @@ let workersData = Array<Worker>();
       select.options.add(opt)
       // select!.appendChild(select!);
     })
+
+    workersData.map(c => {
+      const opt = document.createElement("option")
+      opt.textContent = c.name
+      opt.value = c.id?.toString() ?? ""
+      filterAssignedTo.options.add(opt)
+    })
+
     const creds = await getUserCredentials()
     if (creds) {
       const defenders = await getDefenders()
@@ -299,7 +310,11 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td class="row-action">
          <span class="action-icon">Editar</span>
         </td>
-        <td>${p.number} <a href=\"${p.summonURL}\" target="_blank">(${p.summon})</a></td>
+        <td>${p.number} 
+        <button data-URL=\"${p.summonURL}\" class="btn-secondary view-summon">
+          <i class="bi bi-file-earmark"></i>
+          ${p.summon}  </button>
+        </td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted}</td>
@@ -311,8 +326,19 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
       `;
-    tr.addEventListener("click", () => {
+    document.querySelectorAll(".action-icon").forEach(c => c.addEventListener("click", () => {
       if (p.id) openPanel(p.id)
+    }))
+
+    document.querySelectorAll(".view-summon").forEach(d => {
+      d.addEventListener("click", (e) => {
+        const summonBtn = e.target as HTMLButtonElement
+        openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
+
+      })
+
+      //   tr.onclick = () => alert("Abrir processo: " + p.number);
+
     })
 
     //   tr.onclick = () => alert("Abrir processo: " + p.number);
@@ -692,23 +718,33 @@ async function renderTasks() {
     })
   }
 
+  document.querySelector("#closeIframeModal")?.addEventListener("click", closeIframeModal);
 
+  iframeModal.addEventListener("click", e => {
+    if (e.target === iframeModal)
+      closeIframeModal();
+  });
 
-  // async function loadDefensories() {
-  //   const response = await fetch("https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?tipo=INT")
-  //   if (response.ok) {
-  //     const parser = new DOMParser()
-  //     const pageData = parser.parseFromString(await response.text(), "text/html")
-  //     const data = getEPROCLawsuitsData(pageData, [])
-  //     console.log(data)
-  //   }
-  // }
+  document.querySelector("#openNewTab")?.addEventListener("click", () => {
+    if (iframeViewer.src) window.open(iframeViewer.src, "_blank");
+  });
 
-  // const items = Array.from(document.querySelectorAll(".todo-item"))
-  // items.map(i => {
-  //   i.addEventListener("click", (e) => {
-  //     openEditModal()
-  //   })
-  // })
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape")
+      closeIframeModal();
+  });
 
 }
+
+
+function openIframeModal(url: string, title: string) {
+  iframeTitle.textContent = title;
+  iframeViewer.src = url;
+  iframeModal.classList.add("active");
+}
+
+function closeIframeModal() {
+  iframeModal.classList.remove("active");
+  iframeViewer.src = "";
+}
+
