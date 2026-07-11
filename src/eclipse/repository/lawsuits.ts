@@ -75,7 +75,18 @@ export async function getWeekLawsuitsData() {
 export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         if (Array.isArray(lawsuits)) {
-            await db.lawsuits.bulkAdd(lawsuits);
+            const existingLawsuits = await getExistingLawsuits(lawsuits)
+            if (!existingLawsuits.length) {
+                await db.lawsuits.bulkAdd(Array.from(lawsuits));
+                return true
+            }
+            const uniqueLawsuits = new Set<Lawsuits>()
+            for (const lawsuit of existingLawsuits) {
+                if (!uniqueLawsuits.has(lawsuit)) {
+                    uniqueLawsuits.add(lawsuit)
+                }
+            }
+            await db.lawsuits.bulkAdd(Array.from(uniqueLawsuits));
             return true
         }
         else {
@@ -131,4 +142,9 @@ export async function getPendingLawsuitsData() {
     console.log("SDADASD", lawsuits)
     return lawsuits
 
+}
+
+
+export async function getExistingLawsuits(lawsuit: Lawsuits[]) {
+    return db.lawsuits.where('number').anyOf(lawsuit.map(c => c.number)).toArray();
 }

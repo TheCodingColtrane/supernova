@@ -13,7 +13,7 @@ export type Lawsuits = {
     deadline: Date | string,
     givenDeadLine: number,
     daysLeft?: number
-    defender: Defenders[] | Defenders
+    defender?: Defenders[] | Defenders
     summon?: string // intimacao
     summonURL?: string // url da intimação
     class?: string // tipo de ação

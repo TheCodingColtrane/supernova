@@ -8,6 +8,8 @@ import type { Tasks } from "../types/tasks";
 import { getDefenders, getUserCredentials, getWorkers, renderModal, sendMessage } from "../utils"
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 import { getDefensories, updateLawsuitDashboard } from "../service/fetcher";
+import { showToast } from "../utils/ui";
+import { differenceInDays } from "date-fns";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
@@ -53,7 +55,7 @@ function getStatusClass(status: string) {
   return "status-open";
 }
 
-const activeFilters = { circuit: "", status: "", side: "", assignedTo: "" };
+const activeFilters = { circuit: "", status: "", side: "", assignedTo: "", dueToday: false };
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
 let tasksData = Array<Tasks>()
@@ -71,7 +73,9 @@ let workersData = Array<Worker>();
     holidaysData = results[1].data as Holidays[]
     tasksData = results[2].data as Tasks[]
     workersData = results[3].data as Worker[]
-    console.log(workersData)
+    const lastUpdate = localStorage.getItem("lastUpdate")
+    if(lastUpdate)
+    document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
     lawsuitsData.map(c => {
       if (!circuits.has(c.circuit)) {
         circuits.add(c.circuit)
@@ -169,7 +173,7 @@ function openPanel(id: number) {
     startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString()
     endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString()
 
-    saveBtn?.addEventListener("click", async () => {
+    saveBtn.onclick = async () => {
       const form = document.querySelector("#editForm") as HTMLFormElement
       const formData = Object.fromEntries(new FormData(form))
       let awarenessDate = formData["awarenessDate"] as string
@@ -199,16 +203,16 @@ function openPanel(id: number) {
       lawsuitsData[i] = { ...lawsuit }
       closePanel()
       renderTableWithOptions()
-    })
+    }
 
-    deleteBtn?.addEventListener("click", async () => {
+    deleteBtn.onclick = async () => {
       await deleteLawsuit(id)
       showAlert("Processo deletado com sucesso.", "success")
       const idx = lawsuitsData.findIndex(c => c.id === id)
       lawsuitsData = lawsuitsData.splice(idx, 1)
       closePanel()
       renderTableWithOptions()
-    })
+    }
   } else {
     circuits.forEach(c => {
       const opt = document.createElement("option")
@@ -216,7 +220,7 @@ function openPanel(id: number) {
       circuit.options.add(opt)
     })
     deleteBtn.disabled = true
-    saveBtn?.addEventListener("click", async () => {
+    saveBtn.onclick = async () => {
       const form = document.querySelector("#editForm") as HTMLFormElement
       const formData = Object.fromEntries(new FormData(form))
       let awarenessDate = formData["awarenessDate"] as string
@@ -245,7 +249,7 @@ function openPanel(id: number) {
       lawsuitsData.push({ ...lawsuit })
       closePanel()
       renderTableWithOptions()
-    })
+    }
 
   }
 }
@@ -306,45 +310,57 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
     const timeLeft = differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
+    let deadline = ""
+    if(p.status === "Aberto") deadline = p.awarenessDate.toString()
+    else deadline = p.deadline.toString()
     tr.innerHTML = `
         <td class="row-action">
          <span class="action-icon">Editar</span>
         </td>
         <td>${p.number} 
-        <button data-URL=\"${p.summonURL}\" class="btn-secondary view-summon">
+        <button data-URL=\"${p.summonURL}\" class="btn-secondary view-summon" ${!p.summonURL ? "disabled" : "" }>
           <i class="bi bi-file-earmark"></i>
-          ${p.summon}  </button>
+          ${p.summon ?  p.summon : "Intimação Oculta"}  </button>
         </td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted}</td>
         <td><span class="badge ${getStatusClass(p.status)}">${p.status}</span></td>
         <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
-        <td>${!p.deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
+        <td>${!deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
           ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dias" : timeLeft}
         </td>
-        <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender.nome}</td>
+        <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender?.nome}</td>
       `;
-    document.querySelectorAll(".action-icon").forEach(c => c.addEventListener("click", () => {
-      if (p.id) openPanel(p.id)
-    }))
+    const action = tr.querySelector(".action-icon");
+    action?.addEventListener("click", () => {
+      if (p.id) openPanel(p.id);
+    });
 
-    document.querySelectorAll(".view-summon").forEach(d => {
-      d.addEventListener("click", (e) => {
-        const summonBtn = e.target as HTMLButtonElement
-        openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
+    const summon = tr.querySelector(".view-summon");
+    summon?.addEventListener("click", (e) => {
+      const summonBtn = e.target as HTMLButtonElement
+      openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
+    });
+    // document.querySelectorAll(".action-icon").forEach(c => c.addEventListener("click", () => {
+    //   if (p.id) openPanel(p.id)
+    // }))
 
-      })
+    // document.querySelectorAll(".view-summon").forEach(d => {
+    //   d.addEventListener("click", (e) => {
+    //     const summonBtn = e.target as HTMLButtonElement
+    //     openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
 
-      //   tr.onclick = () => alert("Abrir processo: " + p.number);
-
-    })
+    //   })
 
     //   tr.onclick = () => alert("Abrir processo: " + p.number);
+  table!.appendChild(tr);
 
-    table!.appendChild(tr);
   })
+
+  //   tr.onclick = () => alert("Abrir processo: " + p.number);
+
 }
 
 function renderTableWithOptions() {
@@ -386,43 +402,46 @@ document.addEventListener("DOMContentLoaded", async () => {
               break
           }
         })
-        const defensories = localStorage.getItem("defensories")
-        if (!defensories) await getDefensories()
-
-        const searchField = document.querySelector("#search")!
-        searchField.addEventListener("keydown", () => {
-          const input = searchField as HTMLInputElement
-          searchLawsuits(input.value)
-        })
-
-        updateLawsuitsBtn.addEventListener("click", async () => {
-          await updateLawsuitDashboard()
-        })
-
-        const lawsuits = data as Lawsuits[]
-        const today = formatISO(new Date(), { representation: 'date' })
-        document.querySelector("#todayCount")!.innerHTML = lawsuits.filter(c => c.deadline === today).length.toString()
-        document.querySelector("#weekCount")!.innerHTML = lawsuits.length.toString()
-        document.querySelector("#activeCount")!.innerHTML = lawsuits.length.toString()
-
-
-        document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
-          if (holidaysData) {
-            const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
-            const input = e.target as HTMLInputElement
-            renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
-          }
-
-        })
-
-        document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
-          if (holidaysData) {
-            const isElapsedDaysInput = e.target as HTMLInputElement
-            const checkHolidaysInput = document.querySelector("#checkHolidays") as HTMLInputElement
-            return renderTable(data, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked)
-          }
-        })
       }
+      const defensories = localStorage.getItem("defensories")
+      if (!defensories) await getDefensories()
+
+      const searchField = document.querySelector("#search")!
+      searchField.addEventListener("keydown", () => {
+        const input = searchField as HTMLInputElement
+        searchLawsuits(input.value)
+      })
+
+      updateLawsuitsBtn.addEventListener("click", async () => {
+        await updateLawsuitDashboard()
+        showToast("Processos atualizados com sucesso", 3000)
+        document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
+      })
+
+      const lawsuits = data as Lawsuits[]
+      const today = formatISO(new Date(), { representation: 'date' })
+      document.querySelector("#todayCount")!.innerHTML = lawsuits.filter(c => c.deadline === today).length.toString()
+      document.querySelector("#weekCount")!.innerHTML = lawsuits.length.toString()
+      document.querySelector("#activeCount")!.innerHTML = lawsuits.length.toString()
+
+
+      document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
+        if (holidaysData) {
+          const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+          const input = e.target as HTMLInputElement
+          renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
+        }
+
+      })
+
+      document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
+        if (holidaysData) {
+          const isElapsedDaysInput = e.target as HTMLInputElement
+          const checkHolidaysInput = document.querySelector("#checkHolidays") as HTMLInputElement
+          return renderTable(data, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked)
+        }
+      })
+      
     }
 
     const navItems = document.querySelectorAll(".nav-item")
@@ -491,6 +510,11 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
   }
 })
 
+document.querySelector(".card.red")?.addEventListener("click", () => {
+  activeFilters.dueToday = true
+  searchLawsuits("")
+})
+
 document.querySelector("#toggleable-actions")?.addEventListener("click", async () => {
   const items = document.querySelector(".nav-links") as HTMLElement
   if (items.children.item(0)?.className.includes("active"))
@@ -535,6 +559,24 @@ function searchLawsuits(term: string) {
   if (activeFilters.assignedTo) {
     filtered = filtered.filter(l => Array.isArray(l.defender) ? false : l.defender?.nome === activeFilters.assignedTo
     );
+  }
+
+  if(activeFilters.dueToday){
+    filtered = filtered.filter(l => {
+      if(l.status === "Aguardando Abertura"){
+        if(l.deadline && l.deadline instanceof String){
+          const dateParts = l.deadline.split("-").map(c => parseInt(c))
+          const days = differenceInDays(new Date(), new Date(dateParts[2], dateParts[1], dateParts[0], 0), )
+          if(days === 1) return l 
+        }
+      } else {
+          if(l.awarenessDate && l.awarenessDate instanceof String){
+          const dateParts = l.awarenessDate.split("-").map(c => parseInt(c))
+          const days = differenceInDays(new Date(), new Date(dateParts[2], dateParts[1], dateParts[0], 0), )
+          if(days === 1) return l 
+        }
+      }
+    })
   }
 
   if (term) {
