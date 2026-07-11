@@ -2,6 +2,7 @@ import type { Defenders } from "../types/office";
 import type { Lawsuits } from "../types/lawsuits";
 import { getDefenders, getUserCredentials, sendMessage } from "../utils";
 import { getNextBusinessDay, isBusinessDay, localDateToIsoDate } from "../utils/date";
+import { formatISO } from "date-fns";
 
 const currentPage = document.location.href
 let system = 0
@@ -264,13 +265,18 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number
  */
 function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
   const rawData = parseRSC(page)
-  if (rawData) {
-    const lawsuits = rawData[0]?.substring(0, rawData[0].length - 2)
+  if (rawData?.lawsuits) {
+    const lawsuits = rawData.lawsuits[0]?.substring(0, rawData.lawsuits[0].length - 2)
     if (!lawsuits) return []
     let results = JSON.parse(lawsuits)
-    console.log(results)
     const filedLawsuits = Array<Lawsuits>()
     for (let result of results) {
+      let summonURL = "", summon = ""
+      if (result.comunicacao) {
+        summonURL = "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento
+        summon = result.comunicacao.numero
+
+      }
       filedLawsuits.push({
         number: result.processo.numero,
         circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", ""),
@@ -279,15 +285,13 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
         isDefendant: result.polo_destinatario === "PA" ? false : true,
         source: result.sistema_webservice,
         awarenessDate: result.prazo_ciencia,
-        summonURL: "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento ,
-        summon: result.comunicacao.numero,
+        summonURL,
+        summon,
         class: result.processo.classe.nome,
-        initialDeadline: result.prazo_inicial ? result.prazo_inicial.split("T")[0] : "",
-        deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
-        givenDeadLine: result.prazo_inicial && result.prazo_final ? function (startingDate: string, endingDate: string) {
-          const diffTime = Math.abs(new Date(endingDate).getTime() - new Date(startingDate).getTime())
-          return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        }(result.prazo_inicial, result.prazo_final) : 0,
+        initialDeadline: result.prazo_inicial ? result.prazo_inicial.split("T")[0] : "",      
+        deadline: result.prazo_final ? result.prazo_final.split("T")[0] : "",
+        // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
+        givenDeadLine: result.prazo ? result.prazo : 0,
         defender: defenders?.find((c: Defenders) => c.cpf === result.distribuido_cpf) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === ""))!
 
       })
@@ -505,25 +509,86 @@ async function getEPROCLawsuits(system: number) {
 
 export async function updateLawsuitDashboard() {
   const response = await fetch("https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?tipo=INT")
+  const solarURLs: string[] = []
   if (response.ok) {
     const parser = new DOMParser()
     const pageData = parser.parseFromString(await response.text(), "text/html")
-    const data = getEPROCLawsuitsData(pageData, [])
+    const lawsuitsData = parseRSC(pageData)
+    if (lawsuitsData) {
+      const total = JSON.parse(lawsuitsData.total) as Array<{ situacao: number, count: number }>
+      const queriesCount = total.filter(c => c.situacao <= 20).sort((a, b) => a.situacao + b.situacao).map(c => {
+        let rest = c.count % 100
+        return (c.count - rest) / 100 + 1
+      })
+      let status = 10
+      for (const count of queriesCount) {
+        for (let i = 1; i <= count; i++) {
+          solarURLs.push(`https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=OR&situacao=${status}&page_size=100&page=${i}`)
+        }
+        status += 10
+      }
+
+    }
+    const data = await parseSolarLawsuitPage(solarURLs)
     await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+    localStorage.setItem("lastUpdate", new Date().toLocaleString())
 
   }
 }
 
+async function parseSolarLawsuitPage(urls: string[]) {
+  const rawLawsuits = await Promise.all(await getSolarRawLawsuitsPages(urls))
+  let lawsuitsData: Array<Lawsuits> = []
+  for (let lawsuit of rawLawsuits) {
+    if (lawsuit.ok) {
+      let parser = new DOMParser()
+      const pageData = parser.parseFromString(lawsuit.rawHTML, "text/html")
+      const result = getEPROCLawsuitsData(pageData, [])
+      if (result)
+        lawsuitsData.push(...result)
+    }
+
+  }
+  return lawsuitsData
+
+}
+
+async function getSolarRawLawsuitsPages(urls: string[]) {
+  const allResults: Array<{ rawHTML: string; ok: boolean }> = []
+  const BATCH_SIZE = 10
+  for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+    const batch = urls.slice(i, i + BATCH_SIZE)
+    const promises = batch.map(async (url) => {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) return { rawHTML: "", ok: false }
+        return { rawHTML: await response.text(), ok: true }
+      } catch (error) {
+        console.error("Erro no fetch:", error)
+        hideLoadingIcon()
+        return { rawHTML: "", ok: false }
+
+      }
+    })
+
+    const results = await Promise.all(promises)
+    allResults.push(...results)
+  }
+
+  return allResults
+}
+
+
 
 export async function getDefensories() {
-  const response = await fetch("https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?tipo=INT")  
+  const response = await fetch("https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?tipo=INT")
   if (response.ok) {
     const parser = new DOMParser()
     const pageData = parser.parseFromString(await response.text(), "text/html")
     const data = parseRSC(pageData)
     const userCreds = await getUserCredentials()
-    if (data) {
-      const defenderJson = JSON.parse(data[1].substring(1, data[1].length - 1).replaceAll('"\"', "").split(",\"total\"")[0]) as Defenders[]
+    if (data?.lawsuits) {
+      const defenderJson = JSON.parse(data?.lawsuits[1].substring(1, data?.lawsuits[1].length - 1).replaceAll('"\"', "").split(",\"total\"")[0]) as Defenders[]
       const defensories = new Set<{ id: number, name: string }>()
       const uniqueDefensories = new Array<{ id: number, name: string }>()
       for (const defender of defenderJson) {
@@ -561,9 +626,147 @@ function parseRSC(page: Document) {
   }
 
   if (queryResults) {
+    const endResultsEOFPos = queryResults.split('\"total\"')[1].indexOf("]") + 1
+    const results = queryResults.split('\"total\"')[1].substring(1, endResultsEOFPos).replaceAll('"\"', "")
+    if (results) {
+      return { total: results, lawsuits: queryResults.split('\"defensores\"') }
+    }
     //A consulta é complexa. Vem ao menos 3 tipos de dados que não se relacionam diretamente com a requisição.
-    return queryResults.split('\"defensores\"')
+    // return queryResults.split('\"defensores\"')
 
   }
 
+}
+
+export async function fetchPJEMenus() {
+  const page = window.open("https://pje.tjmg.jus.br/pje/Painel/painel_usuario/advogado.seam")
+  if (page?.location.href.includes("auth")) {
+    alert("Você precisa entrar no PJE")
+    return
+  }
+
+  const doc = page?.document
+  if (doc) {
+    const user = await getUserCredentials()
+    if (user) {
+      const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
+      dispatch.click()
+      isPJELoading(doc)
+      const menuList = doc.querySelector("#divResultadoMenuContexto") as HTMLDivElement
+      const pendingLawsuits = menuList.querySelectorAll("span.nomeTarefa")[0].firstChild?.firstChild as HTMLAnchorElement
+      pendingLawsuits.click()
+      isPJELoading(doc)
+      if (doc.querySelector(".nomeJurisdicao")?.innerHTML === user.districtCourt) {
+        doc.querySelector(".nomeJurisdicao")?.parentElement?.click()
+        isPJELoading(doc)
+        const localJuris = doc.querySelectorAll(".tipoDocumentos")[0]
+        const listVara = localJuris.children.item(2)?.children.item(0)?.children.item(1) as HTMLDivElement
+        const varas = Array.from(listVara.querySelectorAll("table"))
+        const circuits = varas.map(c => Array.from(c.querySelectorAll(".nomeTarefa.caixaNomeTarefa")).map(x => x.innerHTML))
+        const menus = Array.from(menuList.querySelectorAll("span.nomeTarefa")).map(c => c.innerHTML)
+        return { menus, circuits }
+      }
+    }
+  }
+}
+
+
+
+
+export async function fetchPJEData(pickedCircuit: string) {
+  const page = window.open("https://pje.tjmg.jus.br/pje/Painel/painel_usuario/advogado.seam")
+  if (page?.location.href.includes("auth")) {
+    alert("Você precisa entrar no PJE")
+    return
+  }
+
+  const doc = page?.document
+  if (doc) {
+    const user = await getUserCredentials()
+    if (user) {
+      const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
+      dispatch.click()
+      isPJELoading(doc)
+      const menuList = doc.querySelector("#divResultadoMenuContexto") as HTMLDivElement
+      const pendingLawsuits = menuList.querySelectorAll("span.nomeTarefa")[0].firstChild?.firstChild as HTMLAnchorElement
+      pendingLawsuits.click()
+      isPJELoading(doc)
+      if (doc.querySelector(".nomeJurisdicao")?.innerHTML === user.districtCourt) {
+        doc.querySelector(".nomeJurisdicao")?.parentElement?.click()
+        isPJELoading(doc)
+        const localJuris = doc.querySelectorAll(".tipoDocumentos")[0]
+        const listVara = localJuris.children.item(2)?.children.item(0)?.children.item(1) as HTMLDivElement
+        const varas = Array.from(listVara.querySelectorAll("table"))
+        for (const vara of varas) {
+          const items = vara.rows[0].cells[2]
+          const text = items.querySelector(".nomeTarefa.caixaNomeTarefa")?.innerHTML
+          if (text === pickedCircuit) {
+            items.querySelector("a")?.click()
+            isPJELoading(doc)
+            const lawsuits = Array<Lawsuits>()
+            let lawsuit: Lawsuits = {
+              id: 0, assisted: "", awarenessDate: "", circuit: "", deadline: "",
+              givenDeadLine: 0, initialDeadline: "", isDefendant: true, number: "", source: "PJE-1G-MG",
+              status: "10", class: "", daysLeft: 0, summon: "", summonURL: ""
+            }
+            //while
+            const table = doc.getElementById("formExpedientes:tbExpedientes:tb") as HTMLTableElement
+            for (let row of table.rows) {
+              if (row.rowIndex === 1) {
+                lawsuit.assisted = document.querySelector("[title='Destinatário']")?.innerHTML ?? ""
+                const summon = document.querySelector("[title='Tipo de documento']")?.innerHTML
+                lawsuit.summon = summon?.split("Intimação ")[1].substring(1, summon.length - 1)
+                lawsuit.summonURL = ""
+                const status = row.querySelector("strong")
+                //.innerHTML.split(", ")[1].split(" ")[0]
+                lawsuit.status = status?.parentElement?.textContent.includes("ciência") ? "10" : "20"
+                if (lawsuit.status === "10") {
+                  const dateParts = status?.innerHTML.split(", ")[1].split(" ")[0].split("/")
+                  if (dateParts) {
+                    lawsuit.awarenessDate = dateParts[2] + "-" + dateParts[1] + "-" + dateParts[0]
+                    const initialDeadline = new Date(Number(dateParts[2]), Number(dateParts[1]) - 1, Number(dateParts[1] + 1))
+                    lawsuit.initialDeadline = formatISO(initialDeadline, { representation: "date" })
+                  }
+
+                } else {
+                  let awarenessDate = row.querySelectorAll("div")[4].innerHTML
+                  const startingPos = awarenessDate.indexOf("/") - 2
+                  awarenessDate = awarenessDate.substring(startingPos, startingPos + 10)
+                  const awarenessDateParts = awarenessDate.split("/")
+                  lawsuit.awarenessDate = awarenessDateParts[2] + "-" + awarenessDateParts[1] + "-" + awarenessDateParts[0]
+                  const initialDeadline = new Date(Number(awarenessDateParts[2]), Number(awarenessDateParts[1]) - 1, Number(awarenessDateParts[1] + 1))
+                  lawsuit.initialDeadline = formatISO(initialDeadline, { representation: "date" })
+                  const deadlineDateParts = status?.innerHTML.split(", ")[1].split(" ")[0].split("/")
+                  if (deadlineDateParts)
+                    lawsuit.deadline = deadlineDateParts[2] + "-" + deadlineDateParts[1] + "-" + deadlineDateParts[0]
+                }
+              } else if (row.rowIndex === 1) {
+                const classAndProcess = row.querySelector("a")?.innerHTML.split(" ")
+                if (classAndProcess)
+                  lawsuit.number = classAndProcess[1] ?? ""
+                lawsuit.circuit = pickedCircuit
+              }
+              if (lawsuit)
+                lawsuits.push(lawsuit)
+            }
+          }
+        }
+
+      }
+
+    }
+  }
+}
+
+//https://comunicaapi.pje.jus.br/api/v1/comunicacao?numeroProcesso=50760815820218130024
+
+
+function isPJELoading(page: Document) {
+  const interval = setInterval(() => {
+    const isLoaded = page.getElementById('_viewRoot:status.start')
+    if (isLoaded && isLoaded.style.display === 'none') {
+      clearInterval(interval)
+      return
+    }
+  }, 1000)
 }

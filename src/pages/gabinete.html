@@ -108,18 +108,22 @@
 
     .card.red {
       border-left-color: var(--danger);
+      cursor: pointer;
     }
 
     .card.yellow {
       border-left-color: var(--warning);
+      cursor: pointer;
     }
 
     .card.blue {
       border-left-color: var(--info);
+      cursor: pointer;
     }
 
     .card.green {
       border-left-color: var(--success);
+      cursor: pointer;
     }
 
     /* ── SEÇÃO DE BUSCA (PROTAGONISTA) ── */
@@ -887,6 +891,17 @@
       border: none;
       background: white;
     }
+
+    #last-update-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 1rem 0;
+    }
+
+    #last-update {
+      text-align: center;
+    }
   </style>
 </head>
 
@@ -1000,8 +1015,9 @@
               <span class="value" id="doneCount">0</span>
             </div>
           </div>
-
-
+          <div id="last-update-container">
+            <span id="last-update"></span>
+          </div>
 
           <div class="search-section">
             <div class="search-container">
@@ -1059,7 +1075,7 @@
             </div>
           </div>
 
-          
+
 
           <div class="table-container">
             <table>
