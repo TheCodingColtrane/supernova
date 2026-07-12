@@ -315,6 +315,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     else deadline = p.deadline.toString()
     tr.innerHTML = `
         <td class="row-action">
+        <span class="action-icon">Ver Processo</span>
          <span class="action-icon">Editar</span>
         </td>
         <td>${p.number} 
@@ -333,8 +334,13 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         </td>
         <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender?.nome}</td>
       `;
-    const action = tr.querySelector(".action-icon");
-    action?.addEventListener("click", () => {
+    const action = tr.querySelectorAll(".action-icon");
+    action[0].addEventListener("click", async () => {
+         await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant})
+
+    })
+    action[1]?.addEventListener("click", () => {
+
       if (p.id) openPanel(p.id);
     });
 

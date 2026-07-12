@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <title>Document</title>
+    <style>
+        .case-view {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #f5f7fb;
+            color: #1e293b;
+            font-family: Inter, sans-serif;
+        }
+
+        .case-header {
+            height: 72px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+
+        }
+
+        .case-header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px
+        }
+
+        .back-button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            background: #f1f5f9;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background: #e2e8f0;
+        }
+
+        .case-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: .70rem;
+            font-weight: 700;
+            border-radius: 30px;
+            margin-bottom: 6px;
+
+        }
+
+        .case-number {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .case-class {
+            color: #64748b;
+            margin-top: 4px;
+            font-size: .85rem;
+        }
+
+        .case-header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+
+        /* ==========================================================
+   BOTÕES
+========================================================== */
+
+        .btn-primary {
+            height: 40px;
+            border: none;
+            background: #4f46e5;
+            color: white;
+            padding: 0 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-secondary {
+            height: 40px;
+            border: 1px solid #dbe2ea;
+            background: white;
+            padding: 0 18px;
+            border-radius: 10px;
+            cursor: pointer;
+
+        }
+
+
+        /* ==========================================================
+   SUMMARY
+========================================================== */
+
+        .case-summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            padding: 18px;
+        }
+
+        .summary-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+
+        }
+
+        .summary-label {
+            display: block;
+            color: #94a3b8;
+            font-size: .72rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+
+        /* ==========================================================
+   WORKSPACE
+========================================================== */
+
+        .case-workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 18px;
+            padding: 0 18px 18px;
+
+        }
+
+
+        /* ==========================================================
+   SIDEBAR
+========================================================== */
+
+        .timeline-panel {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+
+        }
+
+
+        /* ==========================================================
+   PESQUISA
+========================================================== */
+
+        .timeline-search {
+            padding: 18px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .search-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0 14px;
+            height: 42px;
+
+        }
+
+        .search-input input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: .9rem;
+
+        }
+
+
+        /* ==========================================================
+   FILTROS
+========================================================== */
+
+        .timeline-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 14px 18px;
+            border-bottom: 1px solid #edf2f7;
+
+        }
+
+        .filter-chip {
+            border: none;
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: .8rem;
+        }
+
+        .filter-chip.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+
+        /* ==========================================================
+   LISTA
+========================================================== */
+
+        .timeline-list {
+            flex: 1;
+            overflow: auto;
+        }
+
+
+        /* ==========================================================
+   ITEM
+========================================================== */
+
+        .timeline-item {
+            display: flex;
+            gap: 14px;
+            padding: 16px;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .timeline-item:hover {
+            background: #f8fafc;
+        }
+
+        .timeline-item.active {
+            background: #eef2ff;
+            border-left-color: #4f46e5;
+
+        }
+
+
+        /* ==========================================================
+   ÍCONE
+========================================================== */
+
+        .timeline-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+
+        }
+
+        .timeline-icon.pdf {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .timeline-icon.attachment {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .timeline-icon.movement {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .timeline-icon.decision {
+            background: #fef3c7;
+            color: #ca8a04;
+        }
+
+
+        /* ==========================================================
+   CONTEÚDO
+========================================================== */
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-content h3 {
+            font-size: .9rem;
+            margin-bottom: 6px;
+        }
+
+        .timeline-content p {
+            font-size: .8rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .timeline-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+            font-size: .72rem;
+
+        }
+
+
+        /* ==========================================================
+   VIEWER
+========================================================== */
+
+        .document-panel {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+
+        }
+
+
+        /* ==========================================================
+   TOOLBAR
+========================================================== */
+
+        .document-toolbar {
+            height: 60px;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 18px;
+            background: white;
+
+        }
+
+        .document-title {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toolbar-actions button {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: #f8fafc;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+
+        /* ==========================================================
+   DOCUMENTO
+========================================================== */
+
+        .document-stage {
+            flex: 1;
+            background: #dfe6ee;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 28px;
+            overflow: auto;
+
+        }
+
+        .document-stage iframe {
+            width: 900px;
+            height: 100%;
+            background: white;
+            border: none;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+        }
+
+
+        /* ==========================================================
+   FOOTER
+========================================================== */
+
+        .document-footer {
+            height: 42px;
+            border-top: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 18px;
+            font-size: .8rem;
+            color: #64748b;
+            background: white;
+
+        }
+
+        .documents-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tree-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: .2s;
+            font-size: .85rem;
+        }
+
+        .tree-node:hover {
+            background: #f1f5f9;
+        }
+
+        .tree-node.selected {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .tree-children {
+            margin-left: 18px;
+            border-left: 1px solid #d1d5db;
+            padding-left: 10px;
+        }
+
+        .tree-node i {
+            color: #64748b;
+        }
+
+        .documents-container {
+            margin-top: 10px;
+        }
+    </style>
+
+<body>
+    <div class="case-view">
+
+        <!-- ========================================================= -->
+        <!-- Header -->
+        <!-- ========================================================= -->
+
+        <header class="case-header">
+
+            <div class="case-header-left">
+
+                <button class="back-button">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+
+                <div>
+
+                    <span class="case-tag">
+                        Processo Judicial
+                    </span>
+
+                    <h1 class="case-number">
+                        0000000-00.2026.8.13.0000
+                    </h1>
+
+                    <p class="case-class">
+                        Procedimento Comum Cível
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="case-header-actions">
+
+                <button class="btn-secondary">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Atualizar
+                </button>
+
+                <button class="btn-primary">
+                    <i class="bi bi-share"></i>
+                    Compartilhar
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- ========================================================= -->
+        <!-- Informações -->
+        <!-- ========================================================= -->
+
+        <section class="case-summary">
+            <div class="summary-card">
+                <span class="summary-label" >
+                    Vara
+                </span>
+                <strong id="case-circuit">
+                  
+                </strong>
+            </div>
+
+            <div class="summary-card">
+
+                <span class="summary-label">
+                    Você está pelo
+                </span>
+
+                <strong id="case-side">
+
+                </strong>
+
+            </div>
+
+            <div class="summary-card">
+
+                <span class="summary-label">
+                    Autor(es)
+                </span>
+
+                <strong id="case-plantiffs">
+                    
+                </strong>
+
+            </div>
+
+            <div class="summary-card">
+
+                <span class="summary-label">
+                    Réu(s)
+                </span>
+
+                <strong id="case-defendents">
+                    
+                </strong>
+
+            </div>
+
+            <div class="summary-card">
+
+                <span class="summary-label">
+                    Mais informações
+                </span>
+
+                <strong id="case-data">
+                    clique para saber mais
+                </strong>
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================================================= -->
+        <!-- Workspace -->
+        <!-- ========================================================= -->
+
+        <section class="case-workspace">
+
+            <!-- ================= Sidebar ================= -->
+
+            <aside class="timeline-panel">
+                <div class="timeline-search">
+                    <div class="search-input">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Pesquisar documento...">
+                    </div>
+                </div>
+
+                <div class="timeline-filters">
+                    <button class="filter-chip active">
+                        Todos
+                    </button>
+                    <button class="filter-chip">
+                        Peças
+                    </button>
+                    <button class="filter-chip">
+                        Despachos
+                    </button>
+                    <button class="filter-chip">
+                        Decisões
+                    </button>
+                    <button class="filter-chip">
+                        Sentenças
+                    </button>
+                </div>
+
+                <div class="timeline-list">
+                    <!-- Documento -->
+
+                    <!-- <article class="timeline-item active">
+                        <div class="timeline-icon pdf">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h3 id="event-description">Petição Inicial</h3>
+                            <span class="event-document">Protocolado pelo advogado</span>
+                            <div class="timeline-meta">
+                                <span>10 Jul 2026</span>
+                                <span>ID 452981</span>
+                            </div>
+                        </div>
+                    </article> -->
+
+
+                    <!-- <div class="related-files">
+
+                        <div class="tree-item root">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>10667606185 - PETIÇÃO</span>
+                        </div>
+
+                        <div class="tree-child">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>10667606891 - PLANILHA DE CÁLCULO 2</span>
+                        </div>
+
+                        <div class="tree-child">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>10667605738 - GUIA DE CUSTAS</span>
+                        </div>
+
+                        <div class="tree-child">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>10667589773 - COMPROVANTE</span>
+                        </div>
+
+                        <div class="tree-child">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>10667592817 - PLANILHA DE CÁLCULO</span>
+                        </div>
+
+                    </div> -->
+
+                </div>
+
+
+
+                <!-- <article class="timeline-item">
+                        <div class="timeline-icon movement">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </div>
+                    </article>
+
+
+                    <article class="timeline-item">
+                        <div class="timeline-icon decision">
+                            <i class="bi bi-bank"></i>
+                        </div>
+                    </article> -->
+
+    </aside>
+
+
+    <!-- ================= Viewer ================= -->
+
+    <section class="document-panel">
+        <header class="document-toolbar">
+            <div class="document-title">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span id="document-description">
+                   
+                </span>
+            </div>
+
+            <div class="toolbar-actions">
+                <button>
+                    <i class="bi bi-printer"></i>
+                </button>
+
+                <button>
+                    <i class="bi bi-download"></i>
+                </button>
+
+                <button>
+                    <i class="bi bi-box-arrow-up-right"></i>
+                </button>
+
+                <button>
+                    <i class="bi bi-fullscreen"></i>
+                </button>
+            </div>
+        </header>
+
+
+        <div class="document-stage">
+            <iframe id="document-viewer" src="about:blank">
+            </iframe>
+        </div>
+
+
+        <footer class="document-footer">
+            <div>
+                Página
+                <strong>
+                    1
+                </strong>
+                de
+                <strong>
+                    18
+                </strong>
+
+            </div>
+
+            <div>
+                Zoom
+                <strong>
+                    100%
+                </strong>
+            </div>
+        </footer>
+    </section>
+    </section>
+    </div>
+    <script type="module" src="../eclipse/lawsuit/index.ts"></script>
+
+</body>
+
+</html>
