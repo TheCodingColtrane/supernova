@@ -12,7 +12,8 @@ export default defineConfig({
         offscreen: resolve(__dirname, 'src/pages/blank.html'), 
         popup: resolve(__dirname, "src/pages/popup.html"),
         dashboard: resolve(__dirname, "src/pages/gabinete.html"),
-        office: resolve(__dirname, "src/pages/equipe.html")
+        office: resolve(__dirname, "src/pages/equipe.html"),
+        lawsuit: resolve(__dirname, "src/pages/processo.html")
       },
       output: {
         // Remove a subpasta 'assets/' do padrão de nomes
