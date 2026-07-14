@@ -313,12 +313,14 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     let deadline = ""
     if(p.status === "Aberto") deadline = p.awarenessDate.toString()
     else deadline = p.deadline.toString()
+    const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
+
     tr.innerHTML = `
         <td class="row-action">
         <span class="action-icon">Ver Processo</span>
          <span class="action-icon">Editar</span>
         </td>
-        <td>${p.number} 
+        <td>${lawsuitNumber} 
         <button data-URL=\"${p.summonURL}\" class="btn-secondary view-summon" ${!p.summonURL ? "disabled" : "" }>
           <i class="bi bi-file-earmark"></i>
           ${p.summon ?  p.summon : "Intimação Oculta"}  </button>

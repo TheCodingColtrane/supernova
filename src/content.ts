@@ -1,7 +1,6 @@
 import { sendMessage } from "./util";
 import { renderAssistedSide, renderSolarDownloadButton } from "./solar/intimacao";
 
-
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", async (e) => {
     console.log(e)
@@ -15,6 +14,15 @@ if (document.readyState === "loading") {
 }
 
 
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+  if (message.type === "SEND_EMAIL") {
+    triggerEmailActions();
+    const status = {success : true}
+    sendResponse(JSON.stringify(status))
+
+  }
+});
+
 
 async function renderDownloadButton() {
   try {
@@ -23,7 +31,7 @@ async function renderDownloadButton() {
         await renderPJEDownloadButton()
       else if (window.location.href.includes("https://solar.defensoria.mg.def.br/processo/intimacao/buscar/")) {
         await renderSolarDownloadButton()
-        
+
       }
     })
     mb.observe(document.body, {
@@ -136,4 +144,28 @@ async function observeModal(page: Document) {
     subtree: true
   });
 
-}
+} ''
+
+
+async function triggerEmailActions() {
+
+    const intervalId = setInterval(() => {
+      if (document.querySelector("[data-testid='ComposeSendButton']")) {
+        clearInterval(intervalId)
+        const buttonDiv = document.querySelector("[data-testid='ComposeSendButton']") as HTMLDivElement
+        const importantButton = document.querySelectorAll("[data-automation-type='RibbonToggleButton']")[14] as HTMLButtonElement
+        importantButton.click()
+        const sendEmailButton = buttonDiv.children.item(0) as HTMLButtonElement
+        sendEmailButton.click()
+        const sentEmailIntervalId = setInterval(() => {
+          if (document.querySelector("[data-automationid='splitbuttonprimary']")) {
+            clearInterval(sentEmailIntervalId)
+            chrome.runtime.sendMessage({ type: "CLOSE_MY_TAB" });
+          }
+        }, 1000)
+      }
+
+    }, 1000);
+
+
+  }
