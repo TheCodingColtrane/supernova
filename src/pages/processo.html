@@ -46,27 +46,47 @@
             background: #e2e8f0;
         }
 
+        .case-title {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+        }
+
         .case-tag {
-            display: inline-block;
+            /* display: inline-block;
             padding: 4px 10px;
             background: #eef2ff;
             color: #4338ca;
             font-size: .70rem;
             font-weight: 700;
             border-radius: 30px;
-            margin-bottom: 6px;
+            margin-bottom: 6px; */
+            align-self: flex-start;
+            margin: 0;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: .70rem;
+            font-weight: 600;
+            line-height: 1;
 
         }
 
         .case-number {
-            font-size: 1.2rem;
+            margin: 0;
+            font-size: 1.1rem;
             font-weight: 700;
+            line-height: 1.2;
+            color: #0f172a;
         }
 
         .case-class {
+            margin: 0;
             color: #64748b;
-            margin-top: 4px;
             font-size: .85rem;
+            line-height: 1.2;
         }
 
         .case-header-actions {
@@ -100,6 +120,29 @@
 
         }
 
+        .document-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .document-protocol {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .78rem;
+            color: #64748b;
+        }
+
+        .document-protocol i {
+            font-size: .75rem;
+            color: #94a3b8;
+        }
+
+        .separator {
+            margin: 0 4px;
+            color: #cbd5e1;
+        }
 
         /* ==========================================================
    SUMMARY
@@ -140,6 +183,8 @@
             grid-template-columns: 360px 1fr;
             gap: 18px;
             padding: 0 18px 18px;
+            min-height: 0;
+            /* importante */
 
         }
 
@@ -155,6 +200,9 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            min-height: 0;
+            /* importante */
+
 
         }
 
@@ -225,6 +273,8 @@
         .timeline-list {
             flex: 1;
             overflow: auto;
+            min-height: 0;
+
         }
 
 
@@ -380,12 +430,14 @@
             justify-content: center;
             align-items: flex-start;
             padding: 28px;
-            overflow: auto;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden;
 
         }
 
         .document-stage iframe {
-            width: 900px;
+            width: 100%;
             height: 100%;
             background: white;
             border: none;
@@ -455,7 +507,66 @@
         .documents-container {
             margin-top: 10px;
         }
+
+        .document-stage {
+            position: relative;
+            flex: 1;
+            background: #dfe6ee;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 70px 28px 28px;
+            overflow: auto;
+        }
+
+        .document-selector {
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 6px;
+
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+        }
+
+        .doc-nav,
+        .doc-list {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #f8fafc;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .doc-list {
+            width: auto;
+            padding: 0 14px;
+        }
+
+        .doc-nav:hover,
+        .doc-list:hover {
+            background: #e2e8f0;
+        }
+
+        .doc-counter {
+            min-width: 150px;
+            text-align: center;
+            font-size: .85rem;
+            color: #475569;
+            font-weight: 500;
+        }
     </style>
+</head>
 
 <body>
     <div class="case-view">
@@ -472,18 +583,16 @@
                     <i class="bi bi-arrow-left"></i>
                 </button>
 
-                <div>
+                <div class="case-title">
 
                     <span class="case-tag">
                         Processo Judicial
                     </span>
 
                     <h1 class="case-number">
-                        0000000-00.2026.8.13.0000
                     </h1>
 
                     <p class="case-class">
-                        Procedimento Comum Cível
                     </p>
 
                 </div>
@@ -513,60 +622,28 @@
 
         <section class="case-summary">
             <div class="summary-card">
-                <span class="summary-label" >
-                    Vara
-                </span>
-                <strong id="case-circuit">
-                  
-                </strong>
+                <span class="summary-label">Vara</span>
+                <strong id="case-circuit"></strong>
             </div>
 
             <div class="summary-card">
-
-                <span class="summary-label">
-                    Você está pelo
-                </span>
-
-                <strong id="case-side">
-
-                </strong>
-
+                <span class="summary-label">Você está pelo</span>
+                <strong id="case-side"></strong>
             </div>
 
             <div class="summary-card">
-
-                <span class="summary-label">
-                    Autor(es)
-                </span>
-
-                <strong id="case-plantiffs">
-                    
-                </strong>
-
+                <span class="summary-label">Autor(es)</span>
+                <strong id="case-plantiffs"></strong>
             </div>
 
             <div class="summary-card">
-
-                <span class="summary-label">
-                    Réu(s)
-                </span>
-
-                <strong id="case-defendents">
-                    
-                </strong>
-
+                <span class="summary-label">Réu(s)</span>
+                <strong id="case-defendents"></strong>
             </div>
 
             <div class="summary-card">
-
-                <span class="summary-label">
-                    Mais informações
-                </span>
-
-                <strong id="case-data">
-                    clique para saber mais
-                </strong>
-
+                <span class="summary-label">Mais informações</span>
+                <strong id="case-data">clique para saber mais</strong>
             </div>
 
         </section>
@@ -584,152 +661,99 @@
                 <div class="timeline-search">
                     <div class="search-input">
                         <i class="bi bi-search"></i>
-                        <input type="text" placeholder="Pesquisar documento...">
+                        <input type="text" placeholder="Pesquisar documento..." id="timeline-search">
                     </div>
                 </div>
 
                 <div class="timeline-filters">
-                    <button class="filter-chip active">
-                        Todos
-                    </button>
-                    <button class="filter-chip">
-                        Peças
-                    </button>
-                    <button class="filter-chip">
-                        Despachos
-                    </button>
-                    <button class="filter-chip">
-                        Decisões
-                    </button>
-                    <button class="filter-chip">
-                        Sentenças
-                    </button>
+                    <button class="filter-chip active">Todos</button>
+                    <button class="filter-chip">Peças</button>
+                    <button class="filter-chip">Despachos</button>
+                    <button class="filter-chip">Decisões</button>
+                    <button class="filter-chip">Sentenças</button>
                 </div>
 
-                <div class="timeline-list">
-                    <!-- Documento -->
+                <div class="timeline-list"></div>
+            </aside>
 
-                    <!-- <article class="timeline-item active">
-                        <div class="timeline-icon pdf">
-                            <i class="bi bi-file-earmark-pdf"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h3 id="event-description">Petição Inicial</h3>
-                            <span class="event-document">Protocolado pelo advogado</span>
-                            <div class="timeline-meta">
-                                <span>10 Jul 2026</span>
-                                <span>ID 452981</span>
+
+            <!-- ================= Viewer ================= -->
+
+            <section class="document-panel">
+                <header class="document-toolbar">
+                    <div class="document-title">
+                        <!-- <i class="bi bi-file-earmark-pdf"></i> -->
+                        <div class="document-info">
+                            <span id="document-description"></span>
+                            <div class="document-protocol">
+                                <i class="bi bi-person"></i>
+                                <span id="document-author"></span>
+                                <span class="separator">•</span>
+                                <i class="bi bi-clock"></i>
+                                <span id="document-protocol-date"></span>
                             </div>
                         </div>
-                    </article> -->
+                    </div>
+
+                    <!-- </div> -->
+
+                    <div class="toolbar-actions">
+                        <button>
+                            <i class="bi bi-printer"></i>
+                        </button>
+
+                        <button>
+                            <i class="bi bi-download"></i>
+                        </button>
+
+                        <button>
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </button>
+
+                        <button>
+                            <i class="bi bi-fullscreen"></i>
+                        </button>
+                    </div>
+                </header>
 
 
-                    <!-- <div class="related-files">
+                <div class="document-stage">
+                    <div class="document-selector">
 
-                        <div class="tree-item root">
-                            <i class="bi bi-file-earmark"></i>
-                            <span>10667606185 - PETIÇÃO</span>
+                        <button class="doc-nav" id="view-first-doc-btn">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </button>
+
+                        <button class="doc-nav" id="view-previous-doc-btn">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+
+                        <div class="doc-counter">
+                            Documento
+                            <strong id="current-document">0</strong>
+                            de
+                            <strong id="last-document">0</strong>
                         </div>
 
-                        <div class="tree-child">
-                            <i class="bi bi-file-earmark"></i>
-                            <span>10667606891 - PLANILHA DE CÁLCULO 2</span>
-                        </div>
+                        <button class="doc-nav" id="view-next-doc-btn">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
 
-                        <div class="tree-child">
-                            <i class="bi bi-file-earmark"></i>
-                            <span>10667605738 - GUIA DE CUSTAS</span>
-                        </div>
+                        <button class="doc-nav" id="view-last-doc-btn">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </button>
 
-                        <div class="tree-child">
-                            <i class="bi bi-file-earmark"></i>
-                            <span>10667589773 - COMPROVANTE</span>
-                        </div>
+                        <!-- <button class="doc-list">
+                            <i class="bi bi-list-ul"></i>
+                            Lista
+                        </button> -->
 
-                        <div class="tree-child">
-                            <i class="bi bi-file-earmark"></i>
-                            <span>10667592817 - PLANILHA DE CÁLCULO</span>
-                        </div>
-
-                    </div> -->
-
+                    </div>
+                    <iframe id="document-viewer" src="about:blank">
+                    </iframe>
                 </div>
+    </div>
 
-
-
-                <!-- <article class="timeline-item">
-                        <div class="timeline-icon movement">
-                            <i class="bi bi-arrow-repeat"></i>
-                        </div>
-                    </article>
-
-
-                    <article class="timeline-item">
-                        <div class="timeline-icon decision">
-                            <i class="bi bi-bank"></i>
-                        </div>
-                    </article> -->
-
-    </aside>
-
-
-    <!-- ================= Viewer ================= -->
-
-    <section class="document-panel">
-        <header class="document-toolbar">
-            <div class="document-title">
-                <i class="bi bi-file-earmark-pdf"></i>
-                <span id="document-description">
-                   
-                </span>
-            </div>
-
-            <div class="toolbar-actions">
-                <button>
-                    <i class="bi bi-printer"></i>
-                </button>
-
-                <button>
-                    <i class="bi bi-download"></i>
-                </button>
-
-                <button>
-                    <i class="bi bi-box-arrow-up-right"></i>
-                </button>
-
-                <button>
-                    <i class="bi bi-fullscreen"></i>
-                </button>
-            </div>
-        </header>
-
-
-        <div class="document-stage">
-            <iframe id="document-viewer" src="about:blank">
-            </iframe>
-        </div>
-
-
-        <footer class="document-footer">
-            <div>
-                Página
-                <strong>
-                    1
-                </strong>
-                de
-                <strong>
-                    18
-                </strong>
-
-            </div>
-
-            <div>
-                Zoom
-                <strong>
-                    100%
-                </strong>
-            </div>
-        </footer>
     </section>
     </section>
     </div>

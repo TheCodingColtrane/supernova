@@ -116,6 +116,8 @@ export enum Mimetype {
 }
 
 export interface DocumentoParametros {
+    rotulo: string
+    tamanho: string
 }
 
 export interface Vinculado {
@@ -126,7 +128,7 @@ export interface Vinculado {
     vinculado:      boolean;
     vinculados:     any[];
     tipo_local:     null;
-    data_protocolo: Date;
+    data_protocolo: Date | string;
     nivel_sigilo:   number;
     mimetype:       Mimetype;
     hash_conteudo:  string;

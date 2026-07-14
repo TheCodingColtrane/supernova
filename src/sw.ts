@@ -3,13 +3,13 @@ import { deleteLawsuits, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsu
 import { deleteTaskData, getTaskData, saveTaskData, updateTaskData } from "./eclipse/service/tasks";
 import { deleteWorkerData, getWorkerData, saveWorkerData, updateWorkerData } from "./eclipse/service/workers";
 const downloadedPages = new Set()
+let targetTabs = new Set();
 
 
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   (async () => {
     let result
-    console.log(sender)
     try {
       switch (request.type) {
         case "RENDER_HTML":
@@ -63,7 +63,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case "GET_WORKERS":
           result = await getWorkerData()
           break;
-        
+        case "CLOSE_MY_TAB":
+          if(sender.tab){
+          chrome.tabs.remove(sender.tab.id ?? 0);
+          }
+          break;
+
       }
       sendResponse({ success: true, data: result });
     } catch (error) {
@@ -89,6 +94,24 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     // finish();
   }
 
+});
+
+
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "TRACK_OUTLOOK_TAB") {
+    targetTabs.add(message.tabId);
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete' && targetTabs.has(tabId)) {
+    targetTabs.delete(tabId); // Remove do rastreio    
+    setTimeout(() => {
+      chrome.tabs.sendMessage(tabId, { type: "TRIGGER_OUTLOOK_ACTIONS" })
+        .catch(err => console.log("Aba fechada ou content script não carregou a tempo", err));
+    }, 2000); // Pequeno delay de segurança para garantir a renderização dos botões
+  }
 });
 
 
