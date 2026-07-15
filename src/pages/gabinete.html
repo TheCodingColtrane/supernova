@@ -534,6 +534,19 @@
       font-weight: 600;
     }
 
+    .view-lawsuit {
+      color: var(--primary);
+      font-weight: bold;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .view-lawsuit:hover {
+      color: var(--primary-hover);
+
+    }
+
+
     .nav-item.active::after {
       content: "";
       position: absolute;
@@ -786,6 +799,28 @@
       cursor: pointer;
     }
 
+    .actions-cell {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .icon-btn:hover {
+      background: #eef2ff;
+    }
+
     /* ===========================
    Modal de Iframe
 =========================== */
@@ -902,6 +937,45 @@
     #last-update {
       text-align: center;
     }
+
+    .active-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 20px;
+      align-items: center;
+    }
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      padding: 6px 12px;
+
+      background: #eef2ff;
+      color: #4338ca;
+
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 600;
+    }
+
+    .filter-chip button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: inherit;
+      font-size: 14px;
+    }
+
+    .clear-filters {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -930,8 +1004,8 @@
         <div class="form-group">
           <label>Status</label>
           <select name="status" id="editStatus">
-            <option value="1">Aberto</option>
             <option value="0">Aguardando Abertura</option>
+            <option value="1">Aberto</option>
           </select>
         </div>
         <div class="form-group">
@@ -1032,6 +1106,7 @@
           </div>
 
           <div class="filters-bar">
+            <div id="activeFiltersBar" class="active-filters"></div>
             <div class="filters-row-main">
               <div class="filter-group">
                 <label class="filter-label">Vara</label>
@@ -1042,9 +1117,8 @@
               <div class="filter-group">
                 <label class="filter-label">Status</label>
                 <select class="filter-select" id="filterStatus">
-                  <option value="">Todos</option>
-                  <option value="1">Aberto</option>
                   <option value="0">Aguardando Abertura</option>
+                  <option value="1" selected>Aberto</option>
                 </select>
               </div>
               <div class="filter-group">
@@ -1081,15 +1155,15 @@
             <table>
               <thead>
                 <tr>
-                  <th></th>
+                  <th>Ações</th>
                   <th data-nm="number" data-sort="">Processo</th>
                   <th data-nm="number" data-sort="">Classe</th>
                   <th data-nm="circuit" data-sort="">Vara</th>
                   <th data-nm="assisted" data-sort="">Assistido(a)</th>
-                  <th data-nm="status" data-sort="">Status</th>
-                  <th data-nm="side" data-sort="">Polo</th>
+                  <!-- <th data-nm="status" data-sort="">Status</th> -->
+                  <!-- <th data-nm="side" data-sort="">Polo</th> -->
                   <th data-nm="deadline" data-sort="">Prazo</th>
-                  <th data-nm="daysLeft" data-sort="">Restante</th>
+                  <th data-nm="daysLeft" data-sort="">Tempo restante</th>
                   <th data-nm="">Responsável</th>
                 </tr>
               </thead>
