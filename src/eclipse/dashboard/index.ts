@@ -9,12 +9,29 @@ import { getDefenders, getUserCredentials, getWorkers, renderModal, sendMessage 
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 import { getDefensories, updateLawsuitDashboard } from "../service/fetcher";
 import { showToast } from "../utils/ui";
-import { differenceInDays } from "date-fns";
+import { addBusinessDays } from "date-fns";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
 const iframeTitle = document.querySelector("#iframeTitle") as HTMLHeadingElement
-const filterAssignedTo = document.querySelector("#filterAssignedTo ") as HTMLSelectElement
+const filterAssignedTo = document.querySelector("#filterAssignedTo  ") as HTMLSelectElement
+const filters = {
+  circuit: (row: HTMLTableRowElement) =>
+    !activeFilters.circuit ||
+    row.dataset.circuit === activeFilters.circuit,
+
+  status: (row: HTMLTableRowElement) =>
+    !activeFilters.status ||
+    row.dataset.status === activeFilters.status,
+
+  side: (row: HTMLTableRowElement) =>
+    !activeFilters.side ||
+    row.dataset.side === activeFilters.side,
+
+  dueToday: (row: HTMLTableRowElement) =>
+    !activeFilters.dueToday ||
+    row.dataset.dueToday === "true",
+};
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
 
@@ -49,11 +66,11 @@ function getDeadlineClass(days: number) {
   return "deadline-ok";
 }
 
-function getStatusClass(status: string) {
-  if (status === "late") return "status-late";
-  if (status === "closed") return "status-closed";
-  return "status-open";
-}
+// function getStatusClass(status: string) {
+//   if (status === "late") return "status-late";
+//   if (status === "closed") return "status-closed";
+//   return "status-open";
+// }
 
 const activeFilters = { circuit: "", status: "", side: "", assignedTo: "", dueToday: false };
 let lawsuitsData = Array<Lawsuits>();
@@ -74,8 +91,8 @@ let workersData = Array<Worker>();
     tasksData = results[2].data as Tasks[]
     workersData = results[3].data as Worker[]
     const lastUpdate = localStorage.getItem("lastUpdate")
-    if(lastUpdate)
-    document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
+    if (lastUpdate)
+      document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
     lawsuitsData.map(c => {
       if (!circuits.has(c.circuit)) {
         circuits.add(c.circuit)
@@ -309,42 +326,105 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
+    tr.dataset.status = p.status
     const timeLeft = differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
     let deadline = ""
-    if(p.status === "Aberto") deadline = p.awarenessDate.toString()
+    if (p.status === "Aberto") deadline = p.awarenessDate.toString()
     else deadline = p.deadline.toString()
     const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
 
     tr.innerHTML = `
-        <td class="row-action">
-        <span class="action-icon">Ver Processo</span>
-         <span class="action-icon">Editar</span>
-        </td>
-        <td>${lawsuitNumber} 
-        <button data-URL=\"${p.summonURL}\" class="btn-secondary view-summon" ${!p.summonURL ? "disabled" : "" }>
-          <i class="bi bi-file-earmark"></i>
-          ${p.summon ?  p.summon : "Intimação Oculta"}  </button>
-        </td>
+  
+  <td class="actions-cell">
+    <button class="icon-btn summon" title="${p.summon ? "Ver intimação " + p.summon : ""}" data-URL=\"${p.summonURL}\"  ${p.summon ? "" : "disabled"}>
+        <i class="bi bi-file-earmark"></i>
+    </button>
+    <button class="icon-btn view" title="Ver processo ${lawsuitNumber}">
+        <i class="bi bi-eye"></i>
+    </button>
+    
+    <button class="icon-btn edit" title="Editar processo ${lawsuitNumber}"">
+        <i class="bi bi-pencil"></i>
+    </button>
+    <button class="icon-btn task" title="Criar tarefa">
+        <i class="bi bi-check2-square"></i>
+    </button>
+</td>
+        <td>${lawsuitNumber}</td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
-        <td>${p.assisted}</td>
-        <td><span class="badge ${getStatusClass(p.status)}">${p.status}</span></td>
-        <td>${p.isDefendant ? "Passivo" : "Ativo"}</td>
+        <td>${p.assisted} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
         <td>${!deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
           ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dias" : timeLeft}
         </td>
-        <td>${Array.isArray(p.defender) ? "Defensores da vara" : p.defender?.nome}</td>
+        <td id="task-assigned-to">
+        <label class="filter-label">Responsável</label>
+            <select class="filter-select">
+              </select>
+        </td>
       `;
-    const action = tr.querySelectorAll(".action-icon");
-    action[0].addEventListener("click", async () => {
-         await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant})
+    tr.dataset.circuit = p.circuit
+    tr.dataset.status = p.status
+    tr.dataset.side = `${p.isDefendant ? "Passivo" : "Ativo"}`
+    tr.dataset.dueToday = dates.days ? dates.days > 0 ? "true" : "false" : "false"
+    const assignedToSelect = tr.querySelector("#task-assigned-to > select") as HTMLSelectElement
+    const viewLawsuitButton = tr.querySelector("td > .icon-btn.view") as HTMLButtonElement
+    const viewSummonButton = tr.querySelector("td > .icon-btn.summon") as HTMLButtonElement
+    const editLawsuit = tr.querySelector("td > .icon-btn.edit") as HTMLButtonElement
+    viewLawsuitButton.onclick = async () => {
+      await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant })
+    }
+    viewSummonButton.onclick = (e) => {
+      const summonBtn = e.target as HTMLButtonElement
+      openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
+    }
 
-    })
-    action[1]?.addEventListener("click", () => {
-
+    editLawsuit.onclick = () => {
       if (p.id) openPanel(p.id);
-    });
+    }
+
+
+    assignedToSelect.onchange = async () => {
+      if (tr.dataset.task) {
+        const task = tasksData.find(c => c.id)
+        if (task) {
+          assignedToSelect.options.item(0)?.value
+          const workerId = Number(assignedToSelect.options.item(assignedToSelect.options.selectedIndex)?.value)
+          if (workerId) {
+            const worker = workersData.find(c => c.id === workerId)
+            if (worker) {
+              await sendMessage("UPDATE_TASK", { task })
+              showToast("Tarefa atualizada com sucesso.")
+            }
+
+          }
+        }
+      } else {
+        await openEditModal({
+          assignedTo: workersData[0],
+          title: p.summon ?  `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
+          dueDate: addBusinessDays(new Date(), 2),
+          status: "Não Iniciada",
+          description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\n Prazo final ${p.deadline}`,
+          createdAt: new Date(),
+          lawsuit: p
+        })
+      }
+    }
+
+
+
+
+    // const action = tr.querySelectorAll(".action-icon");
+    // action[0].addEventListener("click", async () => {
+    //   await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant })
+
+    // })
+    // action[1]?.addEventListener("click", () => {
+
+    //   if (p.id) openPanel(p.id);
+    // });
 
     const summon = tr.querySelector(".view-summon");
     summon?.addEventListener("click", (e) => {
@@ -363,9 +443,11 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     //   })
 
     //   tr.onclick = () => alert("Abrir processo: " + p.number);
-  table!.appendChild(tr);
+    table!.appendChild(tr);
 
   })
+
+
 
   //   tr.onclick = () => alert("Abrir processo: " + p.number);
 
@@ -376,6 +458,7 @@ function renderTableWithOptions() {
   const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
   renderTable(lawsuitsData, isHolidays.checked ? holidaysData : [], isElapsedDays.checked)
 }
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     const { data } = await sendMessage("GET_PENDING_LAWSUITS", {}) as any
@@ -416,8 +499,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const searchField = document.querySelector("#search")!
       searchField.addEventListener("keydown", () => {
-        const input = searchField as HTMLInputElement
-        searchLawsuits(input.value)
+        updateChipText()
       })
 
       updateLawsuitsBtn.addEventListener("click", async () => {
@@ -449,8 +531,31 @@ document.addEventListener("DOMContentLoaded", async () => {
           return renderTable(data, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked)
         }
       })
-      
+
+      const intervalId = setInterval(() => {
+        const selects = document.querySelectorAll("tr > td > select") as NodeListOf<HTMLSelectElement>
+        selects.forEach((c: HTMLSelectElement) => {
+          workersData.map(x => {
+            const option = document.createElement("option")
+            option.label = x.name
+            option.value = String(x.id)
+            c.options.add(option)
+            const row = c.parentElement?.parentElement as HTMLTableRowElement
+            row.dataset.filter += "; " + x.name
+          })
+        })
+        clearInterval(intervalId)
+      }, 1000);
+
+      filterRows()
+
+
+
+
     }
+    activeFilters.status = "Aberto"
+    renderActiveFilters()
+
 
     const navItems = document.querySelectorAll(".nav-item")
     if (navItems) {
@@ -472,55 +577,52 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
-  const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todas") {
     activeFilters.circuit = ""
-    searchLawsuits(search.value)
+    updateChipText()
   } else {
     activeFilters.circuit = select.selectedOptions.item(0)?.textContent!
-    searchLawsuits(search.value)
+    updateChipText()
   }
 })
 
 document.querySelector("#filterStatus")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
-  const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.status = ""
-    searchLawsuits(search.value)
+    updateChipText()
   } else {
     activeFilters.status = select.selectedOptions.item(0)?.textContent!
-    searchLawsuits(search.value)
+    updateChipText()
   }
 })
 
 document.querySelector("#filterSide")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
-  const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.side = ""
-    searchLawsuits(search.value)
+    updateChipText()
   } else {
     activeFilters.side = select.selectedOptions.item(0)?.textContent!
-    searchLawsuits(search.value)
+    updateChipText()
   }
 })
 
 document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
-  const search = document.querySelector("#search") as HTMLInputElement
+  // const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.assignedTo = ""
-    searchLawsuits(search.value)
+    updateChipText()
   } else {
     activeFilters.assignedTo = select.selectedOptions.item(0)?.textContent!
-    searchLawsuits(search.value)
+    updateChipText()
   }
 })
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.dueToday = true
-  searchLawsuits("")
+  updateChipText()
 })
 
 document.querySelector("#toggleable-actions")?.addEventListener("click", async () => {
@@ -534,68 +636,106 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
 })
 
 
-function updateCards(data: Lawsuits[]) {
-  const today = formatISO(new Date(), { representation: 'date' });
+function updateCards() {
+  let weekCount = 0, activeCount = 0, dueTodayCount = 0
+  const rows = document.querySelectorAll("tbody tr") as NodeListOf<HTMLTableRowElement>
+  for (const row of rows) {
+    if (row.dataset.status === "Aberto" && row.style.display === "") activeCount++
 
-  document.querySelector("#todayCount")!.innerHTML =
-    data.filter(c => c.deadline === today).length.toString();
+    const date = row.cells.item(6)?.textContent ?? ""
+    if (date.includes("dias") && row.dataset.status === "Aberto" && row.style.display === "") {
+      const daysLeft = Number(date.split(" ")[0])
+      if (daysLeft < 6) weekCount++
+    } else if (date.includes("horas") && row.dataset.status === "Aberto" && row.style.display === "") weekCount++
+    else if (row.dataset.status === "Aberto" && row.dataset.dueToday === "true" && row.style.display === "") dueTodayCount++
+  }
 
-  document.querySelector("#weekCount")!.innerHTML =
-    data.length.toString();
-
-  document.querySelector("#activeCount")!.innerHTML =
-    data.filter(c => c.status === "aberto").length.toString();
+  document.querySelector("#todayCount")!.innerHTML = String(dueTodayCount)
+  document.querySelector("#weekCount")!.innerHTML = String(weekCount)
+  document.querySelector("#activeCount")!.innerHTML = String(activeCount)
 
   // document.querySelector("#doneCount")!.innerHTML =
   //   data.filter(c => c.status === "closed").length.toString();
 }
 
-function searchLawsuits(term: string) {
-  const data = JSON.parse(sessionStorage.getItem("lawsuits")!) as Lawsuits[];
+function filterRows() {
+  document.querySelectorAll<HTMLTableRowElement>("tbody tr")
+    .forEach(row => {
+      const visible = Object.values(filters)
+        .every(filter => filter(row));
 
-  let filtered = [...data];
+      row.hidden = !visible;
+    });
+  updateCards()
+}
 
-  if (activeFilters.circuit) filtered = filtered.filter(l => l.circuit === activeFilters.circuit);
-  if (activeFilters.status !== "") filtered = filtered.filter(l => String(l.status) === activeFilters.status);
+function updateChipText() {
+  const search = document.querySelector("#search") as HTMLInputElement
+  if (activeFilters.circuit) {
+    updateChips("circuit", "Vara: " + activeFilters.circuit)
+    // filtered = filtered.filter(l => l.circuit === activeFilters.circuit);
+    // filterTableRows(3, activeFilters.circuit)
+  }
+  if (activeFilters.status !== "") {
+    updateChips("status", "Status: " + activeFilters.status)
+    // filtered = filtered.filter(l => String(l.status) === activeFilters.status);
+    // filterTableRows(3, activeFilters.status)
+
+  }
 
 
   if (activeFilters.side) {
-    const isDefendant = activeFilters.side === "Passivo";
-    filtered = filtered.filter(l => l.isDefendant === isDefendant);
+    // const isDefendant = activeFilters.side === "Passivo";
+    updateChips("side", "Polo: " + activeFilters.side)
+    // filterTableRows(3, activeFilters.side)
+
+    // filtered = filtered.filter(l => l.isDefendant === isDefendant);
   }
 
   if (activeFilters.assignedTo) {
-    filtered = filtered.filter(l => Array.isArray(l.defender) ? false : l.defender?.nome === activeFilters.assignedTo
-    );
+    updateChips("assignedTo", "Atribuído a: " + activeFilters.assignedTo)
   }
 
-  if(activeFilters.dueToday){
-    filtered = filtered.filter(l => {
-      if(l.status === "Aguardando Abertura"){
-        if(l.deadline && l.deadline instanceof String){
-          const dateParts = l.deadline.split("-").map(c => parseInt(c))
-          const days = differenceInDays(new Date(), new Date(dateParts[2], dateParts[1], dateParts[0], 0), )
-          if(days === 1) return l 
-        }
-      } else {
-          if(l.awarenessDate && l.awarenessDate instanceof String){
-          const dateParts = l.awarenessDate.split("-").map(c => parseInt(c))
-          const days = differenceInDays(new Date(), new Date(dateParts[2], dateParts[1], dateParts[0], 0), )
-          if(days === 1) return l 
-        }
-      }
-    })
+  if (activeFilters.dueToday) {
+
+    updateChips("dueToday", "Vence hoje: sim")
   }
 
-  if (term) {
-    filtered = filtered.filter(c =>
-      c.assisted.toUpperCase().includes(term.toUpperCase()) ||
-      c.number.includes(term)
-    );
-  }
-  updateCards(filtered)
-  renderTable(filtered);
+  if (search.value) updateChips("dueToday", "Pesquisa: " + search.value)
+
+  filterRows()
+
 }
+
+// if (term) {
+//   filtered = filtered.filter(c =>
+//     c.assisted.toUpperCase().includes(term.toUpperCase()) ||
+//     c.number.includes(term)
+//   );
+// }
+
+// type FilterKey = keyof typeof activeFilters
+// const filterKeys = new Array<FilterKey>()
+// for (const filter of filterKeys) {
+//   const button = document.querySelector(`activeFiltersBar > .filter-chip > button[data-key=${}]`) as HTMLButtonElement
+//   if (filter === button.dataset.key && (activeFilters[filter] as any)) {
+//     const pos = button.parentElement?.textContent.indexOf(":")
+//     let baseText = button.textContent.substring(0, pos)
+//     baseText += " " + activeFilters[filter] as any
+//     button.textContent = "x"
+//   }
+
+// }
+// updateCards(filtered)
+//renderTable(filtered);
+
+
+function updateChips(key: string, filter: string) {
+  const button = document.querySelector(`#activeFiltersBar > .filter-chip > button[data-key=${key}]`) as HTMLButtonElement
+  button.parentElement!.innerHTML = `${filter}<button data-key=${key}>x</button>`
+  button.textContent = "x"
+}
+
 
 function goToPage(index: number) {
   const slider = document.getElementById('mainSlider');
@@ -628,16 +768,16 @@ async function openEditModal(task?: Tasks) {
 
   })
   renderModal().open({
-    title: task ? "Atualize sua tarefa" : "Crie sua tarefa",
+    title: task?.id ? "Atualize sua tarefa" : "Crie sua tarefa",
     content: `
      <form id="taskForm" data-id=${task?.id}>
         <div class="form-group">
           <label>Número do Processo</label>
-          <input name="number" type="text" id="editNumber" value=${task?.lawsuit?.number ?? ""}>
+          <input name="number" type="text" id="editNumber" value="${task?.lawsuit?.number ?? ""}"s>
         </div>
         <div class="form-group">
           <label>Titulo da tarefa</label>
-          <input name="title" type="text" id="editNumber" value=${task?.title ?? ""}>
+          <input name="title" type="text" id="editNumber" value="${task?.title ?? ""}">
         </div>
          <div class="form-group">
           <label>Descrição da tarefa</label>
@@ -655,7 +795,7 @@ async function openEditModal(task?: Tasks) {
       }
          <div class="form-group">
           <label>Prazo</label>
-          <input name="dueDate" type="text" id="editNumber" value=${task?.dueDate ?? ""}>
+          <input name="dueDate" type="text" id="editNumber" value="${task?.dueDate ?? ""}">
         </div>
         <div class="form-group">
           <label>Responsável</label>
@@ -784,6 +924,7 @@ async function renderTasks() {
       closeIframeModal();
   });
 
+
 }
 
 
@@ -798,3 +939,119 @@ function closeIframeModal() {
   iframeViewer.src = "";
 }
 
+
+function renderActiveFilters() {
+
+  const bar = document.querySelector("#activeFiltersBar") as HTMLDivElement;
+
+  bar.innerHTML = "";
+
+  const filters = [
+    {
+      key: "circuit",
+      label: "Vara",
+      value: activeFilters.circuit
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: activeFilters.status
+    },
+    {
+      key: "side",
+      label: "Polo",
+      value: activeFilters.side
+    },
+    {
+      key: "assignedTo",
+      label: "Responsável",
+      value: activeFilters.assignedTo
+    },
+    {
+      key: "dueToday",
+      label: "Vencendo hoje",
+      value: activeFilters.dueToday ? "Sim" : ""
+    },
+    {
+      key: "search",
+      label: "Pesquisa",
+      value: (document.querySelector("#search") as HTMLInputElement).value
+    }
+  ];
+
+  for (const f of filters) {
+    const chip = document.createElement("div");
+    chip.className = "filter-chip";
+    chip.innerHTML = ` ${f.label}: ${f.value} <button data-key="${f.key}">&times;</button>`;
+    bar.appendChild(chip);
+  }
+
+
+  if (bar.children.length) {
+    const clear = document.createElement("button");
+    clear.className = "clear-filters";
+    clear.textContent = "Limpar todos";
+    clear.onclick = clearAllFilters;
+    bar.appendChild(clear);
+
+  }
+
+}
+
+document.addEventListener("click", (e) => {
+
+  const target = e.target as HTMLElement;
+
+  if (!target.matches(".filter-chip button"))
+    return;
+
+  const key = target.dataset.key!;
+
+  switch (key) {
+
+    case "circuit":
+      activeFilters.circuit = "";
+      (document.querySelector("#filterCircuit") as HTMLSelectElement).selectedIndex = 0;
+      break;
+
+    case "status":
+      activeFilters.status = "";
+      (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 0;
+      break;
+
+    case "side":
+      activeFilters.side = "";
+      (document.querySelector("#filterSide") as HTMLSelectElement).selectedIndex = 0;
+      break;
+
+    case "assignedTo":
+      activeFilters.assignedTo = "";
+      (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
+      break;
+
+    case "dueToday":
+      activeFilters.dueToday = false;
+      break;
+  }
+
+  updateChipText();
+
+  renderActiveFilters();
+
+});
+
+function clearAllFilters() {
+
+  activeFilters.circuit = "";
+  activeFilters.status = "";
+  activeFilters.side = "";
+  activeFilters.assignedTo = "";
+  activeFilters.dueToday = false;
+
+  document.querySelectorAll("select").forEach(s => s.selectedIndex = 0);
+
+  updateChipText();
+
+  renderActiveFilters();
+
+}
