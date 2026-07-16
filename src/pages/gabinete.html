@@ -139,7 +139,7 @@
       position: relative;
     }
 
-    input[type="text"]#search {
+    input[type="text"].search-input {
       width: 100%;
       padding: 16px 24px;
       font-size: 1.05rem;
@@ -233,6 +233,10 @@
       border-radius: 12px;
       border: 1px solid var(--border);
       overflow: hidden;
+    }
+
+    [hidden] {
+      display: none !important;
     }
 
     table {
@@ -1074,19 +1078,19 @@
           <div class="cards">
             <div class="card red">
               <span class="label">Vencendo hoje</span>
-              <span class="value" id="todayCount">0</span>
+              <span class="value" id="todayCount-p1">0</span>
             </div>
             <div class="card yellow">
               <span class="label">Esta semana</span>
-              <span class="value" id="weekCount">0</span>
+              <span class="value" id="weekCount-p1">0</span>
             </div>
             <div class="card blue">
               <span class="label">Processos Ativos</span>
-              <span class="value" id="activeCount">0</span>
+              <span class="value" id="activeCount-p1">0</span>
             </div>
             <div class="card green">
               <span class="label">Finalizados</span>
-              <span class="value" id="doneCount">0</span>
+              <span class="value" id="doneCount-p1">0</span>
             </div>
           </div>
           <div id="last-update-container">
@@ -1095,7 +1099,7 @@
 
           <div class="search-section">
             <div class="search-container">
-              <input type="text" placeholder="Pesquisar por número do processo ou nome do assistido..." id="search" />
+              <input type="text" class="search-input" placeholder="Pesquisar por número do processo ou nome do assistido..." id="searchLawsuitInput" />
             </div>
             <div class="update-btn-container" style="padding: 15px;">
               <button class="btn-primary" id="update-lawsuit-btn">
@@ -1178,43 +1182,51 @@
           <div class="cards">
             <div class="card red">
               <span class="label">Vencendo hoje</span>
-              <span class="value" id="todayCount">0</span>
+              <span class="value" id="todayCount-p2">0</span>
             </div>
             <div class="card yellow">
               <span class="label">Esta semana</span>
-              <span class="value" id="weekCount">0</span>
+              <span class="value" id="weekCount-p2">0</span>
             </div>
             <div class="card blue">
-              <span class="label">Processos Ativos</span>
-              <span class="value" id="activeCount">0</span>
+              <span class="label">Tarefas Ativas</span>
+              <span class="value" id="activeCount-p2">0</span>
             </div>
             <div class="card green">
               <span class="label">Finalizados</span>
-              <span class="value" id="doneCount">0</span>
+              <span class="value" id="doneCount-p2">0</span>
             </div>
           </div>
 
           <div class="search-section">
             <div class="search-container">
-              <input type="text" placeholder="Pesquisar por titulo" id="search" />
+              <input type="text" class="search-input" placeholder="Pesquisar por titulo ou processo" id="searchTaskInput" />
             </div>
           </div>
 
           <!-- Filtros de Tarefas -->
           <div class="filters-bar">
+            <div id="activeFiltersBar" class="active-filters"></div>
             <div class="filters-row-main">
               <div class="filter-group">
+                <label class="filter-label">Vara</label>
+                <select class="filter-select" id="filterCircuit2">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              </select>
+              <div class="filter-group">
                 <label class="filter-label">Status</label>
-                <select class="filter-select">
+                <select class="filter-select" id="filterStatus2">
                   <option value="">Todos</option>
-                  <option value="pendente">Pendente</option>
+                  <option value="pendente">Não Iniciada</option>
                   <option value="em_andamento">Em Andamento</option>
-                  <option value="concluido">Concluído</option>
+                  <option value="concluido">Concluída</option>
                 </select>
               </div>
               <div class="filter-group">
                 <label class="filter-label">Responsável</label>
-                <select class="filter-select">
+                <select class="filter-select" id="filterAssignedTo2">
                   <option value="">Todos</option>
                   <option value="me">Atribuídas a mim</option>
                 </select>

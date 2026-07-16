@@ -5,33 +5,66 @@ import type { Holidays } from "../types/holidays";
 import type { Worker } from "../types/workers";
 import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
-import { getDefenders, getUserCredentials, getWorkers, renderModal, sendMessage } from "../utils"
+import { convertTextDateToDate, formatDate, getDefenders, getUserCredentials, isValidDate, renderModal, sendMessage } from "../utils"
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
 import { getDefensories, updateLawsuitDashboard } from "../service/fetcher";
-import { showToast } from "../utils/ui";
-import { addBusinessDays } from "date-fns";
+import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
+import { addBusinessDays, addDays, differenceInBusinessDays, isSameWeek } from "date-fns";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
 const iframeTitle = document.querySelector("#iframeTitle") as HTMLHeadingElement
-const filterAssignedTo = document.querySelector("#filterAssignedTo  ") as HTMLSelectElement
+const filterAssignedTo = document.querySelector("#filterAssignedTo") as HTMLSelectElement
+const filterAssignedTo2 = document.querySelector("#filterAssignedTo2") as HTMLSelectElement
+const taskSearchInput = document.querySelector("#searchTaskInput") as HTMLInputElement
 const filters = {
-  circuit: (row: HTMLTableRowElement) =>
-    !activeFilters.circuit ||
-    row.dataset.circuit === activeFilters.circuit,
+  mainPage: {
+    circuit: (row: HTMLTableRowElement) =>
+      !activeFilters.mainPage.circuit ||
+      row.dataset.circuit === activeFilters.mainPage.circuit,
 
-  status: (row: HTMLTableRowElement) =>
-    !activeFilters.status ||
-    row.dataset.status === activeFilters.status,
+    status: (row: HTMLTableRowElement) =>
+      !activeFilters.mainPage.status ||
+      row.dataset.status === activeFilters.mainPage.status,
 
-  side: (row: HTMLTableRowElement) =>
-    !activeFilters.side ||
-    row.dataset.side === activeFilters.side,
+    side: (row: HTMLTableRowElement) =>
+      !activeFilters.mainPage.side ||
+      row.dataset.side === activeFilters.mainPage.side,
 
-  dueToday: (row: HTMLTableRowElement) =>
-    !activeFilters.dueToday ||
-    row.dataset.dueToday === "true",
-};
+    dueToday: (row: HTMLTableRowElement) =>
+      !activeFilters.mainPage.dueToday ||
+      row.dataset.dueToday === "true",
+    search: (item: HTMLDivElement) =>
+      !activeFilters.mainPage.search ||
+      item.dataset.number?.includes(activeFilters.mainPage.search.toUpperCase())
+      || item.dataset.assisted?.includes(activeFilters.mainPage.search.toUpperCase())
+  },
+  todoPage: {
+    number: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.number ||
+      item.dataset.number === activeFilters.todoPage.number,
+    status: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.status ||
+      item.dataset.status === activeFilters.todoPage.status,
+    circuit: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.circuit ||
+      item.dataset.circuit === activeFilters.todoPage.circuit,
+    assignedTo: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.assignedTo ||
+      item.dataset.assignedTo === activeFilters.todoPage.assignedTo,
+    dueToday: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.dueToday ||
+      item.dataset.dueToday === "true",
+    title: (item: HTMLDivElement) =>
+      !activeFilters.todoPage.title ||
+      item.dataset.title?.includes(activeFilters.todoPage.title.toUpperCase())
+      || item.dataset.caseNumber?.includes(activeFilters.todoPage.title.toUpperCase()),
+    // caseNumber: (item: HTMLDivElement) =>
+    // !activeFilters.todoPage.title ||
+    // item.dataset.caseNumber?.includes(activeFilters.todoPage.title)
+  }
+}
+
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
 
@@ -72,7 +105,10 @@ function getDeadlineClass(days: number) {
 //   return "status-open";
 // }
 
-const activeFilters = { circuit: "", status: "", side: "", assignedTo: "", dueToday: false };
+const activeFilters = {
+  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, search: "" },
+  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, title: "", caseNumber: "" }
+};
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
 let tasksData = Array<Tasks>()
@@ -100,11 +136,30 @@ let workersData = Array<Worker>();
 
     })
     const select = document.querySelector("#filterCircuit") as HTMLSelectElement
-
+    const circuitSelect = document.querySelector("#filterCircuit2") as HTMLSelectElement
+    // filterAssignedTo2.addEventListener("change", () => {
+    //   const selectedItem = circuitSelect.options.item(circuitSelect.selectedIndex)!.label
+    //   activeFilters.todoPage.assignedTo = selectedItem
+    //   updateChipText()
+    // })
+    circuitSelect.addEventListener("change", () => {
+      const selectedItem = circuitSelect.options.item(circuitSelect.selectedIndex)!.label
+      activeFilters.todoPage.circuit = selectedItem
+      updateChipText()
+    })
     circuits.forEach(c => {
       const opt = document.createElement("option")
       opt.textContent = c
       select.options.add(opt)
+      // circuitSelect.options.add(opt)
+      // select!.appendChild(select!);
+    })
+
+    circuits.forEach(c => {
+      const opt = document.createElement("option")
+      opt.textContent = c
+      circuitSelect.options.add(opt)
+      // circuitSelect.options.add(opt)
       // select!.appendChild(select!);
     })
 
@@ -113,6 +168,15 @@ let workersData = Array<Worker>();
       opt.textContent = c.name
       opt.value = c.id?.toString() ?? ""
       filterAssignedTo.options.add(opt)
+      // filterAssignedTo2.options.add(opt)
+    })
+
+    workersData.map(c => {
+      const opt = document.createElement("option")
+      opt.textContent = c.name
+      opt.value = c.id?.toString() ?? ""
+      filterAssignedTo2.options.add(opt)
+      // filterAssignedTo2.options.add(opt)
     })
 
     const creds = await getUserCredentials()
@@ -332,10 +396,11 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     if (p.status === "Aberto") deadline = p.awarenessDate.toString()
     else deadline = p.deadline.toString()
     const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
+    //<td class="actions-cell">
 
     tr.innerHTML = `
   
-  <td class="actions-cell">
+  <td>
     <button class="icon-btn summon" title="${p.summon ? "Ver intimação " + p.summon : ""}" data-URL=\"${p.summonURL}\"  ${p.summon ? "" : "disabled"}>
         <i class="bi bi-file-earmark"></i>
     </button>
@@ -346,14 +411,17 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     <button class="icon-btn edit" title="Editar processo ${lawsuitNumber}"">
         <i class="bi bi-pencil"></i>
     </button>
-    <button class="icon-btn task" title="Criar tarefa">
+    <button class="icon-btn create-task" title="Criar tarefa">
+        <i class="bi bi-plus"></i>
+    </button>
+     <button class="icon-btn view-tasks" title="Ver tarefas">
         <i class="bi bi-check2-square"></i>
     </button>
 </td>
         <td>${lawsuitNumber}</td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
-        <td>${p.assisted} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
+        <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
         <td>${!deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
           ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dias" : timeLeft}
@@ -368,10 +436,15 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     tr.dataset.status = p.status
     tr.dataset.side = `${p.isDefendant ? "Passivo" : "Ativo"}`
     tr.dataset.dueToday = dates.days ? dates.days > 0 ? "true" : "false" : "false"
+    tr.dataset.assisted = p.assisted
+    tr.dataset.number = p.number
     const assignedToSelect = tr.querySelector("#task-assigned-to > select") as HTMLSelectElement
     const viewLawsuitButton = tr.querySelector("td > .icon-btn.view") as HTMLButtonElement
     const viewSummonButton = tr.querySelector("td > .icon-btn.summon") as HTMLButtonElement
-    const editLawsuit = tr.querySelector("td > .icon-btn.edit") as HTMLButtonElement
+    const editLawsuitButton = tr.querySelector("td > .icon-btn.edit") as HTMLButtonElement
+    const createTaskButton = tr.querySelector("td > .icon-btn.create-task") as HTMLButtonElement
+    const viewTasksButton = tr.querySelector("td > .icon-btn.view-tasks") as HTMLButtonElement
+
     viewLawsuitButton.onclick = async () => {
       await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant })
     }
@@ -380,20 +453,40 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
     }
 
-    editLawsuit.onclick = () => {
+    editLawsuitButton.onclick = () => {
       if (p.id) openPanel(p.id);
+    }
+
+    viewTasksButton.onclick = () => {
+      goToPage(1)
+      activeFilters.todoPage.number = p.number
+      updateChipText()
+    }
+
+    createTaskButton.onclick = async () => {
+      const workerId = Number(assignedToSelect.options.item(assignedToSelect.options.selectedIndex)?.value)
+      await openEditModal({
+        assignedTo: workersData.find(c => c.id === Number(workerId)) ?? workersData[0],
+        title: p.summon ? `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
+        dueDate: formatISO(addBusinessDays(new Date(), 2)),
+        status: "Não Iniciada",
+        description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${p.deadline}`,
+        createdAt: new Date(),
+        lawsuit: p
+      })
     }
 
 
     assignedToSelect.onchange = async () => {
+      const workerId = Number(assignedToSelect.options.item(assignedToSelect.options.selectedIndex)?.value)
       if (tr.dataset.task) {
         const task = tasksData.find(c => c.id)
         if (task) {
           assignedToSelect.options.item(0)?.value
-          const workerId = Number(assignedToSelect.options.item(assignedToSelect.options.selectedIndex)?.value)
           if (workerId) {
-            const worker = workersData.find(c => c.id === workerId)
+            const worker = workersData.find(c => c.id === workerId) ?? workersData[0]
             if (worker) {
+              task.assignedTo = worker
               await sendMessage("UPDATE_TASK", { task })
               showToast("Tarefa atualizada com sucesso.")
             }
@@ -401,15 +494,16 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
           }
         }
       } else {
-        await openEditModal({
-          assignedTo: workersData[0],
-          title: p.summon ?  `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
-          dueDate: addBusinessDays(new Date(), 2),
-          status: "Não Iniciada",
-          description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\n Prazo final ${p.deadline}`,
-          createdAt: new Date(),
-          lawsuit: p
-        })
+        if (workerId)
+          await openEditModal({
+            assignedTo: workersData.find(c => c.id === Number(workerId)) ?? workersData[0],
+            title: p.summon ? `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
+            dueDate: addBusinessDays(new Date(), 2).toLocaleString(),
+            status: "Não Iniciada",
+            description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${p.deadline}`,
+            createdAt: new Date(),
+            lawsuit: p
+          })
       }
     }
 
@@ -497,22 +591,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       const defensories = localStorage.getItem("defensories")
       if (!defensories) await getDefensories()
 
-      const searchField = document.querySelector("#search")!
-      searchField.addEventListener("keydown", () => {
+      const searchField = document.querySelector("#searchLawsuitInput")!
+      searchField.addEventListener("keyup", (e) => {
+        activeFilters.mainPage.search = (e.target as HTMLInputElement).value
         updateChipText()
       })
 
       updateLawsuitsBtn.addEventListener("click", async () => {
-        await updateLawsuitDashboard()
-        showToast("Processos atualizados com sucesso", 3000)
-        document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
+        showLoadingSpinner()
+        const lawsuits = await updateLawsuitDashboard()
+        if (lawsuits) {
+          showToast("Processos atualizados com sucesso. " + lawsuits?.length + " novos processos", 3000)
+          lawsuitsData.push(...lawsuits)
+          document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
+          hideLoadingSpinner()
+        }
+
       })
 
       const lawsuits = data as Lawsuits[]
       const today = formatISO(new Date(), { representation: 'date' })
-      document.querySelector("#todayCount")!.innerHTML = lawsuits.filter(c => c.deadline === today).length.toString()
-      document.querySelector("#weekCount")!.innerHTML = lawsuits.length.toString()
-      document.querySelector("#activeCount")!.innerHTML = lawsuits.length.toString()
+      document.querySelector("#todayCount-p1")!.innerHTML = lawsuits.filter(c => c.deadline === today).length.toString()
+      document.querySelector("#weekCount-p1")!.innerHTML = lawsuits.length.toString()
+      document.querySelector("#activeCount-p1")!.innerHTML = lawsuits.length.toString()
 
 
       document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
@@ -540,20 +641,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             option.label = x.name
             option.value = String(x.id)
             c.options.add(option)
-            const row = c.parentElement?.parentElement as HTMLTableRowElement
-            row.dataset.filter += "; " + x.name
           })
         })
         clearInterval(intervalId)
       }, 1000);
 
-      filterRows()
+      filterItems()
 
 
 
 
     }
-    activeFilters.status = "Aberto"
+    activeFilters.mainPage.status = "Aberto"
     renderActiveFilters()
 
 
@@ -566,6 +665,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           else if (i === 1) title.textContent = "Tarefas"
           else title.textContent = "Configurações"
           goToPage(i)
+          updateCards()
+
         })
       })
     }
@@ -575,13 +676,58 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 })
 
+taskSearchInput.addEventListener("keyup", (e) => {
+  const value = (e.target as HTMLInputElement).value
+  activeFilters.todoPage.title = value
+  activeFilters.todoPage.caseNumber = value
+  updateChipText()
+
+})
+
+
+document.querySelector("#filterCircuit2")?.addEventListener("change", (e) => {
+  const select = e.target as HTMLSelectElement
+  if (select.selectedOptions.item(0)?.textContent === "Todas") {
+    activeFilters.todoPage.circuit = ""
+    updateChipText()
+  } else {
+    activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
+    updateChipText()
+  }
+})
+
+document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
+  const select = e.target as HTMLSelectElement
+  if (select.selectedOptions.item(0)?.textContent === "Todos") {
+    activeFilters.todoPage.status = ""
+    updateChipText()
+  } else {
+    activeFilters.todoPage.status = select.selectedOptions.item(0)?.textContent!
+    updateChipText()
+  }
+})
+
+document.querySelector("#filterAssignedTo2")?.addEventListener("change", (e) => {
+  const select = e.target as HTMLSelectElement
+  // const search = document.querySelector("#search") as HTMLInputElement
+  if (select.selectedOptions.item(0)?.textContent === "Todos") {
+    activeFilters.todoPage.assignedTo = ""
+    updateChipText()
+  } else {
+    activeFilters.todoPage.assignedTo = select.selectedOptions.item(0)?.textContent!
+    updateChipText()
+  }
+})
+
+
+
 document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todas") {
-    activeFilters.circuit = ""
+    activeFilters.mainPage.circuit = ""
     updateChipText()
   } else {
-    activeFilters.circuit = select.selectedOptions.item(0)?.textContent!
+    activeFilters.mainPage.circuit = select.selectedOptions.item(0)?.textContent!
     updateChipText()
   }
 })
@@ -589,10 +735,10 @@ document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
 document.querySelector("#filterStatus")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
-    activeFilters.status = ""
+    activeFilters.mainPage.status = ""
     updateChipText()
   } else {
-    activeFilters.status = select.selectedOptions.item(0)?.textContent!
+    activeFilters.mainPage.status = select.selectedOptions.item(0)?.textContent!
     updateChipText()
   }
 })
@@ -600,10 +746,10 @@ document.querySelector("#filterStatus")?.addEventListener("change", (e) => {
 document.querySelector("#filterSide")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
-    activeFilters.side = ""
+    activeFilters.mainPage.side = ""
     updateChipText()
   } else {
-    activeFilters.side = select.selectedOptions.item(0)?.textContent!
+    activeFilters.mainPage.side = select.selectedOptions.item(0)?.textContent!
     updateChipText()
   }
 })
@@ -612,16 +758,16 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   // const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
-    activeFilters.assignedTo = ""
+    activeFilters.mainPage.assignedTo = ""
     updateChipText()
   } else {
-    activeFilters.assignedTo = select.selectedOptions.item(0)?.textContent!
+    activeFilters.mainPage.assignedTo = select.selectedOptions.item(0)?.textContent!
     updateChipText()
   }
 })
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
-  activeFilters.dueToday = true
+  activeFilters.mainPage.dueToday = true
   updateChipText()
 })
 
@@ -637,97 +783,122 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
 
 
 function updateCards() {
-  let weekCount = 0, activeCount = 0, dueTodayCount = 0
-  const rows = document.querySelectorAll("tbody tr") as NodeListOf<HTMLTableRowElement>
-  for (const row of rows) {
-    if (row.dataset.status === "Aberto" && row.style.display === "") activeCount++
+  let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0
+  const today = new Date();
+  const firstDay = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+  const lastDay = addDays(firstDay, 4)
+  const navItems = document.querySelectorAll(".nav-item")
+  if (navItems.item(1).className === "nav-item active") activePage = 1
+  if (!activePage) {
+    const rows = document.querySelectorAll("tbody tr") as NodeListOf<HTMLTableRowElement>
+    for (const row of rows) {
+      if (row.dataset.status === "Aberto" && !row.hidden) activeCount++
+      const date = row.cells.item(6)?.textContent ?? ""
+      if (date.includes("dias") && row.dataset.status === "Aberto" && !row.hidden) {
+        const daysLeft = Number(date.split(" ")[0])
+        if (daysLeft < 6) weekCount++
+      } else if (date.includes("horas") && row.dataset.status === "Aberto" && !row.hidden) weekCount++
+      else if (row.dataset.status === "Aberto" && row.dataset.dueToday === "true" && !row.hidden) dueTodayCount++
+    }
+  } else {
+    const tasks = document.querySelectorAll('.todo-item') as NodeListOf<HTMLDivElement>
+    for (const task of tasks) {
+      if (task.hidden) continue
+      const info = task.querySelectorAll(".todo-footer > .todo-info").item(1)
+      const date = convertTextDateToDate(info.querySelector(".info-value")?.textContent!)
+      if (differenceInBusinessDays(new Date(), date) === 1) dueTodayCount++
+      else if (isSameWeek(lastDay, date)) weekCount++
+      activeCount++
 
-    const date = row.cells.item(6)?.textContent ?? ""
-    if (date.includes("dias") && row.dataset.status === "Aberto" && row.style.display === "") {
-      const daysLeft = Number(date.split(" ")[0])
-      if (daysLeft < 6) weekCount++
-    } else if (date.includes("horas") && row.dataset.status === "Aberto" && row.style.display === "") weekCount++
-    else if (row.dataset.status === "Aberto" && row.dataset.dueToday === "true" && row.style.display === "") dueTodayCount++
+    }
   }
 
-  document.querySelector("#todayCount")!.innerHTML = String(dueTodayCount)
-  document.querySelector("#weekCount")!.innerHTML = String(weekCount)
-  document.querySelector("#activeCount")!.innerHTML = String(activeCount)
+
+  document.querySelector(`${activePage ? "#todayCount-p2" : "#todayCount-p1"}`)!.innerHTML = String(dueTodayCount)
+  document.querySelector(`${activePage ? "#weekCount-p2" : "#weekCount-p1"}`)!.innerHTML = String(weekCount)
+  document.querySelector(`${activePage ? "#activeCount-p2" : "#activeCount-p1"}`)!.innerHTML = String(activeCount)
 
   // document.querySelector("#doneCount")!.innerHTML =
   //   data.filter(c => c.status === "closed").length.toString();
 }
 
-function filterRows() {
-  document.querySelectorAll<HTMLTableRowElement>("tbody tr")
-    .forEach(row => {
-      const visible = Object.values(filters)
-        .every(filter => filter(row));
+function filterItems(page = 0) {
+  if (!page) {
+    document.querySelectorAll<HTMLTableRowElement>("tbody tr")
+      .forEach(row => {
+        const visible = Object.values(filters.mainPage)
+          .every(filter => filter(row));
+        row.hidden = !visible;
+      });
+    updateCards()
+  } else {
+    document.querySelectorAll<HTMLDivElement>(".todo-item")
+      .forEach(item => {
+        const visible = Object.values(filters.todoPage)
+          .every(filter => filter(item));
+        console.log(visible)
+        item.hidden = !visible;
+      })
 
-      row.hidden = !visible;
-    });
-  updateCards()
+  }
 }
 
 function updateChipText() {
-  const search = document.querySelector("#search") as HTMLInputElement
-  if (activeFilters.circuit) {
-    updateChips("circuit", "Vara: " + activeFilters.circuit)
-    // filtered = filtered.filter(l => l.circuit === activeFilters.circuit);
-    // filterTableRows(3, activeFilters.circuit)
+  // const search = document.querySelector("#searchTaskInput") as HTMLInputElement
+  if (activeFilters.mainPage.circuit) {
+    updateChips("circuit", "Vara: " + activeFilters.mainPage.circuit)
+    // filtered = filtered.filter(l => l.circuit === activeFilters.mainPage.circuit);
+    // filterTableRows(3, activeFilters.mainPage.circuit)
   }
-  if (activeFilters.status !== "") {
-    updateChips("status", "Status: " + activeFilters.status)
-    // filtered = filtered.filter(l => String(l.status) === activeFilters.status);
-    // filterTableRows(3, activeFilters.status)
+  if (activeFilters.mainPage.status !== "") {
+    updateChips("status", "Status: " + activeFilters.mainPage.status)
+    // filtered = filtered.filter(l => String(l.status) === activeFilters.mainPage.status);
+    // filterTableRows(3, activeFilters.mainPage.status)
 
   }
 
 
-  if (activeFilters.side) {
-    // const isDefendant = activeFilters.side === "Passivo";
-    updateChips("side", "Polo: " + activeFilters.side)
-    // filterTableRows(3, activeFilters.side)
+  if (activeFilters.mainPage.side) {
+    // const isDefendant = activeFilters.mainPage.side === "Passivo";
+    updateChips("side", "Polo: " + activeFilters.mainPage.side)
+    // filterTableRows(3, activeFilters.mainPage.side)
 
     // filtered = filtered.filter(l => l.isDefendant === isDefendant);
   }
 
-  if (activeFilters.assignedTo) {
-    updateChips("assignedTo", "Atribuído a: " + activeFilters.assignedTo)
+  if (activeFilters.mainPage.assignedTo) {
+    updateChips("assignedTo", "Atribuído a: " + activeFilters.mainPage.assignedTo)
   }
 
-  if (activeFilters.dueToday) {
+  if (activeFilters.mainPage.dueToday) {
 
     updateChips("dueToday", "Vence hoje: sim")
   }
 
-  if (search.value) updateChips("dueToday", "Pesquisa: " + search.value)
+  if (activeFilters.todoPage.dueToday)
+    updateChips("dueToday", "Vence hoje: sim")
+  if (activeFilters.todoPage.assignedTo)
+    updateChips("assignedTo", "Atribuído a: " + activeFilters.todoPage.assignedTo)
+  if (activeFilters.todoPage.status)
+    updateChips("status", "Status: " + activeFilters.todoPage.status)
+  if (activeFilters.todoPage.circuit)
+    updateChips("circuit", "Vara: " + activeFilters.todoPage.circuit)
+  if (activeFilters.todoPage.number)
+    updateChips("number", "Processo: " + activeFilters.todoPage.number)
+  if (activeFilters.todoPage.title || activeFilters.todoPage.caseNumber)
+    updateChips("title", "Pesquisa: " + activeFilters.todoPage.title)
 
-  filterRows()
+  const page = document.querySelector(".nav-links")
+  const links = page?.querySelectorAll(".nav-item")
+  const activePage = "nav-item active"
+  let pageNumber = 0
+  if (links?.item(1).className === activePage) pageNumber = 1
 
+  // if (search.value) updateChips("dueToday", "Pesquisa: " + search.value)
+
+  filterItems(pageNumber)
+  updateCards()
 }
-
-// if (term) {
-//   filtered = filtered.filter(c =>
-//     c.assisted.toUpperCase().includes(term.toUpperCase()) ||
-//     c.number.includes(term)
-//   );
-// }
-
-// type FilterKey = keyof typeof activeFilters
-// const filterKeys = new Array<FilterKey>()
-// for (const filter of filterKeys) {
-//   const button = document.querySelector(`activeFiltersBar > .filter-chip > button[data-key=${}]`) as HTMLButtonElement
-//   if (filter === button.dataset.key && (activeFilters[filter] as any)) {
-//     const pos = button.parentElement?.textContent.indexOf(":")
-//     let baseText = button.textContent.substring(0, pos)
-//     baseText += " " + activeFilters[filter] as any
-//     button.textContent = "x"
-//   }
-
-// }
-// updateCards(filtered)
-//renderTable(filtered);
 
 
 function updateChips(key: string, filter: string) {
@@ -755,16 +926,16 @@ function goToPage(index: number) {
     });
 
 
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
   }
 }
 
 async function openEditModal(task?: Tasks) {
-  const workers = await getWorkers()
-  if (!workers) return
   let officeWorkers = ""
-  workers.map((w, i) => {
-    officeWorkers += `<option value=${i}>${w.name}</option>\n`
+  workersData.map(w => {
+    officeWorkers += `<option value=${w.id} ${task?.assignedTo.id === w.id ? "selected" : ""}>${w.name}</option>\n`
 
   })
   renderModal().open({
@@ -781,21 +952,21 @@ async function openEditModal(task?: Tasks) {
         </div>
          <div class="form-group">
           <label>Descrição da tarefa</label>
-          <textarea name="description" rows="4">${task?.description ?? ""}</textarea>
+          <textarea name="description" rows="12">${task?.description ?? ""}</textarea>
         </div>
         ${task ? `<div class="form-group">
           <label>Status</label>
           <select name="status" id="editSide">
             <option>Não Iniciada</option>
             <option>Em Andamento</option>
-            <option>Concluida</option>
+            <option>Concluída</option>
             </option>Vencida</option>
           </select>
         </div>`: ``
       }
          <div class="form-group">
           <label>Prazo</label>
-          <input name="dueDate" type="text" id="editNumber" value="${task?.dueDate ?? ""}">
+          <input name="dueDate" type="text" id="dueDateInput" value="${new Date(String(task?.dueDate)).toLocaleString().split(",")[0] ?? ""}">
         </div>
         <div class="form-group">
           <label>Responsável</label>
@@ -806,13 +977,18 @@ async function openEditModal(task?: Tasks) {
         </form>
     
     `,
-    actions: task ? [
+    actions: task?.id ? [
       { label: 'Deletar tarefa', className: 'btn-delete', callback: async () => await deleteTask() },
-      { label: 'Atualizar tarefa', className: 'btn-primary', callback: async () => await saveTask(workers, true) }
+      { label: 'Atualizar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, true) }
     ] : [
-      { label: 'Salvar tarefa', className: 'btn-primary', callback: async () => await saveTask(workers, false) }
+      { label: 'Salvar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, false) }
     ]
   })
+
+  const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
+  dueDateInput.onkeyup = (e) => {
+    formatDate(e.target as HTMLInputElement)
+  }
 }
 
 async function saveTask(workers: Worker[], edit: boolean) {
@@ -834,32 +1010,45 @@ async function saveTask(workers: Worker[], edit: boolean) {
       status = "Vencida"
       break
   }
-  const task: Tasks = {
-    assignedTo: workers.find(c => c.id === Number(formFields["assignedTo"])) ?? workers[0]!,
-    createdAt: new Date(),
-    description: formFields["description"] as string,
-    dueDate: formFields["dueDate"] as string,
-    lawsuit,
-    status: edit ?
-      formFields["status"] === "0" ? "Não Iniciada" :
-        formFields["status"] === "1" ? "Em Andamento" :
-          formFields["status"] === "2" ? "Concluida" :
-            "Vencida" : "Não Iniciada",
-    title: formFields["title"] as string,
+
+  if (!isValidDate(formFields["dueDate"] as string)) {
+    const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
+    dueDateInput.focus()
+    showToast("Data inválida.")
+    return
+  } else {
+    const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
+    const dueDateText = formatISO(convertTextDateToDate(dueDateInput.value))
+    const task: Tasks = {
+      assignedTo: workers.find(c => c.id === Number(formFields["assignedTo"])) ?? workers[0]!,
+      createdAt: new Date(),
+      description: formFields["description"] as string,
+      dueDate: dueDateText,
+      lawsuit,
+      status: edit ?
+        formFields["status"] === "0" ? "Não Iniciada" :
+          formFields["status"] === "1" ? "Em Andamento" :
+            formFields["status"] === "2" ? "Concluida" :
+              "Vencida" : "Não Iniciada",
+      title: formFields["title"] as string,
 
 
-    id: isNaN(id) ? 0 : id
-  }
+      id: isNaN(id) ? 0 : id
+    }
 
-  if (edit) {
-    await sendMessage("UPDATE_TASK", { task })
-    showAlert("Tarefa atualizada com sucesso.", "success")
+    if (edit) {
+      await sendMessage("UPDATE_TASK", { task })
+      showAlert("Tarefa atualizada com sucesso.", "success")
+      const i = tasksData.findIndex(c => c.id === task.id)
+      if (i > -1) tasksData[i] = task
+    }
+    else {
+      await sendMessage("SAVE_TASK", { task })
+      showAlert("Tarefa criada com sucesso.", "success")
+      tasksData.push(task)
+    }
 
-  }
-  else {
-    await sendMessage("SAVE_TASK", { task })
-    showAlert("Tarefa criada com sucesso.", "success")
-
+    renderTasks()
   }
 }
 
@@ -876,17 +1065,24 @@ async function deleteTask() {
 
 async function renderTasks() {
   const todoList = document.querySelector(".todo-list") as HTMLElement
-  todoList.innerHTML = tasksData.map(t =>
-    `<div class="todo-item" data-task-id=${t.id}>
+
+  todoList.innerHTML = tasksData.map(t => {
+    const today = new Date()
+    const dateComponents = String(t.dueDate).split("-")
+    let dates = { days: 0, deadline: new Date, isDueDate: false }
+    dates = getBusinessDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), [], false)
+    const date = new Date(String(t?.dueDate))
+    const textDate = date.toLocaleString().split(",")[0]
+    return `<div class="todo-item" data-task-id="${t.id}" data-title="${t.title.toUpperCase()}" data-case-number="${t.lawsuit?.number}" data-number="${t.lawsuit?.number}" data-assigned-to="${t.assignedTo.name}" data-status="${t.status}" data-circuit="${t.lawsuit?.circuit}" date-due-today="${dates.days > 1 ? "false" : "true"}">
               <div class="todo-header">
                 <span class="todo-lawsuit">${t.lawsuit?.number}</span>
                 <span class="badge ${t.status === "Não Iniciada" ?
-      "warning" : t.status === "Em Andamento" ?
-        "info" : t.status === "Concluida" ?
-          "success" : "danger"}">${t.status}</span>
+        "warning" : t.status === "Em Andamento" ?
+          "info" : t.status === "Concluida" ?
+            "success" : "danger"}">${t.status}</span>
               </div>
               <div class="todo-body">
-                <h3 class="todo-title">${t.title}</h3>
+                <h3 class="todo-title">${t.title.toUpperCase()}</h3>
                 <p class="todo-desc">${t.description.length > 100 ? t.description.substring(0, 99) + "..." : t.description}</p>
               </div>
               <div class="todo-footer">
@@ -896,10 +1092,12 @@ async function renderTasks() {
                 </div>
                 <div class="todo-info">
                   <span class="info-label">Prazo:</span>
-                  <span class="info-value">${t.dueDate}</span>
+                  <span class="info-value">${textDate}</span>
                 </div>
               </div>
             </div> `
+  }
+
   ).join("")
 
   for await (const task of tasksData) {
@@ -928,6 +1126,9 @@ async function renderTasks() {
 }
 
 
+
+
+
 function openIframeModal(url: string, title: string) {
   iframeTitle.textContent = title;
   iframeViewer.src = url;
@@ -942,57 +1143,107 @@ function closeIframeModal() {
 
 function renderActiveFilters() {
 
-  const bar = document.querySelector("#activeFiltersBar") as HTMLDivElement;
+  const activeFilterBar = document.querySelectorAll(".active-filters") as NodeListOf<HTMLDivElement>;
+  const mainPageFilterBar = activeFilterBar.item(0)
+  const todoPageFilterBar = activeFilterBar.item(1)
 
-  bar.innerHTML = "";
-
-  const filters = [
+  mainPageFilterBar.innerHTML = "";
+  todoPageFilterBar.innerHTML = ""
+  const mainPagefilters = [
     {
       key: "circuit",
       label: "Vara",
-      value: activeFilters.circuit
+      value: activeFilters.mainPage.circuit
     },
     {
       key: "status",
       label: "Status",
-      value: activeFilters.status
+      value: activeFilters.mainPage.status
     },
     {
       key: "side",
       label: "Polo",
-      value: activeFilters.side
+      value: activeFilters.mainPage.side
     },
     {
       key: "assignedTo",
       label: "Responsável",
-      value: activeFilters.assignedTo
+      value: activeFilters.mainPage.assignedTo
     },
     {
       key: "dueToday",
       label: "Vencendo hoje",
-      value: activeFilters.dueToday ? "Sim" : ""
+      value: activeFilters.mainPage.dueToday ? "Sim" : ""
     },
     {
       key: "search",
       label: "Pesquisa",
-      value: (document.querySelector("#search") as HTMLInputElement).value
+      value: (document.querySelector("#searchLawsuitInput") as HTMLInputElement).value
     }
   ];
 
-  for (const f of filters) {
+  const todoPagefilters = [
+    {
+      key: "number",
+      label: "Processo",
+      value: activeFilters.todoPage.number
+    },
+    {
+      key: "circuit",
+      label: "Vara",
+      value: activeFilters.todoPage.circuit
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: activeFilters.todoPage.status
+    },
+
+    {
+      key: "dueToday",
+      label: "Vencendo hoje",
+      value: activeFilters.todoPage.dueToday ? "Sim" : ""
+    },
+    {
+      key: "title",
+      label: "Pesquisa",
+      value: activeFilters.todoPage.title
+    }
+  ];
+
+
+
+  for (const f of mainPagefilters) {
     const chip = document.createElement("div");
     chip.className = "filter-chip";
     chip.innerHTML = ` ${f.label}: ${f.value} <button data-key="${f.key}">&times;</button>`;
-    bar.appendChild(chip);
+    mainPageFilterBar.appendChild(chip);
+  }
+
+  for (const f of todoPagefilters) {
+    const chip = document.createElement("div");
+    chip.className = "filter-chip";
+    chip.innerHTML = ` ${f.label}: ${f.value} <button data-key="${f.key}">&times;</button>`;
+    todoPageFilterBar.appendChild(chip);
   }
 
 
-  if (bar.children.length) {
+
+  if (mainPageFilterBar.children.length) {
     const clear = document.createElement("button");
     clear.className = "clear-filters";
     clear.textContent = "Limpar todos";
     clear.onclick = clearAllFilters;
-    bar.appendChild(clear);
+    mainPageFilterBar.appendChild(clear);
+
+  }
+
+  if (todoPageFilterBar.children.length) {
+    const clear = document.createElement("button");
+    clear.className = "clear-filters";
+    clear.textContent = "Limpar todos";
+    clear.onclick = clearAllFilters;
+    todoPageFilterBar.appendChild(clear);
 
   }
 
@@ -1004,36 +1255,64 @@ document.addEventListener("click", (e) => {
 
   if (!target.matches(".filter-chip button"))
     return;
-
+  let pageNumber = 0
+  const activePage = document.querySelectorAll(".nav-item")
+  if (activePage.item(1).className === "nav-item active") pageNumber = 1
   const key = target.dataset.key!;
 
-  switch (key) {
+  if (!pageNumber) {
 
-    case "circuit":
-      activeFilters.circuit = "";
-      (document.querySelector("#filterCircuit") as HTMLSelectElement).selectedIndex = 0;
-      break;
+    switch (key) {
 
-    case "status":
-      activeFilters.status = "";
-      (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 0;
-      break;
+      case "circuit":
+        activeFilters.mainPage.circuit = "";
+        (document.querySelector("#filterCircuit") as HTMLSelectElement).selectedIndex = 0;
+        break;
 
-    case "side":
-      activeFilters.side = "";
-      (document.querySelector("#filterSide") as HTMLSelectElement).selectedIndex = 0;
-      break;
+      case "status":
+        activeFilters.mainPage.status = "";
+        (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 0;
+        break;
 
-    case "assignedTo":
-      activeFilters.assignedTo = "";
-      (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
-      break;
+      case "side":
+        activeFilters.mainPage.side = "";
+        (document.querySelector("#filterSide") as HTMLSelectElement).selectedIndex = 0;
+        break;
 
-    case "dueToday":
-      activeFilters.dueToday = false;
-      break;
+      case "assignedTo":
+        activeFilters.mainPage.assignedTo = "";
+        (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
+        break;
+
+      case "dueToday":
+        activeFilters.mainPage.dueToday = false;
+        break;
+    }
+
+  } else if (pageNumber === 1) {
+    switch (key) {
+      case "number":
+        activeFilters.todoPage.number = "";
+        break;
+      case "circuit":
+        activeFilters.todoPage.circuit = "";
+        (document.querySelectorAll("section")[1].querySelector("#filterCircuit2") as HTMLSelectElement).selectedIndex = 0;
+        break;
+
+      case "status":
+        activeFilters.todoPage.status = "";
+        (document.querySelectorAll("section")[1].querySelector("#filterStatus2") as HTMLSelectElement).selectedIndex = 0;
+        break;
+
+      case "assignedTo":
+        activeFilters.todoPage.assignedTo = "";
+        (document.querySelectorAll("section")[1].querySelector("#filterAssignedTo2") as HTMLSelectElement).selectedIndex = 0;
+        break;
+      case "dueToday":
+        activeFilters.todoPage.dueToday = false;
+        break;
+    }
   }
-
   updateChipText();
 
   renderActiveFilters();
@@ -1042,11 +1321,11 @@ document.addEventListener("click", (e) => {
 
 function clearAllFilters() {
 
-  activeFilters.circuit = "";
-  activeFilters.status = "";
-  activeFilters.side = "";
-  activeFilters.assignedTo = "";
-  activeFilters.dueToday = false;
+  activeFilters.mainPage.circuit = "";
+  activeFilters.mainPage.status = "";
+  activeFilters.mainPage.side = "";
+  activeFilters.mainPage.assignedTo = "";
+  activeFilters.mainPage.dueToday = false;
 
   document.querySelectorAll("select").forEach(s => s.selectedIndex = 0);
 

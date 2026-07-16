@@ -59,6 +59,37 @@ export async function getHolidaysAPI(oldestYear: number) {
     }
 }
 
+export async function getLocalHolidays() {
+    type LocalHoliday = { data: string, nome: string, tipo: string, descricao: string, uf: string, codigo_ibge: number }
+    let statusCode = 404 | 500
+    let date: Date = new Date()
+    let failureCount = 0, year = date.getFullYear()
+    while (statusCode === 404 || statusCode === 500) {
+        const local = fetch(`https://raw.githubusercontent.com/joaopbini/feriados-brasil/refs/heads/master/dados/feriados/municipal/json/${date.getFullYear()}.json`)
+        const department = fetch(`https://raw.githubusercontent.com/joaopbini/feriados-brasil/refs/heads/master/dados/feriados/estadual/json/${date.getFullYear()}.json`)
+        const response = await Promise.all([local, department])
+        if (response[0].ok && response[1].ok) {
+            let localHolidays = await response[0].json() as Array<LocalHoliday>
+            let departmentHolidays = await response[0].json() as Array<LocalHoliday>
+            departmentHolidays = departmentHolidays.filter(c => c.uf === "MG")
+            localHolidays = localHolidays.filter(c => c.uf === "MG")
+            const holidays = new Array<LocalHoliday>()
+            holidays.push(...localHolidays)
+            holidays.push(...departmentHolidays)
+            return localHolidays
+
+        } else if (response[0].status === 404 || response[0].status === 500) {
+            failureCount++
+            year -= failureCount
+        }
+
+        if(failureCount === 5)
+            return
+    }
+
+
+}
+
 export async function getDefendersAPI() {
     try {
         const response = await fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
@@ -223,10 +254,10 @@ export function isValidDate(date: string): boolean {
     return data.getDate() == day && data.getMonth() == month && data.getFullYear() == year
 }
 
-export function isSmallerDateValid(date1: string, date2: string){
+export function isSmallerDateValid(date1: string, date2: string) {
     const smallerDate = convertTextDateToDate(date1)
     const biggerDate = convertTextDateToDate(date2)
-    if(smallerDate.getTime() < biggerDate.getTime())
+    if (smallerDate.getTime() < biggerDate.getTime())
         return true
     else return false
 }

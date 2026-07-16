@@ -272,7 +272,7 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
     const filedLawsuits = Array<Lawsuits>()
     for (let result of results) {
       let summonURL = "", summon = ""
-      if (result.comunicacao) {
+      if (result.comunicacao && result.comunicacao.documentos.length > 0) {
         summonURL = "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento
         summon = result.comunicacao.numero
 
@@ -288,7 +288,7 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
         summonURL,
         summon,
         class: result.processo.classe.nome,
-        initialDeadline: result.prazo_inicial ? result.prazo_inicial.split("T")[0] : "",      
+        initialDeadline: result.prazo_inicial ? result.prazo_inicial.split("T")[0] : "",
         deadline: result.prazo_final ? result.prazo_final.split("T")[0] : "",
         // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
         givenDeadLine: result.prazo ? result.prazo : 0,
@@ -530,8 +530,11 @@ export async function updateLawsuitDashboard() {
 
     }
     const data = await parseSolarLawsuitPage(solarURLs)
-    await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
-    localStorage.setItem("lastUpdate", new Date().toLocaleString())
+    const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+    if (result.data) {
+      localStorage.setItem("lastUpdate", new Date().toLocaleString())
+      return result.data as Lawsuits[]
+    }
 
   }
 }

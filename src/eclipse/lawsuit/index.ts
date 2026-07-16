@@ -1,4 +1,5 @@
 import type { Documento, Processo } from "../../solar/types/lawsuit"
+import { hideLoadingSpinner, showLoadingSpinner } from "../utils/ui"
 const params = new URLSearchParams(window.location.search)
 let lawsuit: Processo | undefined
 let timelineList: HTMLDivElement | undefined
@@ -43,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const caseNumber = `${lawsuitNumber.substring(0, 7)}-${lawsuitNumber.substring(7, 9)}.${lawsuitNumber.substring(9, 13)}.${lawsuitNumber[13]}.${lawsuitNumber.substring(14, 16)}.${lawsuitNumber.substring(16)}`
         document.title = "Processo " + caseNumber
         lawsuit = await getLawsuit(lawsuitNumber)
+        showLoadingSpinner()
         if (lawsuit && isDefendant) {
             document.querySelector("#case-circuit")!.textContent = lawsuit.orgao_julgador.nome
             document.querySelector(".case-number")!.textContent = caseNumber
@@ -140,7 +142,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             document.querySelector("#last-document")!.textContent = maxDocumentCount.toString()
             document.querySelector("#current-document")!.textContent = maxDocumentCount.toString()
-
+            hideLoadingSpinner()
         }
     }
 
