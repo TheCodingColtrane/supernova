@@ -78,10 +78,10 @@ export async function getPendingLawsuits() {
 export async function saveLawsuits(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         await saveLawsuitsData(lawsuits)
-        return true
+        return lawsuits
     } catch (error) {
         console.log(error)
-        return false
+        return
     }
 
 }

@@ -75,27 +75,40 @@ export async function getWeekLawsuitsData() {
 export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         if (Array.isArray(lawsuits)) {
+            //
             const existingLawsuits = await getExistingLawsuits(lawsuits)
             if (!existingLawsuits.length) {
-                await db.lawsuits.bulkAdd(Array.from(lawsuits));
-                return true
+                await db.lawsuits.bulkAdd(lawsuits);
+                return lawsuits
             }
-            const uniqueLawsuits = new Set<Lawsuits>()
-            for (const lawsuit of existingLawsuits) {
-                if (!uniqueLawsuits.has(lawsuit)) {
-                    uniqueLawsuits.add(lawsuit)
+            const uniqueLawsuits = new Set(lawsuits.map(c => c.number))
+            const uniqueeExistingLawsuits =  new Set(existingLawsuits.map(c => c.number))
+            
+            for (const lawsuit of uniqueeExistingLawsuits) {
+                if (uniqueLawsuits.has(lawsuit)) {
+                    uniqueLawsuits.delete(lawsuit)
+                } 
+            }
+
+            const filteredLawsuits: Lawsuits[] = []
+            for (const lawsuit of uniqueLawsuits) {
+                for (const cLawsuit of lawsuits) {
+                    if(cLawsuit.number === lawsuit){
+                        filteredLawsuits.push(cLawsuit)
+                    }
                 }
             }
-            await db.lawsuits.bulkAdd(Array.from(uniqueLawsuits));
-            return true
+            
+            await db.lawsuits.bulkAdd(filteredLawsuits);
+            return filteredLawsuits
         }
         else {
             await db.lawsuits.add(lawsuits);
-            return true
+            return lawsuits
         }
     } catch (error) {
         console.log(error)
-        return false
+        return 
     }
 
 }
