@@ -4,7 +4,7 @@
   "version": "2.0",
   "description": "Adiciona novos recursos ao Pje e Solar. Adiciona seu próprio gestor de gabinete.",
   "permissions": ["scripting", "activeTab", "tabs", "downloads", "webNavigation", "offscreen", "storage", "cookies"],
-  "host_permissions": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*"],
+  "host_permissions": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*", "https://gemini.google.com/*"],
   "background": {
     "service_worker": "src/sw.ts",
     "type":"module"
@@ -15,7 +15,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*"],
+      "matches": ["https://pje.tjmg.jus.br/*", "https://solar.defensoria.mg.def.br/*", "https://s3-pjedocumentos.tjmg.jus.br/*", "https://outlook.cloud.microsoft/*", "https://gemini.google.com/*"],
       "js": ["src/content.ts"],
       "run_at": "document_idle"
     }

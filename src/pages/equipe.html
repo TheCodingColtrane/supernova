@@ -217,8 +217,6 @@
         .back-button span:first-child {
             font-size: 1.2rem;
         }
-
-      
     </style>
 </head>
 
@@ -238,14 +236,22 @@
                 </button>
             </div>
             <span class="section-title">Vínculo de Funcionários</span>
-            <div class="form-group" id="defenders-area">
+            <div id="defenders-area">
+                <div class="form-group">
                 <label for="defenderSelect">Quem é você ?</label>
                 <select id="defenderSelect">
                     <option value="">-- Escolha um defensor --</option>
                 </select>
+                </div>
                 <div class="form-group">
                     <label for="defenderEmail">E-mail</label>
                     <input type="email" id="defenderEmail" placeholder="dpmg@defensoria.mg.def.br">
+                </div>
+                <div class="form-group">
+                    <label for="defenderLocale">Cidade</label>
+                    <select id="defenderLocale">
+                        <option value="">-- Escolha uma cidade --</option>
+                    </select>
                 </div>
                 <button class="btn-next" id="btnNextStep">Prosseguir</button>
             </div>

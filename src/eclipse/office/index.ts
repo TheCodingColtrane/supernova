@@ -1,11 +1,11 @@
-import type { Defenders, DefendersAPIResponse } from "../types/office"
-import type { User } from "../types/user";
+import type { DefendersAPIResponse } from "../types/office"
 import type { Worker } from "../types/workers"
 import { convertDateToTextDate, convertTextDateToDate, formatDate, getUserCredentials, isSmallerDateValid, isValidDate, sendMessage } from "../utils";
 import { showToast } from "../utils/ui";
-const url = new URLSearchParams(document.location.search)
+import cities from "../utils/municipios.json"
 const defendersSelect = document.querySelector("#defenderSelect") as HTMLSelectElement
 const defenderSelect = document.getElementById('defenderSelect') as HTMLSelectElement;
+const defenderLocale = document.getElementById('defenderLocale') as HTMLSelectElement;
 const defenderEmailInput = document.getElementById('defenderEmail') as HTMLInputElement;
 const registrationArea = document.getElementById('registrationArea') as HTMLElement;
 let subNameInput = document.getElementById('subordinateName') as HTMLInputElement | HTMLSelectElement;
@@ -19,6 +19,7 @@ const btnNextStep = document.getElementById('btnNextStep') as HTMLButtonElement;
 const defendersArea = document.getElementById("defenders-area") as HTMLElement
 const subList = document.getElementById('subList') as HTMLElement;
 const roleSelect = document.querySelector("#roleSelect") as HTMLSelectElement
+const minasGeraisCities = cities.filter(c => c.codigo_uf === 31)
 // const internContractInfoDiv = document.querySelector("#internContractInfo") as HTMLDivElement
 const subordinateStartDate = document.querySelector("#subordinateStartDate") as HTMLInputElement
 const subordinateEndDate = document.querySelector("#subordinateEndDate") as HTMLInputElement
@@ -26,54 +27,56 @@ const date = new Date()
 let districtCourt = ""
 const workers: Worker[] = []
 const ids: string[] = []
+const firstPageUserData = { id: 0, nome: "", roles: Array<any>(), email: "", districtCourt: "", locality: { id: 0, name: "" } }
 let defendersData: DefendersAPIResponse
 let selectedId = ""
-document.addEventListener("DOMContentLoaded", async () => {
+const user = await getUserCredentials()
+const {data} = await sendMessage("GET_WORKERS", {})
+if(data && user) {
+    console.log(data) 
+    workers.push(...data)
+}
+ 
+document.addEventListener("load", async () => {
     try {
-        const onboard = url.get("onboard")
-        url.getAll("onboard")
-        if (onboard === "1") {
-            const defenders = fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
-            const cookie = chrome.cookies.get({url: "https://solar.defensoria.mg.def.br/atendimento/perfil/", name: "user"})
-            const response = await Promise.all([defenders, cookie])
-            if (response[0].ok && response[1]?.value) {
-                const rawCookies = response[1].value.substring(7).replaceAll("\\", "")
-                const endJurisdictionPos = rawCookies.indexOf("}") - 1
-                districtCourt = rawCookies.substring(rawCookies.indexOf("comarca") + 11, endJurisdictionPos)                
-                if (!districtCourt) {
-                    alert("Você precisa entrar no Solar. Você será redirecionado ao site.")
-                    window.open("https://solar.defensoria.mg.def.br/login/", "_self")
-                }
-                defendersData = await response[0].json() as DefendersAPIResponse
-                defendersData.results.map((d) => {
-                    let opt = document.createElement("option")
-                    opt.value = d.id.toString()
-                    opt.textContent = d.nome
-                    defendersSelect.add(opt)
-                })
-                localStorage.setItem("defenders", JSON.stringify(defendersData.results))
-
-
-            } else if (response[0].status === 401) {
+        const defenders = fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
+        const cookie = chrome.cookies.get({ url: "https://solar.defensoria.mg.def.br/atendimento/perfil/", name: "user" })
+        const response = await Promise.all([defenders, cookie])
+        if (response[0].ok && response[1]?.value) {
+            const rawCookies = response[1].value.substring(7).replaceAll("\\", "")
+            const endJurisdictionPos = rawCookies.indexOf("}") - 1
+            districtCourt = rawCookies.substring(rawCookies.indexOf("comarca") + 11, endJurisdictionPos)
+            if (!districtCourt) {
                 alert("Você precisa entrar no Solar. Você será redirecionado ao site.")
                 window.open("https://solar.defensoria.mg.def.br/login/", "_self")
-            } else {
-
             }
-        } else {
-            defendersArea.style.display = "none"
-            registrationArea.style.display = 'block';
-            const userCreds = localStorage.get("user")
-            if (userCreds) {
-                const user = JSON.parse(userCreds) as User
-                const defenders = JSON.parse(localStorage.getItem("defenders") ?? "") as Defenders[]
-                const defender = defenders.find(c => c.id === user.id)
-                if (defender) {
-                    workers.push(...defender.trabalhadores)
+            defendersData = await response[0].json() as DefendersAPIResponse
+            defendersData.results.map((d) => {
+                let opt = document.createElement("option")
+                opt.value = d.id.toString()
+                opt.textContent = d.nome
+                defendersSelect.add(opt)
+                if (user && user.id === d.id) {
+                    opt.selected = true
+                    defendersSelect.disabled = true
                 }
-            }
-        }
+            })
+            minasGeraisCities.forEach(c => {
+                const option = document.createElement("option")
+                option.value = String(c.codigo_ibge)
+                option.innerHTML = c.nome
+                defenderLocale.options.add(option)
+                if (user && user.locality.id === c.codigo_ibge) option.selected = true
 
+            })
+            if(user) {
+            defenderEmailInput.value = user.email
+
+            }
+        } else if (response[0].status === 401) {
+            alert("Você precisa entrar no Solar. Você será redirecionado ao site.")
+            window.open("https://solar.defensoria.mg.def.br/login/", "_self")
+        }
     } catch (error) {
         console.log(error)
     }
@@ -96,17 +99,17 @@ subordinateEndDate.addEventListener("keyup", (e) => {
 btnNextStep.addEventListener('click', async () => {
     const val = defenderSelect.value;
     const email = defenderEmailInput.value
-    if (val && email && url.get("onboard") === "1") {
+    if (val && email) {
         defendersArea.style.display = "none"
         registrationArea.style.display = 'block';
         cardHeader.style.display = "block"
-        localStorage.setItem("user",
-            JSON.stringify({
-                id: Number(val),
-                nome: defenderSelect.selectedOptions[0]?.label,
-                roles: defendersData.results.find(c => c.id === Number(val))?.atuacoes,
-                email, districtCourt
-            }))
+        firstPageUserData.id = Number(val)
+        firstPageUserData.nome = defenderSelect.selectedOptions[0]?.label,
+            firstPageUserData.roles = defendersData.results.find(c => c.id === Number(val))?.atuacoes as any
+        firstPageUserData.email = email,
+            firstPageUserData.districtCourt = districtCourt
+        firstPageUserData.locality.name = defenderLocale.selectedOptions[0]?.label
+        firstPageUserData.locality.id = Number(defenderLocale.selectedOptions[0]?.value)
         workers.push({
             name: defenderSelect.selectedOptions[0]?.label ?? "",
             defenderId: Number(val),
@@ -253,18 +256,31 @@ saveBtn?.addEventListener('click', () => {
 })
 
 finishBtn?.addEventListener("click", async () => {
-    const user = await getUserCredentials()
-    if (user) {
-        const defenders = JSON.parse(localStorage.getItem("defenders") ?? "") as Defenders[]
-        const defender = defenders.findIndex(c => c.id === user.id)
-        if (defender > -1 && defenders) {
-            if (defenders[defender]) {
-                defenders[defender].trabalhadores = workers
+    const defender = defendersData.results.findIndex(c => c.id === firstPageUserData.id)
+    if (defender > -1 && defendersData.results) {
+        if (defendersData.results[defender]) {
+            defendersData.results[defender].trabalhadores = workers
+            if (firstPageUserData && !user) {
                 if (await sendMessage("SAVE_WORKER", { workers })) {
-                    localStorage.setItem("defenders", JSON.stringify(defenders))
-                    alert("Cadastro realizado com sucesso. Abra novamente a extensão.")
+                    localStorage.setItem("user",
+                        JSON.stringify({
+                            ...firstPageUserData
+                        }))
+                    alert("Cadastro realizado com sucesso")
+                    await chrome.tabs.create({ url: "./src/pages/gabinete.html" })
                     window.close()
                 }
+            } else if (firstPageUserData && user) {
+                if (await sendMessage("UPDATE_WORKER", { workers })) {
+                    localStorage.setItem("user",
+                        JSON.stringify({
+                            ...firstPageUserData
+                        }))
+                    alert("Equipe atualizada com sucesso")
+                    await chrome.tabs.create({ url: "./src/pages/gabinete.html" })
+                    window.close()
+                }
+
 
             }
 
@@ -327,3 +343,4 @@ function getSelectedIndexOption(value: string) {
             i++
         }
 }
+

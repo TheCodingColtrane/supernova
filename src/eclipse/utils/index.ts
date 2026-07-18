@@ -34,7 +34,7 @@ export async function sendMessage<T>(message: string, data: T) {
  * @param {Date} oldestLawsuitDeadline 
  * @returns {Promise<Holidays[]> | []}
  */
-export async function getHolidaysAPI(oldestYear: number) {
+export async function getNationalHolidaysAPI(oldestYear: number) {
     try {
         const curYear = new Date().getFullYear()
         let holidays: Array<Promise<Response>> = []
@@ -70,7 +70,7 @@ export async function getLocalHolidays() {
         const response = await Promise.all([local, department])
         if (response[0].ok && response[1].ok) {
             let localHolidays = await response[0].json() as Array<LocalHoliday>
-            let departmentHolidays = await response[0].json() as Array<LocalHoliday>
+            let departmentHolidays = await response[1].json() as Array<LocalHoliday>
             departmentHolidays = departmentHolidays.filter(c => c.uf === "MG")
             localHolidays = localHolidays.filter(c => c.uf === "MG")
             const holidays = new Array<LocalHoliday>()
@@ -125,7 +125,7 @@ export async function getDefenders() {
 export async function getUserCredentials() {
     const creds = JSON.parse(localStorage.getItem("user") ?? "{}")
     if (Object.hasOwn(creds, "id")) return creds as User
-    await chrome.tabs.create({ url: "./src/pages/equipe.html?onboard=1" })
+    else return
 }
 
 export async function getWorkers() {

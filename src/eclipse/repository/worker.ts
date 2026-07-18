@@ -28,8 +28,13 @@ export async function saveWorker(worker: Worker[] | Worker) {
     }
 
 }
-export async function updateWorker(worker: Worker) {
+export async function updateWorker(worker: Worker[] | Worker) {
     try {
+        if (Array.isArray(worker)) {
+            await db.workers.bulkPut(worker);
+            return 1
+        }
+
         const id = await db.workers.put({
             id: worker.id ?? 0,
             defenderId: worker.defenderId,

@@ -86,7 +86,7 @@ export interface Evento {
     nivel_sigilo:           number | null;
     tipo_local:             null | string;
     tipo_nacional:          null | string;
-    usuario:                null;
+    usuario:                null | string;
     defensoria:             boolean;
     ficticio:               boolean;
     complementos:           any[];
