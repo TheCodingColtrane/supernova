@@ -980,6 +980,220 @@
       color: #64748b;
       cursor: pointer;
     }
+
+    .utility-top {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      margin-bottom: 18px;
+
+    }
+
+    .utility-icon {
+
+      width: 56px;
+
+      height: 56px;
+
+      border-radius: 14px;
+
+      background: #eef2ff;
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: center;
+
+    }
+
+    .utility-icon i {
+
+      margin: 0;
+
+      font-size: 28px;
+
+    }
+
+    .utility-category {
+
+      background: #f8fafc;
+
+      color: var(--text-muted);
+
+      padding: 5px 10px;
+
+      border-radius: 20px;
+
+      font-size: .72rem;
+
+      font-weight: 600;
+
+    }
+
+
+    .utilities-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 20px;
+    }
+
+    .utility-search {
+      width: 320px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .utilities-grid {
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(auto-fill, minmax(280px, 1fr));
+
+      gap: 24px;
+
+    }
+
+    .utility-card {
+
+      background: white;
+
+      border: 1px solid var(--border);
+
+      border-radius: 16px;
+
+      padding: 24px;
+
+      transition: .25s;
+
+      display: flex;
+
+      flex-direction: column;
+
+    }
+
+    .utility-card:hover {
+
+      transform: translateY(-5px);
+
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .08);
+
+      border-color: var(--primary);
+
+    }
+
+    .utility-card i {
+
+      font-size: 38px;
+
+      color: var(--primary);
+
+      margin-bottom: 18px;
+
+    }
+
+    .utility-card h3 {
+
+      margin-bottom: 10px;
+
+      font-size: 18px;
+
+    }
+
+    .utility-card p {
+
+      color: var(--text-muted);
+
+      flex: 1;
+
+      margin-bottom: 22px;
+
+    }
+
+    .utility-card button {
+
+      border: none;
+
+      background: var(--primary);
+
+      color: white;
+
+      border-radius: 10px;
+
+      padding: 10px;
+
+      cursor: pointer;
+
+    }
+
+    .search-box {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 12px;
+
+      padding: 12px 16px;
+
+      border: 1px solid var(--border);
+
+      border-radius: 12px;
+
+      background: white;
+
+    }
+
+    .search-box input {
+
+      flex: 1;
+
+      border: none;
+
+      outline: none;
+
+    }
+
+    .utility-section-title {
+
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      margin: 40px 0 18px;
+
+      font-size: 1rem;
+      font-weight: 700;
+
+      color: var(--text-main);
+
+    }
+
+    .utility-section-title::after {
+
+      content: "";
+
+      flex: 1;
+
+      height: 1px;
+
+      background: var(--border);
+
+    }
+
+    .page-container {
+          max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+    }
   </style>
 </head>
 
@@ -1068,7 +1282,7 @@
     <nav class="nav-links">
       <span class="nav-item active">Processos</span>
       <span class="nav-item">Tarefas</span>
-      <span class="nav-item">Configurações</span>
+      <span class="nav-item">Utilidades</span>
     </nav>
   </header>
   <div class="slider-viewport">
@@ -1099,7 +1313,8 @@
 
           <div class="search-section">
             <div class="search-container">
-              <input type="text" class="search-input" placeholder="Pesquisar por número do processo ou nome do assistido..." id="searchLawsuitInput" />
+              <input type="text" class="search-input"
+                placeholder="Pesquisar por número do processo ou nome do assistido..." id="searchLawsuitInput" />
             </div>
             <div class="update-btn-container" style="padding: 15px;">
               <button class="btn-primary" id="update-lawsuit-btn">
@@ -1200,7 +1415,8 @@
 
           <div class="search-section">
             <div class="search-container">
-              <input type="text" class="search-input" placeholder="Pesquisar por titulo ou processo" id="searchTaskInput" />
+              <input type="text" class="search-input" placeholder="Pesquisar por titulo ou processo"
+                id="searchTaskInput" />
             </div>
           </div>
 
@@ -1240,6 +1456,35 @@
           </div>
         </div>
         <!-- <button id="new-task" class="fab">+</button> -->
+      </section>
+      <section class="page">
+        <div class="container">
+          <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
+          </div>
+
+        <section id="favoriteSection">
+
+          <h3 class="utility-section-title">
+            <i class="bi bi-star"></i>
+            Favoritas
+          </h3>
+
+          <div class="utilities-grid" id="favoriteGrid"></div>
+
+        </section>
+
+        <section>
+
+          <h3 class="utility-section-title">
+            Todas as ferramentas
+          </h3>
+
+          <div class="utilities-grid" id="utilitiesGrid"></div>
+
+        </section>
+        </div>
       </section>
     </div>
     <button id="toggleable-actions" class="fab">+</button>

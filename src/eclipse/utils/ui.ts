@@ -146,3 +146,165 @@ export function hideLoadingSpinner() {
   const loading = document.querySelector("#loadingOverlay");
   loading!.classList.add("hidden");
 }
+
+
+
+export function createDownloadToast() {
+    if (document.getElementById("download-toast")) return;
+
+    const pageStyle = document.createElement("style")
+    pageStyle.textContent = `#download-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 340px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  padding: 16px;
+  z-index: 999999;
+  font-family: Inter, sans-serif;
+  animation: slideIn 0.25s ease-out;
+}
+
+#download-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#download-toast-icon {
+  font-size: 18px;
+}
+
+#download-toast-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+#download-toast-status {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+#download-toast-progress {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+#download-toast-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #2563eb;
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+#download-toast-percent {
+  text-align: right;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+#download-toast.success #download-toast-progress-bar {
+  background: #16a34a;
+}
+
+#download-toast.error #download-toast-progress-bar {
+  background: #dc2626;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}`
+
+    document.body.insertAdjacentHTML(
+        "afterbegin",
+        `
+    <div id="download-toast">
+      <div id="download-toast-header">
+        <span id="download-toast-icon">
+        <i class='fas fa-download'></i>
+        </span>
+        <span id="download-toast-title">Download do documento</span>
+      </div>
+
+      <div id="download-toast-status">
+        Preparando download...
+      </div>
+
+      <div id="download-toast-progress">
+        <div id="download-toast-progress-bar"></div>
+      </div>
+
+      <div id="download-toast-percent">0%</div>
+    </div>
+  `
+    );
+    document.body.appendChild(pageStyle)
+}
+
+
+export function updateDownloadProgress(percent: number) {
+    const bar = document.getElementById("download-toast-progress-bar");
+    const label = document.getElementById("download-toast-percent");
+    const status = document.getElementById("download-toast-status");
+
+    bar!.style.width = `${percent}%`;
+    label!.textContent = `${percent}%`;
+    status!.textContent = "Baixando documento...";
+}
+
+
+export function finishDownloadToast() {
+    const toast = document.getElementById("download-toast");
+    if (!toast) return
+
+    toast.classList.add("success");
+
+    const icon = document.getElementById("download-toast-icon")
+    if (icon) icon.innerHTML = "<i class='fas fa-check'><i>";
+    const status = document.getElementById("download-toast-status")
+    if (status) status.innerHTML = "Documento baixado com sucesso";
+
+    const result = document.getElementById("download-toast-percent")
+    if (result) result.textContent = "100%";
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+
+export function failDownloadToast() {
+    const toast = document.getElementById("download-toast");
+    if (!toast) return
+    toast.classList.add("error");
+
+    const icon = document.getElementById("download-toast-icon")
+    if (icon) icon.innerHTML = "<i class='fas fa-xmark'><i>";
+    const status = document.getElementById("download-toast-status")
+    if (status) status.innerHTML = "Erro ao baixar o processo";
+
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}

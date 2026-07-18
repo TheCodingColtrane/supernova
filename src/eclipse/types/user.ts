@@ -6,5 +6,9 @@ export type User = {
         id: number
         nome: string
     }]
+    locality: {
+        id: number
+        name: string
+    }
     districtCourt: string
 }

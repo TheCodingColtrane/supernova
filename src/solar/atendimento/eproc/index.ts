@@ -231,7 +231,7 @@ async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ id: string, documen
 }
 
 
-async function sendToOffscreenProcessor(htmlString: string): Promise<{ content: ArrayBuffer, pages: number }> {
+export async function sendToOffscreenProcessor(htmlString: string): Promise<{ content: ArrayBuffer, pages: number }> {
     const result = await sendMessage("RENDER_HTML", htmlString)
     // 1. Cria o documento offscreen se ele já não existir
     if (!result || !result.success) {

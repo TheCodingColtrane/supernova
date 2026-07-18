@@ -3,5 +3,6 @@ export type Holidays = {
     startDate: Date | string
     endDate: Date | string
     id?: number
-    isNational: boolean
+    type: string,
+    description?: string
 }

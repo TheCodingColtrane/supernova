@@ -1,4 +1,4 @@
-import { getHolidaysAPI } from "../utils"
+import { getNationalHolidaysAPI, getLocalHolidays } from "../utils"
 import { getHolidaysData, saveHolidaysData } from "../repository/holidays"
 import type { Holidays } from "../db/schemas/holidays"
 import type { HolidaysAPIResponse } from "../types/holidays"
@@ -55,17 +55,30 @@ export async function getHolidays(year: Date) {
             const data = await getHolidaysData()
             if (data.length === 0) {
                 const previousYear = new Date().getFullYear() - 1
-                const holidays = await getHolidaysAPI(previousYear) as HolidaysAPIResponse[] | undefined
-                if (holidays) {
+                const nationalHolidays = getNationalHolidaysAPI(previousYear)
+                const localHolidays = getLocalHolidays()
+                const holidays = await Promise.all([nationalHolidays, localHolidays])
+                if (holidays[0]?.length && holidays[1]?.length) {
                     const holidaysSchema = new Array<Holidays>()
-                    for (const holiday of holidays) {
+                    for (let cHoliday of holidays[0]) {
+                        const holiday = cHoliday as HolidaysAPIResponse
                         holidaysSchema.push({
                             startDate: holiday.date,
                             endDate: holiday.date,
-                            isNational: holiday.type === "national",
+                            type: "national",
                             name: holiday.name
                         })
                     }
+
+                    //   for (const holiday of holidays[1]) {
+                    //     holidaysSchema.push({
+                    //         startDate: holiday.data,
+                    //         endDate: holiday.data,
+                    //         type: holiday.tipo === "MUNICIPAL"  ? "city" : "state",
+                    //         name: holiday.nome
+                    //     })
+                    // }
+
 
                     await saveHolidays(holidaysSchema)
                     return holidaysSchema

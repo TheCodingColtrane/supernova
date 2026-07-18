@@ -131,7 +131,7 @@ async function handleHtmlProcessing(htmlString: string): Promise<number[]> {
     } else {
       // Se não existe e ninguém está criando, nós assumimos a criação e travamos a fila
       isCreatingOffscreen = chrome.offscreen.createDocument({
-        url: '/public/blank.html',
+        url: './src/pages/blank.html',
         reasons: [chrome.offscreen.Reason.DOM_PARSER],
         justification: 'Converter HTML do tribunal em PDF selecionavel',
       });

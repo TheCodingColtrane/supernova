@@ -21,6 +21,10 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     sendResponse(JSON.stringify(status))
 
   }
+
+  if(message.type === "GET_GEMINI_OUTPUT"){
+
+  }
 });
 
 
@@ -169,3 +173,4 @@ async function triggerEmailActions() {
 
 
   }
+

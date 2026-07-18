@@ -51,7 +51,8 @@ tasks: `
   startDate,
   endDate,
   name,
-  isNational,
+  type,
+  description,
   [startDate+endDate],
   [endDate+startDate]
 `,
