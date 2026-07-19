@@ -21,6 +21,8 @@ const firstDocButton = document.querySelector("#view-first-doc-btn") as HTMLButt
 const currentDocument = document.querySelector("#current-document") as HTMLElement
 const documentViewer = document.querySelector("#document-viewer") as HTMLIFrameElement
 const downloadButton = document.querySelector("#downloadLawsuitButton") as HTMLButtonElement
+const viewDocumentButton = document.querySelector("#viewDocumentBtn") as HTMLButtonElement
+const downloadDocumentButtontn = document.querySelector("#downloadDocumentBtn") as HTMLButtonElement
 const lawsuitDocuments = new Array<{ url: string, date: string, createdBy: string, event: string, docCount: number, isEPROC: boolean }>()
 const aiutton = document.querySelector("#aiOptionsButton") as HTMLButtonElement
 
@@ -110,10 +112,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             })
 
+            viewDocumentButton.addEventListener("click", () => {
+                window.open(documentViewer.src)
+            })
+
+            downloadDocumentButtontn.addEventListener("click", async () => {
+               const resp = await fetch(documentViewer.src)
+               if(resp.ok){
+                const fileBytes = new Uint8Array(await resp.arrayBuffer())
+                await downloadPDF(fileBytes, document.querySelector("#document-description")?.textContent ?? "")
+
+               }
+            })
+
             document.querySelectorAll(".summary-card")[4].addEventListener("click", () => {
 
             })
-            maxDocumentCount =   document.querySelectorAll("[data-url]").length - 1
+            maxDocumentCount =   document.querySelectorAll("[data-url]").length
             firstDocButton.addEventListener("click", () => {
                 const selectedDoc = document.querySelector(".tree-node.selected") as HTMLDivElement
                 selectedDoc.className = "tree-node"
@@ -140,7 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const selectedDoc = document.querySelector(".tree-node.selected") as HTMLDivElement
                 selectedDoc.className = "tree-node"
                 documents.item(0).parentElement!.className = "tree-node selected"
-                currentDocument.textContent = String(documents.length - 1)
+                currentDocument.textContent = String(documents.length)
                 const lastDoc = documents.item(0) as HTMLSpanElement
                 documentViewer.src = lastDoc.dataset.url ?? "about:blank"
                 showLoadingSpinner()
@@ -246,30 +261,22 @@ function createDocumentNode(documento: { name: string, url: string, type?: strin
 
     if (isRoot) node.classList.add("tree-root");
 
-    // node.dataset.id = documento.id;
-
     node.innerHTML = `
             <i class="bi bi-file-earmark"></i>
-            <span data-url="${documento.url}" data-type=${documento.type}>${documento.name}</span>
+            <span data-url="${documento.url}" data-type=${documento.type ?? "PET"} >${documento.name}</span>
         `;
 
     node.addEventListener("click", () => {
-
-        // e.stopPropagation();
-
         document.querySelectorAll(".tree-node.selected").forEach(x => x.classList.remove("selected"));
-
         node.classList.add("selected");
-        //node.onclick = () => {
             const documentViewer = document.querySelector("#document-viewer") as HTMLIFrameElement
             const url = node.children.item(1) as HTMLSpanElement
             document.querySelector("#document-description")!.innerHTML = `<i class="bi bi-file-earmark"></i> ${url.textContent}`
             const curTimelineItem = getParent(node, "timeline-item")
             if (curTimelineItem) {
-                Array.from(document.querySelectorAll("[data-url]")).reverse().forEach((c, i) => {
+                Array.from(document.querySelectorAll("[data-url]")).forEach((c, i) => {
                     if(c.parentElement?.className.includes("selected")){
-                        currentDocument.textContent = String(i - 1)
-                        console.log(i)
+                        currentDocument.textContent = String(document.querySelectorAll("[data-url]").length -i)
                     }
                 })
                 document.querySelector("#document-protocol-date")!.textContent = curTimelineItem.children.item(0)?.children.item(1)?.textContent ?? ""
@@ -432,7 +439,7 @@ function changeDocuments(forward: boolean, count: number) {
 }
 
 async function donwloadLawsuit(download = true) {
-    const urls = lawsuitDocuments.map(c => c.url)
+    const urls = Array.from(document.querySelectorAll("[data-url]") as NodeListOf<HTMLSpanElement>).map(c => c.dataset.url!)
     const rawDocuments = Array<ArrayBuffer>()
     if (urls.length > 0) {
         createDownloadToast()
@@ -451,9 +458,9 @@ async function donwloadLawsuit(download = true) {
                     const result = await sendToOffscreenProcessor(htmlText)
                     rawDocuments.push(result.content)
 
-                } else
+                } else if(headers.get("Content-Type") === "application/pdf")
                     rawDocuments.push(await res.arrayBuffer())
-                updateDownloadProgress(Math.round(i / rawDocuments.length * 100))
+                updateDownloadProgress(Math.round(i / urls.length * 100))
 
             }
 
