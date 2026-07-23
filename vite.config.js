@@ -13,7 +13,8 @@ export default defineConfig({
         popup: resolve(__dirname, "src/pages/popup.html"),
         dashboard: resolve(__dirname, "src/pages/gabinete.html"),
         office: resolve(__dirname, "src/pages/equipe.html"),
-        lawsuit: resolve(__dirname, "src/pages/processo.html")
+        lawsuit: resolve(__dirname, "src/pages/processo.html"),
+        holiday: resolve(__dirname, "src/pages/feriados.html")
       },
       output: {
         // Remove a subpasta 'assets/' do padrão de nomes

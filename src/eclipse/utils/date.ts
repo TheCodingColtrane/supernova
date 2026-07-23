@@ -12,7 +12,7 @@ export function localDateToIsoDate(date: string, time: boolean) {
         return aux[2] + "-" + aux[1] + "-" + aux[0] + "T" + date.substring(10)
     }
     const aux = date.split("-")
-    return aux[2] + "-" + aux[1] + "-" + aux[0]
+    return aux[2] + "/" + aux[1] + "/" + aux[0]
 
 }
 

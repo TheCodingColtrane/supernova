@@ -1,8 +1,10 @@
 import type { DefendersAPIResponse } from "../types/office"
 import type { Worker } from "../types/workers"
-import { convertDateToTextDate, convertTextDateToDate, formatDate, getUserCredentials, isSmallerDateValid, isValidDate, sendMessage } from "../utils";
+import { convertTextDateToDate, formatDate, getUserCredentials, isSmallerDateValid, isValidDate, sendMessage } from "../utils";
 import { showToast } from "../utils/ui";
 import cities from "../utils/municipios.json"
+import { formatISO } from "date-fns";
+import { localDateToIsoDate } from "../utils/date";
 const defendersSelect = document.querySelector("#defenderSelect") as HTMLSelectElement
 const defenderSelect = document.getElementById('defenderSelect') as HTMLSelectElement;
 const defenderLocale = document.getElementById('defenderLocale') as HTMLSelectElement;
@@ -19,6 +21,7 @@ const btnNextStep = document.getElementById('btnNextStep') as HTMLButtonElement;
 const defendersArea = document.getElementById("defenders-area") as HTMLElement
 const subList = document.getElementById('subList') as HTMLElement;
 const roleSelect = document.querySelector("#roleSelect") as HTMLSelectElement
+const isCriminal = document.querySelector("#isCriminal") as HTMLInputElement
 const minasGeraisCities = cities.filter(c => c.codigo_uf === 31)
 // const internContractInfoDiv = document.querySelector("#internContractInfo") as HTMLDivElement
 const subordinateStartDate = document.querySelector("#subordinateStartDate") as HTMLInputElement
@@ -27,17 +30,17 @@ const date = new Date()
 let districtCourt = ""
 const workers: Worker[] = []
 const ids: string[] = []
-const firstPageUserData = { id: 0, nome: "", roles: Array<any>(), email: "", districtCourt: "", locality: { id: 0, name: "" } }
+const firstPageUserData = { id: 0, nome: "", roles: Array<any>(), email: "", districtCourt: "", isCriminal: false, locality: { id: 0, name: "" } }
 let defendersData: DefendersAPIResponse
 let selectedId = ""
 const user = await getUserCredentials()
-const {data} = await sendMessage("GET_WORKERS", {})
-if(data && user) {
-    console.log(data) 
+const { data } = await sendMessage("GET_WORKERS", {})
+if (data && user) {
+    console.log(data)
     workers.push(...data)
 }
- 
-document.addEventListener("load", async () => {
+
+(async () => {
     try {
         const defenders = fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
         const cookie = chrome.cookies.get({ url: "https://solar.defensoria.mg.def.br/atendimento/perfil/", name: "user" })
@@ -69,8 +72,8 @@ document.addEventListener("load", async () => {
                 if (user && user.locality.id === c.codigo_ibge) option.selected = true
 
             })
-            if(user) {
-            defenderEmailInput.value = user.email
+            if (user) {
+                defenderEmailInput.value = user.email
 
             }
         } else if (response[0].status === 401) {
@@ -80,7 +83,7 @@ document.addEventListener("load", async () => {
     } catch (error) {
         console.log(error)
     }
-})
+})()
 
 
 subordinateStartDate.addEventListener("keyup", (e) => {
@@ -110,17 +113,23 @@ btnNextStep.addEventListener('click', async () => {
             firstPageUserData.districtCourt = districtCourt
         firstPageUserData.locality.name = defenderLocale.selectedOptions[0]?.label
         firstPageUserData.locality.id = Number(defenderLocale.selectedOptions[0]?.value)
-        workers.push({
-            name: defenderSelect.selectedOptions[0]?.label ?? "",
-            defenderId: Number(val),
-            email,
-            joinedAt: new Date(),
-            role: "Defensor(a)",
-            id: 1,
-            isActive: true
-        })
-        ids.push(val)
-        updateList(ids)
+        if (workers.length === 0) {
+            workers.push({
+                name: defenderSelect.selectedOptions[0]?.label ?? "",
+                defenderId: Number(val),
+                email,
+                joinedAt: new Date(),
+                role: "Defensor(a)",
+                id: 1,
+                isActive: true,
+                isCriminal: isCriminal.value === "on"
+            })
+            ids.push(val)
+            updateList(ids)
+        } else {
+            updateList(workers.map(c => String(c.id)))
+        }
+
 
     }
 });
@@ -133,8 +142,8 @@ function updateList(idList: string[]) {
           <span class="subordinate-name" data-id='${idList[i]}'>${sub.name}</span>
           <span class="subordinate-role">${sub.role}</span>
           <span class="subordinate-email">${sub.email}</span>
-           <span class="subordinate-start">${sub.startDate ? convertDateToTextDate(sub.startDate) : ""}</span>
-          <span class="subordinate-end">${sub.endDate ? convertDateToTextDate(sub.endDate) : ""}</span>
+           <span class="subordinate-start">${sub.startDate ? localDateToIsoDate(String(sub.startDate), false) : ""}</span>
+          <span class="subordinate-end">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
         </div>
        <div>
         <button class="edit-sub-btn" style="color: #f59e0b; font-size: 0.7rem; font-weight: 700;">Editar</button>
@@ -164,9 +173,33 @@ function updateList(idList: string[]) {
         sub.addEventListener("click", (e) => {
             const subItems = e.target as HTMLDivElement
             const elements = subItems.parentElement?.parentElement?.querySelectorAll("span")
+            console.log(elements)
             const roleSelectText = elements?.item(1).innerHTML
-            if (roleSelectText === "Estagiário(a)") roleSelect.selectedIndex = 0
-            else if (roleSelectText === "Servidor(a)") roleSelect.selectedIndex = 1
+            if (roleSelectText === "Estagiário(a)") {
+                roleSelect.selectedIndex = 0
+                const subName = document.querySelector("#subordinateName")
+                if(subName?.tagName === "SELECT") {
+                const defenders = document.createElement("input")
+                defenders.value  = elements?.item(0).textContent ?? ""
+                defenders.id = "subordinateName"
+                subName?.replaceWith(defenders)    
+                } else {
+                (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
+
+                }
+            }
+            else if (roleSelectText === "Servidor(a)"){
+               roleSelect.selectedIndex = 1
+                const subName = document.querySelector("#subordinateName")
+                if(subName?.tagName === "SELECT") {
+                const defenders = document.createElement("input")
+                defenders.value = elements?.item(0).textContent ?? ""
+                defenders.id = "subordinateName"
+                subName?.replaceWith(defenders)
+            } else {
+                (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
+            }
+        }
             else {
                 roleSelect.selectedIndex = 2
                 const subName = document.querySelector("#subordinateName")
@@ -178,6 +211,9 @@ function updateList(idList: string[]) {
                     opt.value = d.id.toString()
                     opt.textContent = d.nome
                     defenders.add(opt)
+                    if (d.nome === elements?.item(0).textContent)
+                        opt.selected = true
+
                 })
                 subName?.replaceWith(defenders)
                 console.log(elements?.item(0))
@@ -189,6 +225,8 @@ function updateList(idList: string[]) {
             }
             subEmailInput.value = elements?.item(2).innerHTML ?? ""
             subNameInput.value = elements?.item(0).innerHTML ?? ""
+            subordinateStartDate.value = elements?.item(3).innerHTML ?? ""
+            subordinateEndDate.value = elements?.item(4).innerHTML ?? ""
             return
 
         })
@@ -216,7 +254,7 @@ saveBtn?.addEventListener('click', () => {
     const role = subRoleInput.selectedOptions?.item(0)?.innerHTML
     const email = subEmailInput?.value
     const defenderId = Number(defenderSelect.value);
-    let startDate = new Date(), endDate = new Date()
+    let startDate = "", endDate = ""
 
     if (subordinateStartDate.value) {
         if (!isValidDate(subordinateStartDate.value)) {
@@ -224,7 +262,7 @@ saveBtn?.addEventListener('click', () => {
             subordinateStartDate.focus()
             return
         }
-        startDate = convertTextDateToDate(subordinateStartDate.value)
+        startDate = formatISO(convertTextDateToDate(subordinateStartDate.value), {representation: "date"}  )
 
     }
     if (subordinateEndDate.value) {
@@ -233,7 +271,7 @@ saveBtn?.addEventListener('click', () => {
             subordinateEndDate.focus()
             return
         }
-        endDate = convertTextDateToDate(subordinateEndDate.value)
+        endDate = formatISO(convertTextDateToDate(subordinateEndDate.value), {representation: "date"})
     }
 
     if (!isSmallerDateValid(subordinateStartDate.value, subordinateEndDate.value)) {
@@ -249,7 +287,7 @@ saveBtn?.addEventListener('click', () => {
     workers.push({
         name, email, defenderId, role: role === "Estagiário(a)" ? "Estagiário(a)" :
             role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date(),
-        id: workers.length + 1, startDate, endDate, isActive: true
+        id: workers.length + 1, startDate, endDate, isActive: true, isCriminal: isCriminal.value === "on"
     })
     subEmailInput.value = ''
     updateList(ids);
@@ -343,4 +381,3 @@ function getSelectedIndexOption(value: string) {
             i++
         }
 }
-

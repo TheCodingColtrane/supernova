@@ -634,8 +634,6 @@ function parseRSC(page: Document) {
     if (results) {
       return { total: results, lawsuits: queryResults.split('\"defensores\"') }
     }
-    //A consulta é complexa. Vem ao menos 3 tipos de dados que não se relacionam diretamente com a requisição.
-    // return queryResults.split('\"defensores\"')
 
   }
 

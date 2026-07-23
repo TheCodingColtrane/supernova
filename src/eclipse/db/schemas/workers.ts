@@ -6,6 +6,7 @@ export type Workers = {
     role: "Estagiário(a)" | "Servidor(a)" | "Defensor(a)"
     joinedAt: Date
     isActive: boolean
-    startDate?: Date
-    endDate?: Date
+    startDate?: Date | string 
+    endDate?: Date | string
+    isCriminal?: boolean
 }
