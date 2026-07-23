@@ -8,7 +8,17 @@ export async function saveHolidaysData(holidays: Holidays[] | Holidays) {
             await db.holidays.bulkAdd(holidays);
             return true
         }
-        else await db.holidays.add(holidays);
+        return await db.holidays.add(holidays)
+    } catch (error) {
+        console.log(error)
+        return false
+    }
+
+}   
+
+export async function updateHolidaysData(holidays: Holidays) {
+    try {
+        await db.holidays.put(holidays);
         return true
     } catch (error) {
         console.log(error)

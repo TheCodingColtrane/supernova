@@ -387,6 +387,7 @@
 ========================================================== */
 
         .document-toolbar {
+            position: relative;
             height: 60px;
             border-bottom: 1px solid #edf2f7;
             display: flex;
@@ -515,13 +516,13 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding: 70px 28px 28px;
+            /* padding: 70px 28px 28px; */
             overflow: auto;
         }
 
         .document-selector {
             position: absolute;
-            top: 18px;
+            top: 12%;
             left: 50%;
             transform: translateX(-50%);
 
@@ -696,10 +697,34 @@
                                 <i class="bi bi-clock"></i>
                                 <span id="document-protocol-date"></span>
                             </div>
+
                         </div>
                     </div>
 
                     <!-- </div> -->
+
+                    <div class="document-selector">
+                        <button class="doc-nav" id="view-first-doc-btn">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </button>
+                        <button class="doc-nav" id="view-previous-doc-btn">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <div class="doc-counter">
+                            Documento
+                            <strong id="current-document">0</strong>
+                            de
+                            <strong id="last-document">0</strong>
+                        </div>
+                        <button class="doc-nav" id="view-next-doc-btn">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <button class="doc-nav" id="view-last-doc-btn">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </button>
+
+                    </div>
+
 
                     <div class="toolbar-actions">
                         <button id="downloadDocumentBtn">
@@ -710,41 +735,12 @@
                             <i class="bi bi-box-arrow-up-right"></i>
                         </button>
                     </div>
+
                 </header>
 
 
                 <div class="document-stage">
-                    <div class="document-selector">
 
-                        <button class="doc-nav" id="view-first-doc-btn">
-                            <i class="bi bi-chevron-double-left"></i>
-                        </button>
-
-                        <button class="doc-nav" id="view-previous-doc-btn">
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-
-                        <div class="doc-counter">
-                            Documento
-                            <strong id="current-document">0</strong>
-                            de
-                            <strong id="last-document">0</strong>
-                        </div>
-
-                        <button class="doc-nav" id="view-next-doc-btn">
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
-
-                        <button class="doc-nav" id="view-last-doc-btn">
-                            <i class="bi bi-chevron-double-right"></i>
-                        </button>
-
-                        <!-- <button class="doc-list">
-                            <i class="bi bi-list-ul"></i>
-                            Lista
-                        </button> -->
-
-                    </div>
                     <iframe id="document-viewer" src="about:blank">
                     </iframe>
                 </div>

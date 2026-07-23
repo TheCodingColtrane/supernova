@@ -36,6 +36,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case "SAVE_HOLIDAYS":
           result = await saveHolidays(request.payload.holidays)
           break;
+        case "UPDATE_TASK":
+          result = await updateTaskData(request.payload.task)
+          break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year)
           break

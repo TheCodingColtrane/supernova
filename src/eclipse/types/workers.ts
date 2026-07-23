@@ -5,7 +5,8 @@ export type Worker = {
     email: string
     role: "Estagiário(a)" | "Servidor(a)" | "Defensor(a)"
     joinedAt: Date
-    startDate?: Date
-    endDate?: Date
+    startDate?: Date | string
+    endDate?: Date | string
     isActive: boolean
+    isCriminal?: boolean
 }

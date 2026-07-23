@@ -232,7 +232,7 @@ export function formatDate(input: HTMLInputElement) {
     input.value = value;
 }
 
-export function convertTextDateToDate(date: string) {
+export function     convertTextDateToDate(date: string) {
     const dateParts = date.split("/").map(c => parseInt(c))
     return new Date(dateParts[2], dateParts[1] - 1, dateParts[0])
 }

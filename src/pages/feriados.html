@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <title>Cadastro de Feriado</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Inter, sans-serif;
+        }
+
+        body {
+            background: #f5f7fb;
+            color: #1e293b;
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ================= HEADER ================= */
+
+        .header {
+            height: 72px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 0 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .back-button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            background: #f1f5f9;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background: #e2e8f0;
+        }
+
+        .title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tag {
+            align-self: flex-start;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: .72rem;
+            font-weight: 600;
+        }
+
+        .title h1 {
+            font-size: 1.2rem;
+        }
+
+        .title p {
+            color: #64748b;
+            font-size: .85rem;
+        }
+
+        /* ================= CONTENT ================= */
+
+        .content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            padding: 32px;
+        }
+
+        .card {
+            width: 700px;
+            background: white;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            padding: 28px;
+        }
+
+        .card h2 {
+            margin-bottom: 28px;
+            font-size: 1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: .85rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        input,
+        select {
+            height: 44px;
+            border: 1px solid #dbe2ea;
+            border-radius: 10px;
+            padding: 0 14px;
+            font-size: .92rem;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #4f46e5;
+        }
+
+        input[readonly] {
+            background: #f8fafc;
+            color: #64748b;
+        }
+
+        .actions {
+            margin-top: 34px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-secondary {
+            height: 42px;
+            padding: 0 18px;
+            border-radius: 10px;
+            border: 1px solid #dbe2ea;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            height: 42px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 10px;
+            background: #4f46e5;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+
+        /* ===========================================
+   PAINEL
+=========================================== */
+
+        .holidays-panel {
+            width: 360px;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        /* ===========================================
+   PESQUISA
+=========================================== */
+
+        .holidays-search {
+            padding: 18px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .search-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 42px;
+            padding: 0 14px;
+
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+        }
+
+        .search-input input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: .9rem;
+        }
+
+        /* ===========================================
+   FILTROS
+=========================================== */
+
+        .holiday-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 18px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .filter-chip {
+            border: none;
+            border-radius: 18px;
+            background: #f1f5f9;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: .80rem;
+            transition: .2s;
+        }
+
+        .filter-chip.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        /* ===========================================
+   LISTA
+=========================================== */
+
+        .holiday-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ===========================================
+   ITEM
+=========================================== */
+
+        .holiday-item {
+            display: flex;
+            gap: 14px;
+            padding: 16px;
+
+            cursor: pointer;
+
+            border-left: 4px solid transparent;
+            border-bottom: 1px solid #f1f5f9;
+
+            transition: .2s;
+        }
+
+        .holiday-item:hover {
+            background: #f8fafc;
+        }
+
+        .holiday-item.active {
+            background: #eef2ff;
+            border-left-color: #4f46e5;
+        }
+
+        /* ===========================================
+   ÍCONE
+=========================================== */
+
+        .holiday-icon {
+            width: 46px;
+            height: 46px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            border-radius: 12px;
+
+            flex-shrink: 0;
+        }
+
+        .holiday-icon i {
+            font-size: 1rem;
+        }
+
+        .holiday-icon.national {
+            background: #ede9fe;
+            color: #4f46e5;
+        }
+
+        .holiday-icon.state {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .holiday-icon.city {
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        /* ===========================================
+   CONTEÚDO
+=========================================== */
+
+        .holiday-content {
+            flex: 1;
+        }
+
+        .holiday-content h3 {
+            margin: 0;
+            font-size: .92rem;
+            color: #0f172a;
+        }
+
+        .holiday-content p {
+            margin: 6px 0 12px;
+            font-size: .80rem;
+            color: #64748b;
+        }
+
+        /* ===========================================
+   BADGES
+=========================================== */
+
+        .badge {
+            display: inline-block;
+
+            padding: 5px 10px;
+
+            border-radius: 999px;
+
+            font-size: .72rem;
+            font-weight: 600;
+        }
+
+        .badge.national {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
+        .badge.state {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge.city {
+            background: #ffedd5;
+            color: #c2410c;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <button class="back-button">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <div class="title">
+                    <span class="tag">
+                        Cadastro
+                    </span>
+                    <h1>Feriado</h1>
+                    <p>Inclusão e alteração de feriados</p>
+                </div>
+            </div>
+            <button class="btn-primary" id="newHoliday">
+                <i class="bi bi-plus"></i>
+                Criar novo
+            </button>
+        </header>
+
+
+        <main class="content">
+
+            <aside class="holidays-panel">
+
+                <!-- Pesquisa -->
+                <div class="holidays-search">
+
+                    <div class="search-input">
+                        <i class="bi bi-search"></i>
+                        <input id="holiday-search" type="text" placeholder="Pesquisar feriado...">
+                    </div>
+
+                </div>
+
+                <!-- Filtros -->
+
+                <div class="holiday-filters">
+
+                    <button class="filter-chip active">
+                        Todos
+                    </button>
+
+                    <button class="filter-chip">
+                        Nacional
+                    </button>
+
+                    <button class="filter-chip">
+                        Estadual
+                    </button>
+
+                    <button class="filter-chip">
+                        Municipal
+                    </button>
+
+                </div>
+
+                <!-- Lista -->
+
+                <div class="holiday-list">
+
+                    <div class="holiday-item active">
+
+                        <div class="holiday-icon national">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+
+                        <div class="holiday-content">
+
+                            <h3>Confraternização Universal</h3>
+
+                            <p>01/01/2026</p>
+
+                            <div class="holiday-meta">
+
+                                <span class="badge national">
+                                    Nacional
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="holiday-item">
+
+                        <div class="holiday-icon national">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+
+                        <div class="holiday-content">
+
+                            <h3>Tiradentes</h3>
+
+                            <p>21/04/2026</p>
+
+                            <div class="holiday-meta">
+
+                                <span class="badge national">
+                                    Nacional
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="holiday-item">
+
+                        <div class="holiday-icon state">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+
+                        <div class="holiday-content">
+
+                            <h3>Revolução Constitucionalista</h3>
+
+                            <p>09/07/2026</p>
+
+                            <div class="holiday-meta">
+
+                                <span class="badge state">
+                                    Estadual
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="holiday-item">
+
+                        <div class="holiday-icon city">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+
+                        <div class="holiday-content">
+
+                            <h3>Aniversário da Cidade</h3>
+
+                            <p>15/08/2026</p>
+
+                            <div class="holiday-meta">
+
+                                <span class="badge city">
+                                    Municipal
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </aside>
+
+
+            <div class="card" data-id="0">
+
+                <h2>Informações do Feriado</h2>
+
+                <div class="form-grid">
+
+
+
+                    <div class="field">
+                        <label>Tipo</label>
+
+                        <select id="type">
+                            <option value="NATIONAL">Nacional</option>
+                            <option value="STATE">Estadual</option>
+                            <option value="CITY">Municipal</option>
+                        </select>
+
+                    </div>
+
+                    <div class="field">
+                        <label>Nome</label>
+                        <input id="name" minlength="3">
+                    </div>
+
+                    <div class="field">
+                        <label>Data Inicial</label>
+                        <input id="startDate" type="date" maxlength="2099-11-31">
+                    </div>
+
+                    <div class="field">
+                        <label>Data Final</label>
+                        <input id="endDate" type="date" maxlength="2099-11-31">
+                    </div>
+                    <div class="field full">
+                        <label>Descrição</label>
+                        <input id="desc" type="text">
+                    </div>
+                </div>
+
+                <div class="actions">
+
+                    <button class="btn-secondary">
+                        Cancelar
+                    </button>
+
+                    <button class="btn-primary" id="saveBtn">
+                        <i class="bi bi-check-lg"></i>
+                        Salvar
+                    </button>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</body>
+<script type="module" src="../eclipse/holiday/index.ts"></script>
+
+</html>
