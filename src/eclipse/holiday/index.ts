@@ -1,6 +1,7 @@
 import { formatISO } from "date-fns";
 import type { Holidays } from "../types/holidays";
 import { sendMessage } from "../../util";
+import { showToast } from "../utils/ui";
 let holidaysData = Array<Holidays>();
 
 
@@ -18,7 +19,7 @@ function renderHolidays() {
         const startDate = rawStartDate[2] + "/" + rawStartDate[1] + "/" + rawStartDate[0]
         const rawEndDate = String(c.endDate).split("-")
         const endDate = rawEndDate[2] + "/" + rawEndDate[1] + "/" + rawEndDate[0]
-        return `<div class=${!i ? "holiday-item" : "holiday-item active"} data-id=${c.id}>
+        return `<div class=${!i ? "holiday-item" : "holiday-item active"} data-id=${c.id} data-type=${c.type} data-name=${c.name}>
             <div class="holiday-icon ${c.type === "national" ? "national" : c.type === "state" ? "state" : "city"}">
                 <i class="bi bi-calendar-event"></i>
             </div>
@@ -35,12 +36,39 @@ function renderHolidays() {
     }
     ).join("")
 
+    const chips = document.querySelectorAll(".filter-chip") as NodeListOf<HTMLDivElement>
+    chips.forEach(chip => {
+        const itens = document.querySelectorAll(".holiday-item") as NodeListOf<HTMLDivElement>
+        chip.addEventListener("click", () => {
+            const formerActiveChip = document.querySelector(".filter-chip.active") as HTMLDivElement
+            formerActiveChip.className = "filter-chip"
+            chip.className = "filter-chip active"
+            if (chip.innerText === "Todos") {
+                itens.forEach(item => {
+                    item.hidden = false
+                })
+            } else {
+                itens.forEach(item => {
+                    if (chip.innerText === "Nacional"){
+                        item.dataset.type === "national" ? item.hidden = false : item.hidden = true
+                    }
+                    else if (chip.innerText === "Estadual"){
+                        item.dataset.type === "state" ? item.hidden = false : item.hidden = true
+                    }
+                    else{
+                        item.dataset.type === "city" ? item.hidden = false : item.hidden = true
+                    }
+                })
+            }
+        })
+
+    });
     document.querySelector("#newHoliday")?.addEventListener("click", () => {
         const inputs = document.querySelectorAll("input")
         const today = new Date()
         inputs[1].value = ""
-        inputs[2].value = formatISO(today, {representation: "date"})
-        inputs[3].value = formatISO(today, {representation: "date"})
+        inputs[2].value = formatISO(today, { representation: "date" })
+        inputs[3].value = formatISO(today, { representation: "date" })
         document.querySelector("select")!.options.selectedIndex = 0
         const cardForm = document.querySelector(".card") as HTMLDivElement
         cardForm.dataset.id = "0"
@@ -88,6 +116,8 @@ function renderHolidays() {
             const i = holidaysData.findIndex(c => c.id === holidayId)
             holidaysData[i] = holiday
             renderHolidays()
+            showToast("Feriado alterado com sucesso.")
+
 
         } else {
             const holiday: Holidays = {
@@ -98,14 +128,50 @@ function renderHolidays() {
             }
 
             const result = await sendMessage("SAVE_HOLIDAYS", { holidays: holiday })
-            if(result.data){
+            if (result.data) {
                 cardForm.dataset.id = String(result.data)
                 holiday.id = result.data
                 holidaysData.push(holiday)
                 renderHolidays()
+                showToast("Feriado criado com sucesso.")
+
             }
 
         }
+    })
+
+    document.querySelector("#deleteBtn")!.addEventListener("click", async () => {
+        const cardForm = document.querySelector(".card") as HTMLDivElement
+        const holidayId = Number(cardForm.dataset.id)
+        if(!holidayId) return
+        const result = await sendMessage("DELETE_HOLIDAYS", {id: holidayId})
+        if(result.data){
+           const i = holidaysData.findIndex(c => c.id === holidayId) 
+            holidaysData.splice(i, 1)
+            showToast("Feriado deletado com sucesso.")
+            const inputs = document.querySelectorAll("input")
+            inputs[1].value = ""
+            inputs[2].value = ""
+                //endDate
+            inputs[3].value = ""
+            document.querySelector("select")!.selectedIndex = 0
+            cardForm.dataset.id = "0"
+
+        }
+
+    })
+
+
+
+    document.querySelector("#holiday-search")?.addEventListener("keyup", (e) => {
+            const input = e.target as HTMLInputElement
+            const itens = document.querySelectorAll(".holiday-item") as NodeListOf<HTMLDivElement>
+            itens.forEach(c => {
+                if(c.dataset.name?.toUpperCase().includes(input.value.toUpperCase()))
+                    c.hidden = false
+                else c.hidden = true 
+            })
+
     })
 }
 

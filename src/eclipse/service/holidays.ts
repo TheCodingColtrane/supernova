@@ -1,5 +1,5 @@
 import { getNationalHolidaysAPI, getLocalHolidays } from "../utils"
-import { getHolidaysData, saveHolidaysData, updateHolidaysData } from "../repository/holidays"
+import { deleteHolidaysData, getHolidaysData, saveHolidaysData, updateHolidaysData } from "../repository/holidays"
 import type { Holidays } from "../db/schemas/holidays"
 import type { HolidaysAPIResponse } from "../types/holidays"
 
@@ -17,6 +17,17 @@ export async function updateHolidays(holidays: Holidays) {
 
 }
 
+export async function deleteHolidays(id: number) {
+    try {
+        const isDeleted = await deleteHolidaysData(id)
+        if (isDeleted) return true
+
+        // }
+    } catch (error) {
+        console.log(error)
+    }
+
+}
 
 export async function saveHolidays(holidays: Holidays[]) {
     try {

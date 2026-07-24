@@ -27,6 +27,17 @@ export async function updateHolidaysData(holidays: Holidays) {
 
 }   
 
+export async function deleteHolidaysData(id: number) {
+    try {
+        await db.holidays.delete(id);
+        return true
+    } catch (error) {
+        console.log(error)
+        return false
+    }
+
+}   
+
 
 export async function getHolidaysData(year?:string) {
     try {
