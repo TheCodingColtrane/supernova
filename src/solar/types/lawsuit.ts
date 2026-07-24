@@ -1,7 +1,7 @@
-export interface Welcome {
+export interface ProcessoQueryResult {
     data:     Date;
     sucesso:  boolean;
-    mensagem: null;
+    mensagem: string;
     processo: Processo;
 }
 

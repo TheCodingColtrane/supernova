@@ -1,11 +1,13 @@
-import { PDFDocument, rgb } from "pdf-lib"
+import { PDFDocument } from "pdf-lib"
 import { sendToOffscreenProcessor } from "../../solar/atendimento/eproc"
-import type { Documento, Processo } from "../../solar/types/lawsuit"
+import type { Documento, Processo, ProcessoQueryResult } from "../../solar/types/lawsuit"
 import { concurrentDownload, downloadPDF } from "../../util"
 import { createDownloadToast, finishDownloadToast, hideLoadingSpinner, showLoadingSpinner, updateDownloadProgress } from "../utils/ui"
 import { getGeminiLawsuitOutput } from "../gemini"
+import { getLawsuit } from "../utils"
 const params = new URLSearchParams(window.location.search)
-let lawsuit: Processo | undefined
+let lawsuitQueryResult: ProcessoQueryResult | undefined
+let lawsuit: Processo
 let timelineList: HTMLDivElement | undefined
 const timelineSearchInput = document.querySelector("#timeline-search") as HTMLInputElement
 const filterButtons = document.querySelectorAll(".filter-chip")
@@ -29,23 +31,7 @@ const aiutton = document.querySelector("#aiOptionsButton") as HTMLButtonElement
 let maxDocumentCount = 0
 
 
-async function getLawsuit(number: string) {
-    try {
-        const response = await fetch(`https://solar.defensoria.mg.def.br/procapi/processo/${number}/consultar/?forcar_atualizacao=true`)
-        if (response.ok) {
-            const { processo } = await response.json()
-            return processo as Processo
-        } else if (response.status === 403) {
-            alert("você precisa entrar no solar.")
-            return
-        } else return
 
-    } catch (error) {
-        console.error(error)
-        return
-    }
-
-}
 
 document.addEventListener("DOMContentLoaded", async () => {
     const lawsuitNumber = params.get("numero")
@@ -54,8 +40,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         showLoadingSpinner()
         const caseNumber = `${lawsuitNumber.substring(0, 7)}-${lawsuitNumber.substring(7, 9)}.${lawsuitNumber.substring(9, 13)}.${lawsuitNumber[13]}.${lawsuitNumber.substring(14, 16)}.${lawsuitNumber.substring(16)}`
         document.title = "Processo " + caseNumber
-        lawsuit = await getLawsuit(lawsuitNumber)
-        if (lawsuit && isDefendant) {
+        lawsuitQueryResult = await getLawsuit(lawsuitNumber)
+        if (lawsuitQueryResult && lawsuitQueryResult?.sucesso && isDefendant) {
+            lawsuit = lawsuitQueryResult.processo
             document.querySelector("#case-circuit")!.textContent = lawsuit.orgao_julgador.nome
             document.querySelector(".case-number")!.textContent = caseNumber
             document.querySelector(".case-class")!.textContent = lawsuit.classe.nome
@@ -117,18 +104,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             })
 
             downloadDocumentButtontn.addEventListener("click", async () => {
-               const resp = await fetch(documentViewer.src)
-               if(resp.ok){
-                const fileBytes = new Uint8Array(await resp.arrayBuffer())
-                await downloadPDF(fileBytes, document.querySelector("#document-description")?.textContent ?? "")
+                const resp = await fetch(documentViewer.src)
+                if (resp.ok) {
+                    const fileBytes = new Uint8Array(await resp.arrayBuffer())
+                    await downloadPDF(fileBytes, document.querySelector("#document-description")?.textContent ?? "")
 
-               }
+                }
             })
 
             document.querySelectorAll(".summary-card")[4].addEventListener("click", () => {
 
             })
-            maxDocumentCount =   document.querySelectorAll("[data-url]").length
+            maxDocumentCount = document.querySelectorAll("[data-url]").length
             firstDocButton.addEventListener("click", () => {
                 const selectedDoc = document.querySelector(".tree-node.selected") as HTMLDivElement
                 selectedDoc.className = "tree-node"
@@ -212,23 +199,28 @@ async function renderLawsuitViewer() {
                             url,
                             type: doc.parametros.rotulo
                         })
+                        article.dataset.eventId = String(doc.evento)
                         tree.appendChild(elements)
+                        eventName.textContent += " - " + doc.evento
                     } else {
                         lawsuitDocuments.push({ url, date: doc.data_protocolo.toLocaleString(), createdBy: event.usuario ?? "Alguém", event: doc.documento, docCount: 1, isEPROC: false })
                         if (event.documentos.length > 1) {
+                            const docsSlice = event.documentos.slice(1)
                             const elements = createDocumentNode({
                                 name: doc.nome,
                                 url,
                                 type: doc.parametros.rotulo
-                            }, true, event.documentos.slice(1))
+                            }, true, docsSlice)
                             tree.appendChild(elements)
+                            article.dataset.eventId = docsSlice.reduce((prev, cur) => prev + ", " + cur, "")
                             break;
                         } else {
                             const elements = createDocumentNode({
-                                name: doc.nome,
+                                name: doc.nome + " - " + doc.documento,
                                 url,
                                 type: doc.parametros.rotulo
                             }, true)
+                            article.dataset.eventId = String(doc.documento)
                             tree.appendChild(elements)
                         }
                     }
@@ -269,27 +261,27 @@ function createDocumentNode(documento: { name: string, url: string, type?: strin
     node.addEventListener("click", () => {
         document.querySelectorAll(".tree-node.selected").forEach(x => x.classList.remove("selected"));
         node.classList.add("selected");
-            const documentViewer = document.querySelector("#document-viewer") as HTMLIFrameElement
-            const url = node.children.item(1) as HTMLSpanElement
-            document.querySelector("#document-description")!.innerHTML = `<i class="bi bi-file-earmark"></i> ${url.textContent}`
-            const curTimelineItem = getParent(node, "timeline-item")
-            if (curTimelineItem) {
-                Array.from(document.querySelectorAll("[data-url]")).forEach((c, i) => {
-                    if(c.parentElement?.className.includes("selected")){
-                        currentDocument.textContent = String(document.querySelectorAll("[data-url]").length -i)
-                    }
-                })
-                document.querySelector("#document-protocol-date")!.textContent = curTimelineItem.children.item(0)?.children.item(1)?.textContent ?? ""
-                document.querySelector("#document-author")!.textContent = "Protocolado por " + curTimelineItem.dataset.creator
+        const documentViewer = document.querySelector("#document-viewer") as HTMLIFrameElement
+        const url = node.children.item(1) as HTMLSpanElement
+        document.querySelector("#document-description")!.innerHTML = `<i class="bi bi-file-earmark"></i> ${url.textContent}`
+        const curTimelineItem = getParent(node, "timeline-item")
+        if (curTimelineItem) {
+            Array.from(document.querySelectorAll("[data-url]")).forEach((c, i) => {
+                if (c.parentElement?.className.includes("selected")) {
+                    currentDocument.textContent = String(document.querySelectorAll("[data-url]").length - i)
+                }
+            })
+            document.querySelector("#document-protocol-date")!.textContent = curTimelineItem.children.item(0)?.children.item(1)?.textContent ?? ""
+            document.querySelector("#document-author")!.textContent = "Protocolado por " + curTimelineItem.dataset.creator
 
-            }
-            documentViewer.src = url.dataset.url ?? "about:blank"
-            showLoadingSpinner()
+        }
+        documentViewer.src = url.dataset.url ?? "about:blank"
+        showLoadingSpinner()
 
-            documentViewer.addEventListener("load", () => {
-                hideLoadingSpinner()
-            });
-       // }
+        documentViewer.addEventListener("load", () => {
+            hideLoadingSpinner()
+        });
+        // }
 
         // if (documento.onClick)
         //     documento.onClick(documento);
@@ -306,7 +298,7 @@ function createDocumentNode(documento: { name: string, url: string, type?: strin
         documentos.forEach(doc => {
             lawsuitDocuments.push({ url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, date: doc.data_protocolo.toLocaleString(), createdBy: documento.userCreatedBy! ?? "Alguém", event: doc.documento, docCount: documentos.length, isEPROC: false })
 
-            children.appendChild(createDocumentNode({ name: doc.nome, url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, type: doc.parametros.rotulo }, false));
+            children.appendChild(createDocumentNode({ name: doc.nome + " - " + doc.documento, url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, type: doc.parametros.rotulo }, false));
         });
 
         wrapper.appendChild(children);
@@ -330,6 +322,7 @@ function filterTimelineList(term: string, type?: string) {
         let match = false
         if (term) {
             match = Array.from(timelineItem.querySelectorAll("span")).some(span => span.textContent?.toUpperCase().includes(search))
+                || timelineItem.dataset.eventId?.includes(term)!
         } else if (type === "DESP") {
             match = Array.from(timelineItem.querySelectorAll("span")).some(dispatch => dispatch.dataset.type?.includes("DESP"))
         } else if (type === "DEC") {
@@ -440,13 +433,15 @@ function changeDocuments(forward: boolean, count: number) {
 
 async function donwloadLawsuit(download = true) {
     const urls = Array.from(document.querySelectorAll("[data-url]") as NodeListOf<HTMLSpanElement>).map(c => c.dataset.url!)
-    const rawDocuments = Array<ArrayBuffer>()
+    const rawDocuments = new Array(urls.length)
+    let completedDownloads = 0
     if (urls.length > 0) {
         createDownloadToast()
         await concurrentDownload(
             urls,
             10,
             async (url: string, i: number) => {
+                console.log(url, i)
                 const res = await fetch(url)
                 const headers = res.headers
                 console.log(headers.get("Content-Type"))
@@ -456,11 +451,12 @@ async function donwloadLawsuit(download = true) {
                     const buffer = await res.arrayBuffer();
                     const htmlText = new TextDecoder(isUTF8 ? "utf-8" : "iso-8859-1").decode(buffer);
                     const result = await sendToOffscreenProcessor(htmlText)
-                    rawDocuments.push(result.content)
+                    rawDocuments[i] = result.content
 
-                } else if(headers.get("Content-Type") === "application/pdf")
-                    rawDocuments.push(await res.arrayBuffer())
-                updateDownloadProgress(Math.round(i / urls.length * 100))
+                } else if (headers.get("Content-Type") === "application/pdf")
+                    rawDocuments[i] = await res.arrayBuffer()
+                completedDownloads++
+                updateDownloadProgress(Math.round(completedDownloads / urls.length * 100))
 
             }
 
@@ -482,55 +478,19 @@ async function donwloadLawsuit(download = true) {
 
 async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ event: string, docCount: number, createdBy: string, date: string, isEPROC: boolean }>) {
     const mergedPdf = await PDFDocument.create();
-    const loadedPdfs = await Promise.all(
-        pdfs.map((pdf) => PDFDocument.load(pdf))
-    );
-    let i = 0, curDocument = 1, curPage = 1
-    const { isEPROC } = events[0]
-    for (const [pdfIndex, loadedPdf] of loadedPdfs.entries()) {
-        let event = events[pdfIndex];
-        let refText = ""
-        const copiedPages = await mergedPdf.copyPages(
-            loadedPdf,
-            loadedPdf.getPageIndices()
+    console.log(events)
+    for (const bytes of pdfs) {
+        const pdf = await PDFDocument.load(bytes);
+
+        const pages = await mergedPdf.copyPages(
+            pdf,
+            pdf.getPageIndices()
         );
 
-        if (events.length > 1) {
-            for (let pageIndex = 0; pageIndex < copiedPages.length; pageIndex++) {
-                const page = copiedPages[pageIndex];
-                if (!isEPROC) {
-                    refText = `id. ${event.event} pag ${pageIndex + 1} protocolado por ${event.createdBy} ${event.date}`
-                } else {
-                    event = events[i]
-                    refText = `Evento. ${event.event} pag ${curPage} protocolado por ${event.createdBy} ${event.date}`
-                    if (event.docCount === curDocument && curPage - 1 === copiedPages.length - 1) {
-                        curDocument = 0
-                        curPage = 1
-                        i++
-                    } else if (curPage - 1 === copiedPages.length - 1) {
-                        curPage++
-                        curDocument++
-                    } else curPage++
-
-                }
-                page.drawText(
-                    refText,
-                    {
-                        x: 10,
-                        y: page.getHeight() - 20,
-                        size: 8,
-                        color: rgb(0.28, 0.131, 0.100)
-                    }
-                );
-
-                mergedPdf.addPage(page);
-            }
-        } else {
-            copiedPages.forEach(page => mergedPdf.addPage(page))
-
-        }
+        pages.forEach((page) => mergedPdf.addPage(page));
 
     }
+
 
     const mergedPdfBytes = await mergedPdf.save();
     return mergedPdfBytes;
