@@ -1,11 +1,21 @@
 import { writeJSON, writeDOCX } from "../../reports";
 import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
-import { convertTextDateToDate, isValidDate, renderModal, sendMessage } from "../../utils";
+import { convertTextDateToDate, getLawsuit, isValidDate, renderModal, sendMessage } from "../../utils";
 import { getBusinessDays } from "../../utils/date";
 import { showToast } from "../../utils/ui";
 
 const utilities = [
+    {
+        id: "Processo",
+        name: "Ver Processo",
+        description: "Permite a visualização de processos presentes no SOLAR.",
+        icon: "bi-search",
+        category: "Produtividade",
+        page: "",
+        favorite: true,
+        execute: openLawsuit
+    },
     {
         id: "calculadora",
         name: "Calculadora de Prazos",
@@ -234,10 +244,49 @@ function openGeminiPromptsModal() {
                         text: formData.get("promptTextDesc") as string
                     }
 
-                    console.log(prompts)                    
+                    console.log(prompts)
                 }
             }
         ]
     })
 }
 
+async function openLawsuit() {
+    renderModal().open({
+        title: "Seus Prompts",
+        content: `
+       <form id="lawsuitForm">
+          <div class="form-group">
+            <label for="lawsuitNumber">Processo</label>
+             <input name="number" class="search-input" id="lawsuitNumber" minlength="20" maxlength="25"/>
+             </div>
+            <div id="result" style="display: flex; justify-content: center; align-items: center; margin: 1rem 0; color:red;">
+        </form>
+      
+      `,
+        actions: [
+            {
+                label: 'Pesquisar', className: 'btn-primary', preventClose: true, callback: async () => {
+                    const form = document.querySelector("#lawsuitForm") as HTMLFormElement
+                    const formData = new FormData(form)
+                    const rawLawsuitNumber = formData.get("number") as string
+                    if (rawLawsuitNumber) {
+                        if (rawLawsuitNumber.length < 20 || rawLawsuitNumber.length > 20 && rawLawsuitNumber.length < 25) return
+                        const lawsuitNumber = rawLawsuitNumber.replace(/\D/g, "").trim()
+                        if (!isNaN(Number(lawsuitNumber))) {
+                            const lawsuit = await getLawsuit(lawsuitNumber)
+                            if (lawsuit?.sucesso) {
+                                document.querySelector("#lawsuitForm > #result")!.textContent = ""
+                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber });
+                            } else {
+                                document.querySelector("#lawsuitForm > #result")!.textContent = "Não foi encontrado nenhum processo. Cadastre-o no solar ou pesquise por outro."
+                            }
+                        } else document.querySelector("#lawsuitForm > #result")!.textContent = "Número do processo inválido."
+                    }
+
+                }
+            }
+        ]
+    })
+
+}

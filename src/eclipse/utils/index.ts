@@ -3,6 +3,7 @@ import type { HolidaysAPIResponse } from "../types/holidays";
 import type { Defenders, DefendersAPIResponse } from "../types/office";
 import type { User } from "../types/user";
 import type { ModalBody } from "../types/modal";
+import type { ProcessoQueryResult } from "../../solar/types/lawsuit";
 
 export async function sendMessage<T>(message: string, data: T) {
     try {
@@ -260,4 +261,23 @@ export function isSmallerDateValid(date1: string, date2: string) {
     if (smallerDate.getTime() < biggerDate.getTime())
         return true
     else return false
+}
+
+
+export async function getLawsuit(number: string) {
+    try {
+        const response = await fetch(`https://solar.defensoria.mg.def.br/procapi/processo/${number}/consultar/?forcar_atualizacao=true`)
+        if (response.ok) {
+            const lawsuit = await response.json()
+            return lawsuit as ProcessoQueryResult
+        } else if (response.status === 403) {
+            alert("você precisa entrar no solar.")
+            return
+        } else return
+
+    } catch (error) {
+        console.error(error)
+        return
+    }
+
 }
