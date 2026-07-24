@@ -159,7 +159,7 @@
             padding: 0 18px;
             border-radius: 10px;
             border: 1px solid #dbe2ea;
-            background: white;
+            background: #ef4444;
             cursor: pointer;
         }
 
@@ -368,6 +368,10 @@
             background: #ffedd5;
             color: #c2410c;
         }
+
+        [hidden] {
+            display: none !important;
+        }
     </style>
 
 </head>
@@ -569,16 +573,17 @@
                         <label>Data Final</label>
                         <input id="endDate" type="date" maxlength="2099-11-31">
                     </div>
-                    <div class="field full">
+                    <!-- <div class="field full">
                         <label>Descrição</label>
                         <input id="desc" type="text">
-                    </div>
+                    </div> -->
                 </div>
 
                 <div class="actions">
 
-                    <button class="btn-secondary">
-                        Cancelar
+                    <button class="btn-secondary" id="deleteBtn">
+                        <i class="bi bi-trash"></i>
+                        Deletar
                     </button>
 
                     <button class="btn-primary" id="saveBtn">

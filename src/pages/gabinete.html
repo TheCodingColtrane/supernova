@@ -1190,9 +1190,9 @@
     }
 
     .page-container {
-          max-width: 1400px;
-    margin: 2rem auto;
-    padding: 0 2rem;
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
     }
   </style>
 </head>
@@ -1365,6 +1365,10 @@
                 <input type="checkbox" id="checkCalendarDays">
                 Considerar Dias Corridos
               </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="groupLawsuits">
+                Agrupar processos
+              </label>
             </div>
           </div>
 
@@ -1464,26 +1468,26 @@
             <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
           </div>
 
-        <section id="favoriteSection">
+          <section id="favoriteSection">
 
-          <h3 class="utility-section-title">
-            <i class="bi bi-star"></i>
-            Favoritas
-          </h3>
+            <h3 class="utility-section-title">
+              <i class="bi bi-star"></i>
+              Favoritas
+            </h3>
 
-          <div class="utilities-grid" id="favoriteGrid"></div>
+            <div class="utilities-grid" id="favoriteGrid"></div>
 
-        </section>
+          </section>
 
-        <section>
+          <section>
 
-          <h3 class="utility-section-title">
-            Todas as ferramentas
-          </h3>
+            <h3 class="utility-section-title">
+              Todas as ferramentas
+            </h3>
 
-          <div class="utilities-grid" id="utilitiesGrid"></div>
+            <div class="utilities-grid" id="utilitiesGrid"></div>
 
-        </section>
+          </section>
         </div>
       </section>
     </div>
@@ -1519,5 +1523,5 @@
 </body>
 
 </html>
-<script type="module" src="../eclipse/dashboard/index.ts" defer></script>
+<script type="module" src="../eclipse/office/index.ts" defer></script>
 <!-- <script src="tasks.js" defer></script> -->

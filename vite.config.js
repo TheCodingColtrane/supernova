@@ -11,8 +11,8 @@ export default defineConfig({
         // Garante que o Vite vai buildar o HTML do offscreen e o script dele
         offscreen: resolve(__dirname, 'src/pages/blank.html'), 
         popup: resolve(__dirname, "src/pages/popup.html"),
-        dashboard: resolve(__dirname, "src/pages/gabinete.html"),
-        office: resolve(__dirname, "src/pages/equipe.html"),
+        office: resolve(__dirname, "src/pages/gabinete.html"),
+        team: resolve(__dirname, "src/pages/equipe.html"),
         lawsuit: resolve(__dirname, "src/pages/processo.html"),
         holiday: resolve(__dirname, "src/pages/feriados.html")
       },

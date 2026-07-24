@@ -1,4 +1,4 @@
-import { getHolidays, saveHolidays } from "./eclipse/service/holidays";
+import { deleteHolidays, getHolidays, saveHolidays, updateHolidays } from "./eclipse/service/holidays";
 import { deleteLawsuits, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "./eclipse/service/lawsuits";
 import { deleteTaskData, getTaskData, saveTaskData, updateTaskData } from "./eclipse/service/tasks";
 import { deleteWorkerData, getWorkerData, saveWorkerData, updateWorkerData } from "./eclipse/service/workers";
@@ -36,8 +36,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case "SAVE_HOLIDAYS":
           result = await saveHolidays(request.payload.holidays)
           break;
-        case "UPDATE_TASK":
-          result = await updateTaskData(request.payload.task)
+        case "UPDATE_HOLIDAYS":
+          result = await updateHolidays(request.payload.holidays)
+          break;
+        case "DELETE_HOLIDAYS":
+          result = await deleteHolidays(request.payload.id)
           break;
         case "GET_HOLIDAYS":
           result = await getHolidays(request.payload.year)
