@@ -7,7 +7,7 @@ import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
 import { convertTextDateToDate, formatDate, getDefenders, getUserCredentials, isValidDate, renderModal, sendMessage } from "../utils"
 import { getBusinessDays, localDateToIsoDate } from "../utils/date";
-import { getDefensories, updateLawsuitDashboard } from "../service/fetcher";
+import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
 import { addBusinessDays, addDays, differenceInBusinessDays, isSameWeek } from "date-fns";
 import { renderUtilities } from "./utilities";
@@ -128,6 +128,11 @@ let workersData = Array<Worker>();
         var tab = tabs[0];
         chrome.tabs.update(tab.id, { url: "./src/pages/equipe.html" });
       });
+    }
+    const login = isLoggedIn()
+    if(!login) {
+      alert("Você precisa entrar no solar.")
+      await chrome.tabs.create({url: "https://solar.defensoria.mg.def.br/login"})
     }
 
       const results = await Promise.all([lawsuits, holidays, tasks, workers])

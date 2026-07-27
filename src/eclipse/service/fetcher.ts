@@ -771,3 +771,12 @@ function isPJELoading(page: Document) {
     }
   }, 1000)
 }
+
+export async function isLoggedIn() {
+  const cookie = await chrome.cookies.get({ url: "https://solar.defensoria.mg.def.br/atendimento/perfil/", name: "user" })
+  if(cookie?.value){
+    return cookie.value
+  }
+  return ""
+
+}

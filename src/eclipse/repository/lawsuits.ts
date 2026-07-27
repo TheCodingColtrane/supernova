@@ -1,5 +1,6 @@
 import { dbInstance } from "../db/index";
 import type { Lawsuits } from "../db/schemas/lawsuits";
+import { updateLawsuits } from "../service/lawsuits";
 
 const db = dbInstance()
 
@@ -75,16 +76,14 @@ export async function getWeekLawsuitsData() {
 export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         if (Array.isArray(lawsuits)) {
-            //
             const existingLawsuits = await getExistingLawsuits(lawsuits)
             if (!existingLawsuits.length) {
                 await db.lawsuits.bulkAdd(lawsuits);
                 return lawsuits
             }
             const uniqueLawsuits = new Set(lawsuits.map(c => c.number))
-            const uniqueeExistingLawsuits =  new Set(existingLawsuits.map(c => c.number))
-            
-            for (const lawsuit of uniqueeExistingLawsuits) {
+            const uniqueExistingLawsuits =  new Set(existingLawsuits.map(c => c.number))
+            for (const lawsuit of uniqueExistingLawsuits) {
                 if (uniqueLawsuits.has(lawsuit)) {
                     uniqueLawsuits.delete(lawsuit)
                 } 
@@ -94,13 +93,13 @@ export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
             for (const lawsuit of uniqueLawsuits) {
                 for (const cLawsuit of lawsuits) {
                     if(cLawsuit.number === lawsuit){
+                        cLawsuit.id  = await db.lawsuits.add(cLawsuit)
                         filteredLawsuits.push(cLawsuit)
                     }
                 }
             }
-            
-            await db.lawsuits.bulkAdd(filteredLawsuits);
-            return filteredLawsuits
+            existingLawsuits.push(...filteredLawsuits)
+            return existingLawsuits
         }
         else {
             await db.lawsuits.add(lawsuits);
@@ -158,6 +157,24 @@ export async function getPendingLawsuitsData() {
 }
 
 
-export async function getExistingLawsuits(lawsuit: Lawsuits[]) {
-    return db.lawsuits.where('number').anyOf(lawsuit.map(c => c.number)).toArray();
+export async function getExistingLawsuits(lawsuits: Lawsuits[]) {
+    const existingLawsuits = await db.lawsuits.where('number').anyOf(lawsuits.map(c => c.number)).toArray()
+    for (const existingLawsuit of existingLawsuits) {
+        for (const lawsuit of lawsuits) {
+            if(existingLawsuit.number === lawsuit.number){
+                if(existingLawsuit.status !== lawsuit.status){
+                    existingLawsuit.status = lawsuit.status
+                    existingLawsuit.initialDeadline = lawsuit.initialDeadline
+                    existingLawsuit.deadline = lawsuit.deadline
+                    existingLawsuit.summonURL = lawsuit.summonURL
+                    existingLawsuit.summon = lawsuit.summon
+                    existingLawsuit.class = lawsuit.class
+                    break
+                }
+            }
+        }    
+    }
+    const isUpdated = await updateLawsuits(existingLawsuits)
+    if(isUpdated) return existingLawsuits
+    return []
 }
