@@ -1,4 +1,4 @@
-import { PDFDocument } from "pdf-lib"
+import { PDFDocument, rgb } from "pdf-lib"
 import { sendToOffscreenProcessor } from "../../solar/atendimento/eproc"
 import type { Documento, Processo, ProcessoQueryResult } from "../../solar/types/lawsuit"
 import { concurrentDownload, downloadPDF } from "../../util"
@@ -193,7 +193,7 @@ async function renderLawsuitViewer() {
                 for (const doc of event.documentos) {
                     const url = `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit.numero}/documento/${doc.documento}/`
                     if (lawsuit.sistema_webservice.includes("EPROC")) {
-                        lawsuitDocuments.push({ url, date: doc.data_protocolo.toLocaleString(), createdBy: event.usuario ?? "Alguém", event: String(event.numero), docCount: 1, isEPROC: true })
+                        lawsuitDocuments.push({ url, date: new Date(doc.data_protocolo).toLocaleString(), createdBy: event.usuario ?? "Alguém", event: String(event.numero), docCount: 1, isEPROC: true })
                         const elements = createDocumentNode({
                             name: doc.nome,
                             url,
@@ -203,7 +203,7 @@ async function renderLawsuitViewer() {
                         tree.appendChild(elements)
                         eventName.textContent += " - " + doc.evento
                     } else {
-                        lawsuitDocuments.push({ url, date: doc.data_protocolo.toLocaleString(), createdBy: event.usuario ?? "Alguém", event: doc.documento, docCount: 1, isEPROC: false })
+                        lawsuitDocuments.push({ url, date: new Date(doc.data_protocolo).toLocaleString(), createdBy: event.usuario ?? "Alguém", event: doc.documento, docCount: 1, isEPROC: false })
                         if (event.documentos.length > 1) {
                             const docsSlice = event.documentos.slice(1)
                             const elements = createDocumentNode({
@@ -296,7 +296,7 @@ function createDocumentNode(documento: { name: string, url: string, type?: strin
         children.className = "tree-children";
 
         documentos.forEach(doc => {
-            lawsuitDocuments.push({ url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, date: doc.data_protocolo.toLocaleString(), createdBy: documento.userCreatedBy! ?? "Alguém", event: doc.documento, docCount: documentos.length, isEPROC: false })
+            lawsuitDocuments.push({ url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, date: new Date(doc.data_protocolo).toLocaleString(), createdBy: documento.userCreatedBy! ?? "Alguém", event: doc.documento, docCount: documentos.length, isEPROC: false })
 
             children.appendChild(createDocumentNode({ name: doc.nome + " - " + doc.documento, url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, type: doc.parametros.rotulo }, false));
         });
@@ -441,7 +441,6 @@ async function donwloadLawsuit(download = true) {
             urls,
             10,
             async (url: string, i: number) => {
-                console.log(url, i)
                 const res = await fetch(url)
                 const headers = res.headers
                 console.log(headers.get("Content-Type"))
@@ -479,16 +478,38 @@ async function donwloadLawsuit(download = true) {
 async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ event: string, docCount: number, createdBy: string, date: string, isEPROC: boolean }>) {
     const mergedPdf = await PDFDocument.create();
     console.log(events)
+    const { isEPROC } = events[0]
+    let i = 0, curDocCount = 0
     for (const bytes of pdfs) {
         const pdf = await PDFDocument.load(bytes);
-
+        let refText = ""
         const pages = await mergedPdf.copyPages(
             pdf,
             pdf.getPageIndices()
         );
 
-        pages.forEach((page) => mergedPdf.addPage(page));
-
+        pages.forEach((page, j) => {
+            if (!isEPROC) {
+                refText = `id. ${events[i].event} pag ${j + 1} protocolado por ${events[i].createdBy} ${events[i].date}`
+            } else {
+                refText = `evento. ${events[i].event} pag ${j + 1} protocolado por ${events[i].createdBy} ${events[i].date}`
+            }
+            page.drawText(
+                refText,
+                {
+                    x: 10,
+                    y: page.getHeight() - 20,
+                    size: 8,
+                    color: rgb(0.28, 0.131, 0.100)
+                }
+            );
+            mergedPdf.addPage(page)
+        });
+        curDocCount++
+        if(curDocCount === events[i].docCount) {
+            curDocCount = 0
+            i++
+        } 
     }
 
 
