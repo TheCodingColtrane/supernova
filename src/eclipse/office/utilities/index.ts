@@ -3,7 +3,7 @@ import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
 import { convertTextDateToDate, getLawsuit, isValidDate, renderModal, sendMessage } from "../../utils";
 import { getBusinessDays } from "../../utils/date";
-import { showToast } from "../../utils/ui";
+import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
 
 const utilities = [
     {
@@ -274,14 +274,21 @@ async function openLawsuit() {
                         if (rawLawsuitNumber.length < 20 || rawLawsuitNumber.length > 20 && rawLawsuitNumber.length < 25) return
                         const lawsuitNumber = rawLawsuitNumber.replace(/\D/g, "").trim()
                         if (!isNaN(Number(lawsuitNumber))) {
+                            showLoadingSpinner()
                             const lawsuit = await getLawsuit(lawsuitNumber)
                             if (lawsuit?.sucesso) {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = ""
-                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber });
+                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber + "&reu=false" });
+                                hideLoadingSpinner()
                             } else {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = "Não foi encontrado nenhum processo. Cadastre-o no solar ou pesquise por outro."
+                                hideLoadingSpinner()
+
                             }
-                        } else document.querySelector("#lawsuitForm > #result")!.textContent = "Número do processo inválido."
+                        } else {
+                            document.querySelector("#lawsuitForm > #result")!.textContent = "Número do processo inválido."
+                            hideLoadingSpinner()
+                        }
                     }
 
                 }

@@ -459,7 +459,7 @@ let workersData = Array<Worker>();
       }
       viewSummonButton.onclick = (e) => {
         const summonBtn = e.target as HTMLButtonElement
-        openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
+        openIframeModal(summonBtn.parentElement?.dataset.url ?? "", "Intimação " + p.summon)
       }
 
       editLawsuitButton.onclick = () => {

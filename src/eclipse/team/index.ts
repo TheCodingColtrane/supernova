@@ -128,6 +128,13 @@ btnNextStep.addEventListener('click', async () => {
             updateList(ids)
         } else {
             updateList(workers.map(c => String(c.id)))
+            subEmailInput.value = ""
+            subNameInput.value = ""
+            subordinateStartDate.value = ""
+            subordinateEndDate.value = ""
+            saveBtn!.dataset.action = "0"
+            saveBtn!.dataset.wid = "0"
+
         }
 
 
@@ -137,7 +144,7 @@ btnNextStep.addEventListener('click', async () => {
 function updateList(idList: string[]) {
 
     subList.innerHTML = workers.map((sub, i: number) => `
-      <div class="subordinate-item" data-order=${i}>
+      <div class="subordinate-item" data-order=${i} data-wid=${sub.id}>
         <div class="subordinate-info">
           <span class="subordinate-name" data-id='${idList[i]}'>${sub.name}</span>
           <span class="subordinate-role">${sub.role}</span>
@@ -146,24 +153,45 @@ function updateList(idList: string[]) {
           <span class="subordinate-end">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
         </div>
        <div>
-        <button class="edit-sub-btn" style="color: #f59e0b; font-size: 0.7rem; font-weight: 700;">Editar</button>
+        <button class="edit-sub-btn" style="color: #f59e0b; font-size: 0.7rem; font-weight: 700;">Selecionar</button>
         <button class="delete-sub-btn" style="color: #ef4444; font-size: 0.7rem; font-weight: 700;">Deletar</button>
        </div>
       </div>
     `).join('');
 
     for (let sub of document.querySelectorAll(".delete-sub-btn")) {
-        sub.addEventListener("click", (e) => {
+        sub.addEventListener("click", async (e) => {
             const subItems = e.target as HTMLElement
             const currentWorker = subItems.parentElement?.parentElement
-            const order = parseInt(currentWorker?.dataset.order ?? "-1")
-            if (order !== -1) {
-                currentWorker?.remove()
-                workers.splice(order, 1)
-                const idList = Array.from<HTMLDivElement>(document.querySelectorAll(".subordinate-name")).map(c => c.dataset.id!)
-                if (workers.length > 0) updateList(idList)
-                else backBtn?.click()
+            if (!user) {
+                const order = parseInt(currentWorker?.dataset.order ?? "-1")
+                if (order !== -1) {
+                    currentWorker?.remove()
+                    workers.splice(order, 1)
+                    const idList = Array.from<HTMLDivElement>(document.querySelectorAll(".subordinate-name")).map(c => c.dataset.id!)
+                    if (workers.length > 0) updateList(idList)
+                    else backBtn?.click()
+                }
+            } else {
+                const wid = Number(currentWorker?.dataset.wid)
+                if (!isNaN(wid)) {
+                    const result = await sendMessage("DELETE_WORKER", { id: wid })
+                    if (result.data) {
+                        currentWorker?.remove()
+                        const order = parseInt(currentWorker?.dataset.order ?? "-1")
+                        workers.splice(order, 1)
+                        updateList(ids)
+                        showToast("Membro da equipe deletado com sucesso.")
+                    } else {
+                        updateList(ids)
+                        showToast("Falha ao deletar membro da equipe.")
+                        return
+                    }
+                }
+
+
             }
+
 
         })
 
@@ -178,28 +206,28 @@ function updateList(idList: string[]) {
             if (roleSelectText === "Estagiário(a)") {
                 roleSelect.selectedIndex = 0
                 const subName = document.querySelector("#subordinateName")
-                if(subName?.tagName === "SELECT") {
-                const defenders = document.createElement("input")
-                defenders.value  = elements?.item(0).textContent ?? ""
-                defenders.id = "subordinateName"
-                subName?.replaceWith(defenders)    
+                if (subName?.tagName === "SELECT") {
+                    const defenders = document.createElement("input")
+                    defenders.value = elements?.item(0).textContent ?? ""
+                    defenders.id = "subordinateName"
+                    subName?.replaceWith(defenders)
                 } else {
-                (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
+                    (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
 
                 }
             }
-            else if (roleSelectText === "Servidor(a)"){
-               roleSelect.selectedIndex = 1
+            else if (roleSelectText === "Servidor(a)") {
+                roleSelect.selectedIndex = 1
                 const subName = document.querySelector("#subordinateName")
-                if(subName?.tagName === "SELECT") {
-                const defenders = document.createElement("input")
-                defenders.value = elements?.item(0).textContent ?? ""
-                defenders.id = "subordinateName"
-                subName?.replaceWith(defenders)
-            } else {
-                (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
+                if (subName?.tagName === "SELECT") {
+                    const defenders = document.createElement("input")
+                    defenders.value = elements?.item(0).textContent ?? ""
+                    defenders.id = "subordinateName"
+                    subName?.replaceWith(defenders)
+                } else {
+                    (document.querySelector("#subordinateName")! as HTMLInputElement).value = elements?.item(0).textContent ?? ""
+                }
             }
-        }
             else {
                 roleSelect.selectedIndex = 2
                 const subName = document.querySelector("#subordinateName")
@@ -227,6 +255,9 @@ function updateList(idList: string[]) {
             subNameInput.value = elements?.item(0).innerHTML ?? ""
             subordinateStartDate.value = elements?.item(3).innerHTML ?? ""
             subordinateEndDate.value = elements?.item(4).innerHTML ?? ""
+            saveBtn!.dataset.action = "1"
+            saveBtn!.dataset.wid = subItems.parentElement?.parentElement?.dataset.wid
+            saveBtn!.textContent = "Alterar membro."
             return
 
         })
@@ -235,7 +266,7 @@ function updateList(idList: string[]) {
 
 
 }
-saveBtn?.addEventListener('click', () => {
+saveBtn?.addEventListener('click', async () => {
     subNameInput = document.getElementById('subordinateName') as HTMLInputElement | HTMLSelectElement;
     let name = ""
     let idx = ""
@@ -262,7 +293,7 @@ saveBtn?.addEventListener('click', () => {
             subordinateStartDate.focus()
             return
         }
-        startDate = formatISO(convertTextDateToDate(subordinateStartDate.value), {representation: "date"}  )
+        startDate = formatISO(convertTextDateToDate(subordinateStartDate.value), { representation: "date" })
 
     }
     if (subordinateEndDate.value) {
@@ -271,7 +302,7 @@ saveBtn?.addEventListener('click', () => {
             subordinateEndDate.focus()
             return
         }
-        endDate = formatISO(convertTextDateToDate(subordinateEndDate.value), {representation: "date"})
+        endDate = formatISO(convertTextDateToDate(subordinateEndDate.value), { representation: "date" })
     }
 
     if (!isSmallerDateValid(subordinateStartDate.value, subordinateEndDate.value)) {
@@ -284,12 +315,70 @@ saveBtn?.addEventListener('click', () => {
 
 
     if (!name) return alert("Digite o nome do funcionário.");
-    workers.push({
-        name, email, defenderId, role: role === "Estagiário(a)" ? "Estagiário(a)" :
-            role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date(),
-        id: workers.length + 1, startDate, endDate, isActive: true, isCriminal: isCriminal.value === "on"
-    })
-    subEmailInput.value = ''
+    if (user) {
+        const action = Number(saveBtn.dataset.action)
+        const wid = Number(saveBtn.dataset.wid)
+        if (action === 1) {
+            const currentWorkerIndex = workers.findIndex(c => c.id === wid)
+            if (currentWorkerIndex > -1) {
+                const currentWorker = workers[currentWorkerIndex]
+                currentWorker.isActive = true
+                currentWorker.name = name
+                currentWorker.email = email
+                currentWorker.role = role === "Estagiário(a)" ? "Estagiário(a)" :
+                    role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)"
+                currentWorker.startDate = startDate
+                currentWorker.endDate = endDate
+                currentWorker.isCriminal = isCriminal.value === "on"
+                const result = await sendMessage("UPDATE_WORKER", { workers: currentWorker })
+                if (result.data) {
+                    workers[currentWorkerIndex] = currentWorker
+                    updateList(ids)
+                    showToast("Equipe alterada com sucesso.")
+                    saveBtn.dataset.wid = "0"
+                    saveBtn.dataset.action = "0"
+                    saveBtn!.textContent = "Incluir membro."
+
+                } else {
+                    showToast("Houve um erro na alteração da equipe.")
+                    saveBtn.dataset.wid = "0"
+                    saveBtn.dataset.action = "0"
+                    saveBtn!.textContent = "Incluir membro."
+
+                    return
+                }
+
+            }
+
+        } else {
+            workers.push({
+                name, email, defenderId, role: role === "Estagiário(a)" ? "Estagiário(a)" :
+                    role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date(),
+                startDate, endDate, isActive: true, isCriminal: isCriminal.value === "on"
+            })
+            const result = await sendMessage("SAVE_WORKER", { workers: workers[workers.length - 1] })
+            if (result.data) {
+                workers[workers.length - 1].id = result.data
+                updateList(ids)
+                showToast("Novo membro da equipe cadastrado com sucesso.")
+            } else {
+                showToast("Houve um erro na alteração da equipe.")
+                return
+            }
+        }
+    } else {
+        workers.push({
+            name, email, defenderId, role: role === "Estagiário(a)" ? "Estagiário(a)" :
+                role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)", joinedAt: new Date(),
+            id: workers.length + 1, startDate, endDate, isActive: true, isCriminal: isCriminal.value === "on"
+        })
+    }
+
+    subEmailInput.value = ""
+    subNameInput.value = ""
+    subRoleInput.selectedIndex = 0
+    subordinateStartDate.value = ""
+    subordinateEndDate.value = ""
     updateList(ids);
 })
 
@@ -309,29 +398,29 @@ finishBtn?.addEventListener("click", async () => {
                     window.close()
                 }
             } else if (firstPageUserData && user) {
-                if (await sendMessage("UPDATE_WORKER", { workers })) {
-                    localStorage.setItem("user",
-                        JSON.stringify({
-                            ...firstPageUserData
-                        }))
-                    alert("Equipe atualizada com sucesso")
-                    await chrome.tabs.create({ url: "./src/pages/gabinete.html" })
-                    window.close()
-                }
-
-
+                localStorage.setItem("user",
+                    JSON.stringify({
+                        ...firstPageUserData
+                    }))
+                await chrome.tabs.create({ url: "./src/pages/gabinete.html" })
+                window.close()
             }
 
 
         }
 
+
     }
-})
+
+}
+)
 
 backBtn?.addEventListener("click", () => {
-    const subs = document.querySelectorAll(".subordinate-item")
-    workers.splice(0, workers.length)
-    subs.forEach(s => s.remove())
+    if (!user) {
+        const subs = document.querySelectorAll(".subordinate-item")
+        workers.splice(0, workers.length)
+        subs.forEach(s => s.remove())
+    }
     registrationArea.style.display = "none";
     defendersArea.style.display = "block";
     cardHeader.style.display = "none"

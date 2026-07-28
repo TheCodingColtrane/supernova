@@ -6,10 +6,10 @@ export async function saveWorker(worker: Worker[] | Worker) {
     try {
         if (Array.isArray(worker)) {
             await db.workers.bulkAdd(worker);
-            return true
+            return 1
         }
         else {
-            await db.workers.add({
+            const id = await db.workers.add({
                 defenderId: worker.defenderId,
                 email: worker.email,
                 isActive: worker.isActive,
@@ -19,11 +19,11 @@ export async function saveWorker(worker: Worker[] | Worker) {
                 endDate: worker.endDate,
                 startDate: worker.startDate,
             })
-            return true
+            return id
         }
     } catch (error) {
         console.log(error)
-        return false
+        return 0
 
     }
 
