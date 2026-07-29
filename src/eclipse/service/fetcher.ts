@@ -157,7 +157,7 @@ async function batchFetch(pagesData: Array<{ count: number, status: number }>, s
       if (system === 2) {
         solarURL = `https://solar.defensoria.mg.def.br/processo/intimacao/buscar/?distribuido_operador_logico=OR&situacao=${page.status}&tipo=INT&setor_responsavel=${circuit}&page=${i}`
       } else {
-        solarURL = `https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=OR&situacao=${page.status}&page_size=100&page=${i}`
+        solarURL = `https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=OR&situacao=${page.status}&page_size=100&page=${i}&tipo=INT`
       }
 
       urls.push(solarURL)
@@ -264,7 +264,7 @@ function getLawsuitsTotalPageNumber(pageLawsuitsStatus: NodeList, system: number
  * @returns 
  */
 function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
-  const rawData = parseRSC(page)
+  const rawData = parseRSC(page, false)
   if (rawData?.lawsuits) {
     const lawsuits = rawData.lawsuits[0]?.substring(0, rawData.lawsuits[0].length - 2)
     if (!lawsuits) return []
@@ -277,6 +277,16 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
         summon = result.comunicacao.numero
 
       }
+
+      let initialDeadline = "", deadline = ""
+      if (result.situacao === "Aguardando Abertura") {
+        initialDeadline = result.data_disponibilizacao ? initialDeadline = result.data_disponibilizacao.split("T")[0] : ""
+        deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : "" 
+      }
+      else {
+        initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
+        deadline = result.prazo_final ? result.prazo_final.split("T")[0] : ""
+      }
       filedLawsuits.push({
         number: result.processo.numero,
         circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", ""),
@@ -288,8 +298,8 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
         summonURL,
         summon,
         class: result.processo.classe.nome,
-        initialDeadline: result.prazo_inicial ? result.prazo_inicial.split("T")[0] : "",
-        deadline: result.prazo_final ? result.prazo_final.split("T")[0] : "",
+        initialDeadline,
+        deadline,
         // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
         givenDeadLine: result.prazo ? result.prazo : 0,
         defender: defenders?.find((c: Defenders) => c.cpf === result.distribuido_cpf) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === ""))!
@@ -515,7 +525,7 @@ export async function updateLawsuitDashboard() {
     const pageData = parser.parseFromString(await response.text(), "text/html")
     const lawsuitsData = parseRSC(pageData)
     if (lawsuitsData) {
-      const total = JSON.parse(lawsuitsData.total) as Array<{ situacao: number, count: number }>
+      const total = JSON.parse(lawsuitsData.total ?? "{}") as Array<{ situacao: number, count: number }>
       const queriesCount = total.filter(c => c.situacao <= 20).sort((a, b) => a.situacao + b.situacao).map(c => {
         let rest = c.count % 100
         return (c.count - rest) / 100 + 1
@@ -523,7 +533,7 @@ export async function updateLawsuitDashboard() {
       let status = 10
       for (const count of queriesCount) {
         for (let i = 1; i <= count; i++) {
-          solarURLs.push(`https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=OR&situacao=${status}&page_size=100&page=${i}`)
+          solarURLs.push(`https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?distribuido_operador_logico=OR&situacao=${status}&page_size=100&page=${i}&tipo=INT&_rsc=1bufq`)
         }
         status += 10
       }
@@ -540,7 +550,7 @@ export async function updateLawsuitDashboard() {
 }
 
 async function parseSolarLawsuitPage(urls: string[]) {
-  const rawLawsuits = await Promise.all(await getSolarRawLawsuitsPages(urls))
+  const rawLawsuits = await getSolarRawLawsuitsPages(urls)
   let lawsuitsData: Array<Lawsuits> = []
   for (let lawsuit of rawLawsuits) {
     if (lawsuit.ok) {
@@ -612,7 +622,7 @@ export async function getDefensories() {
 
 
 
-function parseRSC(page: Document) {
+function parseRSC(page: Document, includeResultCount = true) {
   const rscData = page.querySelectorAll("script")
   const rawRsc = Array.from(rscData)
   let queryResults = ""
@@ -629,15 +639,21 @@ function parseRSC(page: Document) {
   }
 
   if (queryResults) {
-    const endResultsEOFPos = queryResults.split('\"total\"')[1].indexOf("]") + 1
-    const results = queryResults.split('\"total\"')[1].substring(1, endResultsEOFPos).replaceAll('"\"', "")
-    if (results) {
-      return { total: results, lawsuits: queryResults.split('\"defensores\"') }
+    if (includeResultCount) {
+      const endResultsEOFPos = queryResults.split('\"total\"')[1].indexOf("]") + 1
+      const results = queryResults.split('\"total\"')[1].substring(1, endResultsEOFPos).replaceAll('"\"', "")
+      if (results) {
+        return { total: results, lawsuits: queryResults.split('\"defensores\"') }
+      }
     }
 
+    return { lawsuits: queryResults.split('\"defensores\"'), total: null }
   }
 
+
 }
+
+
 
 export async function fetchPJEMenus() {
   const page = window.open("https://pje.tjmg.jus.br/pje/Painel/painel_usuario/advogado.seam")
@@ -774,7 +790,7 @@ function isPJELoading(page: Document) {
 
 export async function isLoggedIn() {
   const cookie = await chrome.cookies.get({ url: "https://solar.defensoria.mg.def.br/atendimento/perfil/", name: "user" })
-  if(cookie?.value){
+  if (cookie?.value) {
     return cookie.value
   }
   return ""

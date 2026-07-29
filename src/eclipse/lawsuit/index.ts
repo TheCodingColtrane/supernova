@@ -1,6 +1,6 @@
 import { PDFDocument, rgb } from "pdf-lib"
 import { sendToOffscreenProcessor } from "../../solar/atendimento/eproc"
-import type { Documento, Processo, ProcessoQueryResult } from "../../solar/types/lawsuit"
+import type { Processo, ProcessoQueryResult, Vinculado } from "../../solar/types/lawsuit"
 import { concurrentDownload, downloadPDF } from "../../util"
 import { createDownloadToast, finishDownloadToast, hideLoadingSpinner, showLoadingSpinner, updateDownloadProgress } from "../utils/ui"
 import { getGeminiLawsuitOutput } from "../gemini"
@@ -204,19 +204,27 @@ async function renderLawsuitViewer() {
                         eventName.textContent += " - " + doc.evento
                     } else {
                         lawsuitDocuments.push({ url, date: new Date(doc.data_protocolo).toLocaleString(), createdBy: event.usuario ?? "Alguém", event: doc.documento, docCount: 1, isEPROC: false })
-                        if (event.documentos.length > 1) {
-                            const docsSlice = event.documentos.slice(1)
+                        if (doc.vinculados.length > 1) {
+                            const linkedDocs = doc.vinculados
                             const elements = createDocumentNode({
-                                name: doc.nome,
+                                name: doc.documento + " - " + doc.nome,
                                 url,
                                 type: doc.parametros.rotulo
-                            }, true, docsSlice)
+                            }, true, linkedDocs)
                             tree.appendChild(elements)
-                            article.dataset.eventId = docsSlice.reduce((prev, cur) => prev + ", " + cur, "")
+                            let eventsId = ""
+                            const linkedCount = doc.vinculados.length
+                            for (let i = 0; i < linkedCount; i++) {
+                                if (i === linkedCount - 1)
+                                    eventsId += doc.vinculados[i].documento;
+                                else
+                                    eventsId += ", " + doc.vinculados[i].documento
+                            }
+                            article.dataset.eventId = eventsId
                             break;
                         } else {
                             const elements = createDocumentNode({
-                                name: doc.nome + " - " + doc.documento,
+                                name: doc.documento + " - " + doc.nome,
                                 url,
                                 type: doc.parametros.rotulo
                             }, true)
@@ -243,7 +251,7 @@ async function renderLawsuitViewer() {
 
 }
 
-function createDocumentNode(documento: { name: string, url: string, type?: string, desc?: string, userCreatedBy?: string }, isRoot = false, documentos?: Documento[]) {
+function createDocumentNode(documento: { name: string, url: string, type?: string, desc?: string, userCreatedBy?: string }, isRoot = false, documentos?: Vinculado[]) {
 
     const wrapper = document.createElement("div");
     wrapper.className = "tree-wrapper";
@@ -298,7 +306,7 @@ function createDocumentNode(documento: { name: string, url: string, type?: strin
         documentos.forEach(doc => {
             lawsuitDocuments.push({ url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, date: new Date(doc.data_protocolo).toLocaleString(), createdBy: documento.userCreatedBy! ?? "Alguém", event: doc.documento, docCount: documentos.length, isEPROC: false })
 
-            children.appendChild(createDocumentNode({ name: doc.nome + " - " + doc.documento, url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, type: doc.parametros.rotulo }, false));
+            children.appendChild(createDocumentNode({ name: doc.documento + " - " + doc.nome, url: `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit?.numero}/documento/${doc.documento}/`, type: "PET" }, false));
         });
 
         wrapper.appendChild(children);
@@ -506,10 +514,10 @@ async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ event: string, docC
             mergedPdf.addPage(page)
         });
         curDocCount++
-        if(curDocCount === events[i].docCount) {
+        if (curDocCount === events[i].docCount) {
             curDocCount = 0
             i++
-        } 
+        }
     }
 
 
