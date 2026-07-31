@@ -3,6 +3,7 @@ import type { Lawsuits } from "../types/lawsuits";
 import { getDefenders, getUserCredentials, sendMessage } from "../utils";
 import { getNextBusinessDay, isBusinessDay, localDateToIsoDate } from "../utils/date";
 import { formatISO } from "date-fns";
+import type { SolarAPIResponse, SolarResponse } from "../types/api";
 
 const currentPage = document.location.href
 let system = 0
@@ -281,7 +282,7 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
       let initialDeadline = "", deadline = ""
       if (result.situacao === "Aguardando Abertura") {
         initialDeadline = result.data_disponibilizacao ? initialDeadline = result.data_disponibilizacao.split("T")[0] : ""
-        deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : "" 
+        deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : ""
       }
       else {
         initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
@@ -526,7 +527,11 @@ export async function updateLawsuitDashboard() {
     const lawsuitsData = parseRSC(pageData)
     if (lawsuitsData) {
       const total = JSON.parse(lawsuitsData.total ?? "{}") as Array<{ situacao: number, count: number }>
-      const queriesCount = total.filter(c => c.situacao <= 20).sort((a, b) => a.situacao + b.situacao).map(c => {
+      console.log(total)
+      const pageLawsuitCount = new Array<{situacao: number, count: number}>(2)
+      pageLawsuitCount[0] = total.find(c => c.situacao === 10)!
+      pageLawsuitCount[1] = total.find(c => c.situacao === 20)!
+      const queriesCount = pageLawsuitCount.map(c => {
         let rest = c.count % 100
         return (c.count - rest) / 100 + 1
       })
@@ -537,28 +542,32 @@ export async function updateLawsuitDashboard() {
         }
         status += 10
       }
-
     }
-    const data = await parseSolarLawsuitPage(solarURLs)
-    const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
-    if (result.data) {
-      localStorage.setItem("lastUpdate", new Date().toLocaleString())
-      return result.data as Lawsuits[]
-    }
+    const data = await parseSolaRSCAPIResult(solarURLs)
+    console.log(data)
+      const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+      if (result.data) {
+        localStorage.setItem("lastUpdate", new Date().toLocaleString())
+        return result.data as Lawsuits[]
+      }
 
+    // }
   }
+
 }
 
-async function parseSolarLawsuitPage(urls: string[]) {
+async function parseSolaRSCAPIResult(urls: string[]) {
   const rawLawsuits = await getSolarRawLawsuitsPages(urls)
   let lawsuitsData: Array<Lawsuits> = []
   for (let lawsuit of rawLawsuits) {
     if (lawsuit.ok) {
-      let parser = new DOMParser()
-      const pageData = parser.parseFromString(lawsuit.rawHTML, "text/html")
-      const result = getEPROCLawsuitsData(pageData, [])
+      const key = '{"avisos":';
+      const start = lawsuit.rawHTML.indexOf(key);
+      const end = lawsuit.rawHTML.indexOf('"avisosEmAnalise":')
+      const rawResult = lawsuit.rawHTML.substring(start, end -1) + "}"  
+      const result = JSON.parse(rawResult) as SolarAPIResponse
       if (result)
-        lawsuitsData.push(...result)
+        lawsuitsData.push(...parseSolarAPIResult(result.avisos.results))
     }
 
   }
@@ -566,14 +575,23 @@ async function parseSolarLawsuitPage(urls: string[]) {
 
 }
 
-async function getSolarRawLawsuitsPages(urls: string[]) {
+
+
+export async function getSolarRawLawsuitsPages(urls: string[]) {
   const allResults: Array<{ rawHTML: string; ok: boolean }> = []
   const BATCH_SIZE = 10
   for (let i = 0; i < urls.length; i += BATCH_SIZE) {
     const batch = urls.slice(i, i + BATCH_SIZE)
     const promises = batch.map(async (url) => {
       try {
-        const response = await fetch(url)
+        const response = await fetch(url, {
+          headers: {
+            "rsc": "1",
+            "next-router-state-tree": "%5B%22%22%2C%7B%22children%22%3A%5B%22(private)%22%2C%7B%22children%22%3A%5B%22buscar-processos-judiciais%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2Cnull%2C%22refetch%22%2Cfalse%5D%7D%2Cnull%2Cnull%2Cfalse%5D%7D%2Cnull%2Cnull%2Cfalse%5D%7D%2Cnull%2Cnull%2Ctrue%5D",
+            "next-url": "/buscar-processos-judiciais"
+          }
+        })
+        // const response = await fetch(url)
         if (!response.ok) return { rawHTML: "", ok: false }
         return { rawHTML: await response.text(), ok: true }
       } catch (error) {
@@ -590,6 +608,55 @@ async function getSolarRawLawsuitsPages(urls: string[]) {
 
   return allResults
 }
+
+export function parseRSCResult(rsc: string) {
+
+  const key = '"avisos":';
+  const start = rsc.indexOf(key);
+
+  if (start === -1) {
+    return null;
+  }
+
+  // Encontra o início do objeto avisos
+  const objStart = rsc.indexOf('{', start);
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = objStart; i < rsc.length; i++) {
+    const c = rsc[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (c === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (c === "{") depth++;
+    if (c === "}") depth--;
+
+    if (depth === 0) {
+      const avisos = JSON.parse(rsc.slice(objStart, i + 1));
+      return avisos.results;
+    }
+  }
+
+  return null;
+}
+
 
 
 
@@ -796,3 +863,188 @@ export async function isLoggedIn() {
   return ""
 
 }
+
+
+
+
+
+function waitPageLoad(tabId: number): Promise<void> {
+  return new Promise((resolve) => {
+    const listener = (updatedTabId: number, changeInfo: any) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+export async function runPool(
+  urls: string[],
+  limit = 5
+) {
+  const results: SolarAPIResponse[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < urls.length) {
+      const current = urls[index++];
+
+      try {
+        const data = await extractSolarData(current);
+        if (data)
+          results.push(...data);
+      } catch (e) {
+        console.error("Erro:", current, e);
+      }
+    }
+  }
+
+  const workers = Array.from(
+    { length: limit },
+    () => worker()
+  );
+
+  await Promise.all(workers);
+
+  return results;
+}
+
+
+async function extractSolarData(url: string) {
+  try {
+    const tab = await chrome.tabs.create({
+      url,
+      active: false,
+    });
+
+    if (!tab.id) {
+      throw new Error("Aba do Gemini não encontrada.");
+    }
+    await waitPageLoad(tab.id);
+
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      args: [],
+
+      func: async () => {
+        try {
+          // const cards = document.querySelectorAll(".MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root")
+          // let i = 0
+          // let runs: number[] = []
+          const results: SolarAPIResponse[] = []
+
+          // for (const card of cards) {
+          //   if (i <= 1) {
+          //     const lawsuitCount = Number(card.outerHTML.split("\n")[0])
+          //     let rest = lawsuitCount % 100
+          //     runs.push((lawsuitCount - rest) / 100 + 1)
+          //   }
+          //   else break;
+          // }
+
+          // (cards[0] as HTMLButtonElement).click()
+
+          const waitForElement = (selector: string, timeout = 10000): Promise<NodeListOf<Element>> => {
+            return new Promise((resolve, reject) => {
+              const startTime = Date.now();
+
+              const check = () => {
+                const el = document.querySelectorAll(selector);
+                if (el) return resolve(el);
+
+                if (Date.now() - startTime > timeout) {
+                  return reject(new Error(`Elemento ${selector} não apareceu a tempo.`));
+                }
+                setTimeout(check, 500);
+              };
+              check();
+            });
+          };
+          const element = await waitForElement("[role='row']")
+          if (element) {
+            const rscData = document.querySelectorAll("script")
+            const rawRsc = Array.from(rscData)
+            for (let rsc of rawRsc) {
+              //verificação necessária para poder extrair os dados da consulta graphql presente no html da página
+              if (rsc.innerHTML.includes("results")) {
+                const key = '\"results\":';
+                const start = rsc.innerHTML.indexOf(key);
+                const end = rsc.innerHTML.indexOf('\"avisosEmAnalise\":')
+                const rawResult = rsc.innerHTML.substring(start, end)
+                //o passo abaixo é necessário porque o JSON quando extraído do rsc é malformatado
+                const data = rawResult
+                  .replaceAll("\\", "")
+                  .replaceAll('"\"', "")
+                  .replaceAll('\"comunicacao_tipo_prazo\":,', '\"comunicacao_tipo_prazo\": null,')
+                results.push(JSON.parse(data) as SolarAPIResponse)
+                window.close()
+                return results
+
+              }
+
+
+            }
+
+
+          }
+        } catch (error) {
+          console.log(error)
+
+        }
+      },
+    });
+
+    if (result) return result
+
+
+  } catch (error) {
+    console.log(error)
+  }
+
+} 
+
+
+function parseSolarAPIResult(results: SolarResponse[]){
+  const filedLawsuits: Lawsuits[] = []
+   for (let result of results) {
+      let summonURL = "", summon = ""
+      if (result.comunicacao && result.comunicacao.documentos.length > 0) {
+        summonURL = "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento
+        summon = result.comunicacao.numero
+
+      }
+
+      let initialDeadline = "", deadline = ""
+      if (result.situacao === "Aguardando Abertura") {
+        initialDeadline = result.data_disponibilizacao ? initialDeadline = result.data_disponibilizacao.split("T")[0] : ""
+        deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : ""
+      }
+      else {
+        initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
+        deadline = result.prazo_final ? result.prazo_final.split("T")[0] : ""
+      }
+      filedLawsuits.push({
+        number: result.processo.numero,
+        circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", ""),
+        status: result.situacao,
+        assisted: result.destinatario.pessoa.nome,
+        isDefendant: result.polo_destinatario === "PA" ? false : true,
+        source: result.sistema_webservice,
+        awarenessDate: result.prazo_ciencia,
+        summonURL,
+        summon,
+        class: result.processo.classe.nome,
+        initialDeadline,
+        deadline,
+        // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
+        givenDeadLine: result.prazo ? result.prazo : 0,
+        defender: []
+
+      })
+    }
+
+    return filedLawsuits
+
+  }
