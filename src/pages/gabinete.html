@@ -126,6 +126,11 @@
       cursor: pointer;
     }
 
+     .card.grey {
+      border-left-color: var(--text-muted);
+      cursor: pointer;
+    }
+
     /* ── SEÇÃO DE BUSCA (PROTAGONISTA) ── */
     .search-section {
       display: flex;
@@ -1306,6 +1311,10 @@
               <span class="label">Finalizados</span>
               <span class="value" id="doneCount-p1">0</span>
             </div>
+            <div class="card grey">
+              <span class="label">Vencidos</span>
+              <span class="value" id="dueCount-p1">0</span>
+            </div>
           </div>
           <div id="last-update-container">
             <span id="last-update"></span>
@@ -1404,7 +1413,7 @@
               <span class="value" id="todayCount-p2">0</span>
             </div>
             <div class="card yellow">
-              <span class="label">Esta semana</span>
+              <span class="label">Vencendo esta semana</span>
               <span class="value" id="weekCount-p2">0</span>
             </div>
             <div class="card blue">
@@ -1414,6 +1423,10 @@
             <div class="card green">
               <span class="label">Finalizados</span>
               <span class="value" id="doneCount-p2">0</span>
+            </div>
+              <div class="card grey">
+              <span class="label">Vencidas</span>
+              <span class="value" id="dueCount-p2">0</span>
             </div>
           </div>
 

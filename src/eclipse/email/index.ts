@@ -26,7 +26,7 @@ export async function sendEmail(lawsuits: Lawsuits[]) {
   if (user) {
     const hour = new Date().getHours()
     const dayPeriod = hour < 12 ? "Bom dia" : hour >= 12 && hour < 18 ? "Boa tarde" : "Boa noite"
-    let emailBody = `${dayPeriod} ${user?.name},\n\nVeja seu(s) processo(s) cujo(s) prazo(s) vence(m) hoje:\n\n`;
+    let emailBody = `${dayPeriod} ${user?.nome},\n\nVeja seu(s) processo(s) cujo(s) prazo(s) vence(m) hoje:\n\n`;
     for (const lawsuit of lawsuits) {
       emailBody += `${lawsuit.circuit} - ${lawsuit.assisted} - ${lawsuit.assisted}\n`;
     }

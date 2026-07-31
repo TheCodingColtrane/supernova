@@ -1,6 +1,6 @@
 export type User = {
     id: number
-    name: string
+    nome: string
     email: string
     roles: [{
         id: number

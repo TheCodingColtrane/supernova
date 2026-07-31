@@ -82,18 +82,18 @@ export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
                 return lawsuits
             }
             const uniqueLawsuits = new Set(lawsuits.map(c => c.number))
-            const uniqueExistingLawsuits =  new Set(existingLawsuits.map(c => c.number))
+            const uniqueExistingLawsuits = new Set(existingLawsuits.map(c => c.number))
             for (const lawsuit of uniqueExistingLawsuits) {
                 if (uniqueLawsuits.has(lawsuit)) {
                     uniqueLawsuits.delete(lawsuit)
-                } 
+                }
             }
 
             const filteredLawsuits: Lawsuits[] = []
             for (const lawsuit of uniqueLawsuits) {
                 for (const cLawsuit of lawsuits) {
-                    if(cLawsuit.number === lawsuit){
-                        cLawsuit.id  = await db.lawsuits.add(cLawsuit)
+                    if (cLawsuit.number === lawsuit) {
+                        cLawsuit.id = await db.lawsuits.add(cLawsuit)
                         filteredLawsuits.push(cLawsuit)
                     }
                 }
@@ -107,7 +107,7 @@ export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
         }
     } catch (error) {
         console.log(error)
-        return 
+        return
     }
 
 }
@@ -151,30 +151,42 @@ export async function getPendingLawsuitsData() {
     const today = new Date()
     const endDate = new Date(today.setDate(new Date().getDate() + 90)).toISOString().split("T")[0]
     const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray()
-    console.log("SDADASD", lawsuits)
-    return lawsuits
+    console.log(lawsuits)
+    return await getExistingLawsuits(lawsuits, false)
 
 }
 
 
-export async function getExistingLawsuits(lawsuits: Lawsuits[]) {
-    const existingLawsuits = await db.lawsuits.where('number').anyOf(lawsuits.map(c => c.number)).toArray()
+export async function getExistingLawsuits(lawsuits: Lawsuits[], query = true) {
+    let existingLawsuits: Lawsuits[] = []
+    if (query) {
+        existingLawsuits = await db.lawsuits.where('number').anyOf(lawsuits.map(c => c.number)).toArray()
+    } else existingLawsuits = lawsuits
     for (const existingLawsuit of existingLawsuits) {
         for (const lawsuit of lawsuits) {
-            if(existingLawsuit.number === lawsuit.number){
-                if(existingLawsuit.status !== lawsuit.status){
-                    existingLawsuit.status = lawsuit.status
-                    existingLawsuit.initialDeadline = lawsuit.initialDeadline
-                    existingLawsuit.deadline = lawsuit.deadline
-                    existingLawsuit.summonURL = lawsuit.summonURL
-                    existingLawsuit.summon = lawsuit.summon
-                    existingLawsuit.class = lawsuit.class
-                    break
+            if (existingLawsuit.number === lawsuit.number) {
+                if (existingLawsuit.status !== "Expirado" && existingLawsuit.status !== "Finalizado") {
+                    if (existingLawsuit.status !== lawsuit.status) {
+                        existingLawsuit.status = lawsuit.status
+                        existingLawsuit.initialDeadline = lawsuit.initialDeadline
+                        existingLawsuit.deadline = lawsuit.deadline
+                        if (lawsuit.deadline) {
+                            if (new Date(lawsuit.deadline + "T03:00:00.000Z") > new Date()) {
+                                existingLawsuit.status = "Expirado"
+                            }
+
+                        }
+                        existingLawsuit.summonURL = lawsuit.summonURL
+                        existingLawsuit.summon = lawsuit.summon
+                        existingLawsuit.class = lawsuit.class
+                        break
+                    }
                 }
+
             }
-        }    
+        }
     }
     const isUpdated = await updateLawsuits(existingLawsuits)
-    if(isUpdated) return existingLawsuits
+    if (isUpdated) return existingLawsuits
     return []
 }
