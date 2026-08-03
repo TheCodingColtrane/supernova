@@ -151,6 +151,8 @@ export async function getPendingLawsuitsData() {
     const today = new Date()
     const endDate = new Date(today.setDate(new Date().getDate() + 90)).toISOString().split("T")[0]
     const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray()
+    // const lawsuits = await db.lawsuits.where("deadline").between(today, endDate).toArray()
+
     console.log(lawsuits)
     return await getExistingLawsuits(lawsuits, false)
 
@@ -165,13 +167,15 @@ export async function getExistingLawsuits(lawsuits: Lawsuits[], query = true) {
     for (const existingLawsuit of existingLawsuits) {
         for (const lawsuit of lawsuits) {
             if (existingLawsuit.number === lawsuit.number) {
+                console.log("teste")
                 if (existingLawsuit.status !== "Expirado" && existingLawsuit.status !== "Finalizado") {
                     if (existingLawsuit.status !== lawsuit.status) {
                         existingLawsuit.status = lawsuit.status
                         existingLawsuit.initialDeadline = lawsuit.initialDeadline
                         existingLawsuit.deadline = lawsuit.deadline
                         if (lawsuit.deadline) {
-                            if (new Date(lawsuit.deadline + "T03:00:00.000Z") > new Date()) {
+                            if (new Date(lawsuit.deadline + "T03:00:00.000Z") < new Date()) {
+                                console.log(existingLawsuit.number)
                                 existingLawsuit.status = "Expirado"
                             }
 
@@ -180,6 +184,14 @@ export async function getExistingLawsuits(lawsuits: Lawsuits[], query = true) {
                         existingLawsuit.summon = lawsuit.summon
                         existingLawsuit.class = lawsuit.class
                         break
+                    } else {
+                        if (lawsuit.deadline && lawsuit.status === "Aberto") {
+                            if (new Date(lawsuit.deadline + "T03:00:00.000Z") < new Date()) {
+                                existingLawsuit.status = "Expirado"
+                                break
+                            }
+
+                        }
                     }
                 }
 

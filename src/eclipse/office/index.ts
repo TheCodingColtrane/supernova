@@ -135,12 +135,13 @@ let workersData = Array<Worker>();
 
     const hour = new Date().getHours()
     const title = document.querySelector("#page-title") as HTMLHeadingElement
-    if (hour > 11)
-      title.innerHTML = "Boa tarde, Dr(a). " + user?.nome
-    else if (hour > 17)
-      title.innerHTML = "Boa noite, Dr(a). " + user?.nome
-    else 
+     if(hour > 5 && hour < 12) 
       title.innerHTML = "Bom dia, Dr(a). " + user?.nome
+    if (hour > 11 && hour < 18)
+      title.innerHTML = "Boa tarde, Dr(a). " + user?.nome
+    else
+      title.innerHTML = "Boa noite, Dr(a). " + user?.nome
+   
 
 
     const login = await isLoggedIn()
@@ -224,7 +225,6 @@ let workersData = Array<Worker>();
           const date = new Date(rawDateText[2] + "-" + rawDateText[1] + "-" + rawDateText[0] + "T03:00:00.000Z")
           console.log(date)
           let nextDate = addDays(date, 1)
-          // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable()
           } else {
@@ -275,10 +275,9 @@ let workersData = Array<Worker>();
 
         updateLawsuitsBtn.addEventListener("click", async () => updateLawsuitTable)
 
-        const today = formatISO(new Date(), { representation: 'date' })
-        document.querySelector("#todayCount-p1")!.innerHTML = lawsuitsData.filter(c => c.deadline === today).length.toString()
-        document.querySelector("#weekCount-p1")!.innerHTML = lawsuitsData.length.toString()
-        document.querySelector("#activeCount-p1")!.innerHTML = lawsuitsData.length.toString()
+        document.querySelector("#todayCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto'][data-due-today='true']").length)
+        document.querySelector("#weekCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto'][data-due-this-week='true']").length)
+        document.querySelector("#activeCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto']").length)
 
 
         document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
@@ -691,42 +690,15 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     }
 
 
-
-
-    // const action = tr.querySelectorAll(".action-icon");
-    // action[0].addEventListener("click", async () => {
-    //   await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant })
-
-    // })
-    // action[1]?.addEventListener("click", () => {
-
-    //   if (p.id) openPanel(p.id);
-    // });
-
     const summon = tr.querySelector(".view-summon");
     summon?.addEventListener("click", (e) => {
       const summonBtn = e.target as HTMLButtonElement
       openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
     });
-    // document.querySelectorAll(".action-icon").forEach(c => c.addEventListener("click", () => {
-    //   if (p.id) openPanel(p.id)
-    // }))
 
-    // document.querySelectorAll(".view-summon").forEach(d => {
-    //   d.addEventListener("click", (e) => {
-    //     const summonBtn = e.target as HTMLButtonElement
-    //     openIframeModal(summonBtn.dataset.url ?? "", "Intimação " + summonBtn.textContent)
-
-    //   })
-
-    //   tr.onclick = () => alert("Abrir processo: " + p.number);
     table!.appendChild(tr);
 
   })
-
-
-
-  //   tr.onclick = () => alert("Abrir processo: " + p.number);
 
 }
 
