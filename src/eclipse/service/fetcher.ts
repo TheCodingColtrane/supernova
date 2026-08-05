@@ -303,8 +303,8 @@ function getEPROCLawsuitsData(page: Document, defenders: Defenders[]) {
         deadline,
         // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
         givenDeadLine: result.prazo ? result.prazo : 0,
-        defender: defenders?.find((c: Defenders) => c.cpf === result.distribuido_cpf) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === ""))!
-
+        defender: defenders?.find((c: Defenders) => c.cpf === result.distribuido_cpf) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === ""))!,
+        createdAt: new Date()
       })
     }
 
@@ -385,7 +385,8 @@ function getEPROCLegacyLawsuitsData(page: Document, defenders: Defenders[] | und
             const diffTime = Math.abs(new Date(endingDate).getTime() - new Date(startingDate).getTime())
             return Math.floor(diffTime / (1000 * 60 * 60 * 24));
           }(initialDeadline, deadline) : 0,
-          defender: defenders?.find((c: Defenders) => c.nome === defender) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === defensory))!
+          defender: defenders?.find((c: Defenders) => c.nome === defender) ?? defenders?.filter(c => c.atuacoes.filter(c => c.defensoria.nome === defensory)),
+          createdAt: new Date()!
 
         })
       }
@@ -901,7 +902,9 @@ function parseSolarAPIResult(results: SolarResponse[]){
         deadline,
         // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
         givenDeadLine: result.prazo ? result.prazo : 0,
-        defender: []
+        defender: [],
+        createdAt: new Date(),
+        favoriteEvents: []
 
       })
     }

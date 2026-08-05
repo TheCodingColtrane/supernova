@@ -1,4 +1,3 @@
-import { differenceInHours } from "date-fns/differenceInHours";
 import { formatISO } from "date-fns/formatISO";
 import type { Defenders } from "../types/office";
 import type { Holidays } from "../types/holidays";
@@ -135,13 +134,12 @@ let workersData = Array<Worker>();
 
     const hour = new Date().getHours()
     const title = document.querySelector("#page-title") as HTMLHeadingElement
-     if(hour > 5 && hour < 12) 
+    if (hour > 5 && hour < 12)
       title.innerHTML = "Bom dia, Dr(a). " + user?.nome
     if (hour > 11 && hour < 18)
       title.innerHTML = "Boa tarde, Dr(a). " + user?.nome
     else
       title.innerHTML = "Boa noite, Dr(a). " + user?.nome
-   
 
 
     const login = await isLoggedIn()
@@ -183,16 +181,9 @@ let workersData = Array<Worker>();
       const opt = document.createElement("option")
       opt.textContent = c
       select.options.add(opt)
-      // circuitSelect.options.add(opt)
-      // select!.appendChild(select!);
-    })
-
-    circuits.forEach(c => {
-      const opt = document.createElement("option")
-      opt.textContent = c
-      circuitSelect.options.add(opt)
-      // circuitSelect.options.add(opt)
-      // select!.appendChild(select!);
+      const opt2 = document.createElement("option")
+      opt2.textContent = c
+      circuitSelect.options.add(opt2)
     })
 
     workersData.map(c => {
@@ -200,16 +191,12 @@ let workersData = Array<Worker>();
       opt.textContent = c.name
       opt.value = c.id?.toString() ?? ""
       filterAssignedTo.options.add(opt)
-      // filterAssignedTo2.options.add(opt)
+      const opt2 = document.createElement("option")
+      opt2.textContent = c.name
+      opt2.value = c.id?.toString() ?? ""
+      filterAssignedTo2.options.add(opt2)
     })
 
-    workersData.map(c => {
-      const opt = document.createElement("option")
-      opt.textContent = c.name
-      opt.value = c.id?.toString() ?? ""
-      filterAssignedTo2.options.add(opt)
-      // filterAssignedTo2.options.add(opt)
-    })
 
     const creds = await getUserCredentials()
     if (creds) {
@@ -225,6 +212,7 @@ let workersData = Array<Worker>();
           const date = new Date(rawDateText[2] + "-" + rawDateText[1] + "-" + rawDateText[0] + "T03:00:00.000Z")
           console.log(date)
           let nextDate = addDays(date, 1)
+          // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable()
           } else {
@@ -273,11 +261,12 @@ let workersData = Array<Worker>();
 
 
 
-        updateLawsuitsBtn.addEventListener("click", async () => updateLawsuitTable)
+        updateLawsuitsBtn.addEventListener("click", async () => updateLawsuitTable())
 
-        document.querySelector("#todayCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto'][data-due-today='true']").length)
-        document.querySelector("#weekCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto'][data-due-this-week='true']").length)
-        document.querySelector("#activeCount-p1")!.innerHTML = String(document.querySelectorAll("[data-status='Aberto']").length)
+        const today = formatISO(new Date(), { representation: 'date' })
+        document.querySelector("#todayCount-p1")!.innerHTML = lawsuitsData.filter(c => c.deadline === today).length.toString()
+        document.querySelector("#weekCount-p1")!.innerHTML = lawsuitsData.length.toString()
+        document.querySelector("#activeCount-p1")!.innerHTML = lawsuitsData.length.toString()
 
 
         document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
@@ -335,9 +324,6 @@ let workersData = Array<Worker>();
       if (navItems) {
         navItems.forEach((item, i) => {
           item.addEventListener("click", () => {
-            // if (i === 0) title.textContent = "Processos"
-            // else if (i === 1) title.textContent = "Tarefas"
-            // else title.textContent = "Utilidades"
             goToPage(i)
             updateCards()
 
@@ -571,7 +557,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
     tr.dataset.status = p.status
-    const timeLeft = differenceInHours(today, new Date(today.getFullYear(), today.getMonth(), today.getDate())) + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
+    const timeLeft = 23 - new Date().getHours() + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
     let deadline = ""
     if (p.status === "Aberto") deadline = p.awarenessDate.toString()
     else deadline = p.deadline.toString()
@@ -689,7 +675,6 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       }
     }
 
-
     const summon = tr.querySelector(".view-summon");
     summon?.addEventListener("click", (e) => {
       const summonBtn = e.target as HTMLButtonElement
@@ -699,6 +684,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     table!.appendChild(tr);
 
   })
+
 
 }
 
@@ -893,8 +879,6 @@ function updateCards() {
   document.querySelector(`${activePage ? "#weekCount-p2" : "#weekCount-p1"}`)!.innerHTML = String(weekCount)
   document.querySelector(`${activePage ? "#activeCount-p2" : "#activeCount-p1"}`)!.innerHTML = String(activeCount)
 
-  // document.querySelector("#doneCount")!.innerHTML =
-  //   data.filter(c => c.status === "closed").length.toString();
 }
 
 function filterItems(page = 0) {
@@ -919,26 +903,19 @@ function filterItems(page = 0) {
 }
 
 function updateChipText() {
-  // const search = document.querySelector("#searchTaskInput") as HTMLInputElement
   if (activeFilters.mainPage.circuit) {
     updateChips("circuit", "Vara: " + activeFilters.mainPage.circuit)
-    // filtered = filtered.filter(l => l.circuit === activeFilters.mainPage.circuit);
-    // filterTableRows(3, activeFilters.mainPage.circuit)
+
   }
   if (activeFilters.mainPage.status !== "") {
     updateChips("status", "Status: " + activeFilters.mainPage.status)
-    // filtered = filtered.filter(l => String(l.status) === activeFilters.mainPage.status);
-    // filterTableRows(3, activeFilters.mainPage.status)
+
 
   }
 
 
   if (activeFilters.mainPage.side) {
-    // const isDefendant = activeFilters.mainPage.side === "Passivo";
     updateChips("side", "Polo: " + activeFilters.mainPage.side)
-    // filterTableRows(3, activeFilters.mainPage.side)
-
-    // filtered = filtered.filter(l => l.isDefendant === isDefendant);
   }
 
   if (activeFilters.mainPage.assignedTo) {
@@ -968,9 +945,6 @@ function updateChipText() {
   const activePage = "nav-item active"
   let pageNumber = 0
   if (links?.item(1).className === activePage) pageNumber = 1
-
-  // if (search.value) updateChips("dueToday", "Pesquisa: " + search.value)
-
   filterItems(pageNumber)
   updateCards()
 }
