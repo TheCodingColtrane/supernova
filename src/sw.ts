@@ -1,5 +1,5 @@
 import { deleteHolidays, getHolidays, saveHolidays, updateHolidays } from "./eclipse/service/holidays";
-import { deleteLawsuits, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "./eclipse/service/lawsuits";
+import { deleteLawsuits, getLawsuit, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "./eclipse/service/lawsuits";
 import { deleteTaskData, getTaskData, saveTaskData, updateTaskData } from "./eclipse/service/tasks";
 import { deleteWorkerData, getWorkerData, saveWorkerData, updateWorkerData } from "./eclipse/service/workers";
 const downloadedPages = new Set()
@@ -14,6 +14,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       switch (request.type) {
         case "RENDER_HTML":
           result = await handleHtmlProcessing(request.payload);
+          break;
+        case "GET_LAWSUIT":
+          result = await getLawsuit(request.payload.number);
           break;
         case "SAVE_LAWSUITS":
           result = await saveLawsuits(request.payload.lawsuits);
@@ -70,8 +73,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           result = await getWorkerData()
           break;
         case "CLOSE_MY_TAB":
-          if(sender.tab){
-          chrome.tabs.remove(sender.tab.id ?? 0);
+          if (sender.tab) {
+            chrome.tabs.remove(sender.tab.id ?? 0);
           }
           break;
 

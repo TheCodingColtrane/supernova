@@ -150,10 +150,10 @@ export function hideLoadingSpinner() {
 
 
 export function createDownloadToast() {
-    if (document.getElementById("download-toast")) return;
+  if (document.getElementById("download-toast")) return;
 
-    const pageStyle = document.createElement("style")
-    pageStyle.textContent = `#download-toast {
+  const pageStyle = document.createElement("style")
+  pageStyle.textContent = `#download-toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
@@ -236,9 +236,9 @@ export function createDownloadToast() {
   }
 }`
 
-    document.body.insertAdjacentHTML(
-        "afterbegin",
-        `
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    `
     <div id="download-toast">
       <div id="download-toast-header">
         <span id="download-toast-icon">
@@ -258,53 +258,172 @@ export function createDownloadToast() {
       <div id="download-toast-percent">0%</div>
     </div>
   `
-    );
-    document.body.appendChild(pageStyle)
+  );
+  document.body.appendChild(pageStyle)
 }
 
 
 export function updateDownloadProgress(percent: number) {
-    const bar = document.getElementById("download-toast-progress-bar");
-    const label = document.getElementById("download-toast-percent");
-    const status = document.getElementById("download-toast-status");
+  const bar = document.getElementById("download-toast-progress-bar");
+  const label = document.getElementById("download-toast-percent");
+  const status = document.getElementById("download-toast-status");
 
-    bar!.style.width = `${percent}%`;
-    label!.textContent = `${percent}%`;
-    status!.textContent = "Baixando documento...";
+  bar!.style.width = `${percent}%`;
+  label!.textContent = `${percent}%`;
+  status!.textContent = "Baixando documento...";
 }
 
 
 export function finishDownloadToast() {
-    const toast = document.getElementById("download-toast");
-    if (!toast) return
+  const toast = document.getElementById("download-toast");
+  if (!toast) return
 
-    toast.classList.add("success");
+  toast.classList.add("success");
 
-    const icon = document.getElementById("download-toast-icon")
-    if (icon) icon.innerHTML = "<i class='fas fa-check'><i>";
-    const status = document.getElementById("download-toast-status")
-    if (status) status.innerHTML = "Documento baixado com sucesso";
+  const icon = document.getElementById("download-toast-icon")
+  if (icon) icon.innerHTML = "<i class='fas fa-check'><i>";
+  const status = document.getElementById("download-toast-status")
+  if (status) status.innerHTML = "Documento baixado com sucesso";
 
-    const result = document.getElementById("download-toast-percent")
-    if (result) result.textContent = "100%";
+  const result = document.getElementById("download-toast-percent")
+  if (result) result.textContent = "100%";
 
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
 }
 
 
 export function failDownloadToast() {
-    const toast = document.getElementById("download-toast");
-    if (!toast) return
-    toast.classList.add("error");
+  const toast = document.getElementById("download-toast");
+  if (!toast) return
+  toast.classList.add("error");
 
-    const icon = document.getElementById("download-toast-icon")
-    if (icon) icon.innerHTML = "<i class='fas fa-xmark'><i>";
-    const status = document.getElementById("download-toast-status")
-    if (status) status.innerHTML = "Erro ao baixar o processo";
+  const icon = document.getElementById("download-toast-icon")
+  if (icon) icon.innerHTML = "<i class='fas fa-xmark'><i>";
+  const status = document.getElementById("download-toast-status")
+  if (status) status.innerHTML = "Erro ao baixar o processo";
 
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
+  setTimeout(() => {
+    toast.remove();
+  }, 5000);
+}
+
+export function generateModalStructure() {
+  if (document.querySelector(".modal-overlay")) return;
+  const pageStyle = document.createElement("style")
+  pageStyle.textContent = `
+   .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      /* Overlay levemente azulado/escuro */
+      backdrop-filter: blur(4px);
+      /* Efeito de vidro moderno */
+      display: none;
+      /* Escondido por padrão */
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+ .modal-content {
+      background: var(--white);
+      width: 90%;
+      max-width: 550px;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: translateY(20px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow: hidden;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 5px;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--danger);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      /* display: flex; */
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8fafc;
+    }
+
+    /* Botão Secundário para o Modal */
+    .btn-secondary {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }`
+
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    `
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Título do Modal</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Conteúdo dinâmico entra aqui -->
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <!-- Botões dinâmicos entram aqui -->
+      </div>
+    </div>
+  </div>
+  `
+  );
+  document.body.appendChild(pageStyle)
+
 }

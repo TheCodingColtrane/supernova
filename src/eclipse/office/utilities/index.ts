@@ -253,7 +253,7 @@ function openGeminiPromptsModal() {
 
 async function openLawsuit() {
     renderModal().open({
-        title: "Seus Prompts",
+        title: "Digite o número do seu processo",
         content: `
        <form id="lawsuitForm">
           <div class="form-group">

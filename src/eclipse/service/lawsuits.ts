@@ -1,7 +1,7 @@
 import type { Holidays } from "../db/schemas/holidays"
 import type { Lawsuits } from "../db/schemas/lawsuits"
 import { getHolidaysData } from "../repository/holidays"
-import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData } from "../repository/lawsuits"
+import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData} from "../repository/lawsuits"
 import { getBusinessDays } from '../utils/date'
 
 type WeekLawsuits = { number: string; assisted: string; initialDeadline: string | Date; deadline: string | Date; status: string }
@@ -50,6 +50,20 @@ export async function getWeekLawsuits(considerHoliday = false) {
     }
 
 }
+
+export async function getLawsuit(number: string) {
+    try {
+        const data = await getLawsuitData(number)
+        return data
+
+    } catch (error) {
+        console.log(error)
+        return null
+    }
+
+}
+
+
 
 export async function getLawsuitStatusCount() {
     try {

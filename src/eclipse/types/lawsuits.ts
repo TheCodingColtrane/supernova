@@ -17,4 +17,7 @@ export type Lawsuits = {
     summon?: string // intimacao
     summonURL?: string // url da intimação
     class?: string // tipo de ação
+    favoriteEvents?: string[] // eventos favoritados.
+    createdAt?: Date
+    updatedAt?: Date
 } 

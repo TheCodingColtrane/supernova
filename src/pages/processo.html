@@ -94,6 +94,70 @@
             gap: 12px;
         }
 
+        .favorites-header {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .favorite-toggle {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: #f8fafc;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .favorites-list {
+            flex: 1;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        .favorite-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: .2s;
+            margin-bottom: 8px;
+        }
+
+        .favorite-item:hover {
+            background: #f8fafc;
+        }
+
+        .favorite-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #eef2ff;
+            color: #4f46e5;
+
+        }
+
+        .favorite-info {
+            flex: 1;
+        }
+
+        .favorite-title {
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .favorite-date {
+            font-size: .75rem;
+            color: #94a3b8;
+        }
+
 
         /* ==========================================================
    BOTÕES
@@ -182,10 +246,15 @@
             display: grid;
             grid-template-columns: 360px 1fr;
             gap: 18px;
-            padding: 0 18px 18px;
+            /* padding: 0 18px 18px; */
             min-height: 0;
             /* importante */
+            transition: grid-template-columns .3s;
 
+        }
+
+        .case-workspace.show-favorites {
+            grid-template-columns: 360px 1fr 320px;
         }
 
 
@@ -204,6 +273,28 @@
             /* importante */
 
 
+        }
+
+        .favorites-panel {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            width: 70px;
+            transition: .3s;
+            display: none;
+
+        }
+
+        .favorites-panel.open {
+            width: 300px;
+        }
+
+        .case-workspace.show-favorites .favorites-panel {
+            display: flex;
+            flex-direction: column;
         }
 
 
@@ -566,6 +657,45 @@
             color: #475569;
             font-weight: 500;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        thead {
+            border: 3px solid black;;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        tr {
+            background: #f8fafc;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        /* tbody tr:hover {
+            background-color: #f8fafc;
+        } */
     </style>
 </head>
 
@@ -605,6 +735,11 @@
                     Atualizar
                 </button>
 
+                <button class="btn-secondary" id="favoriteDocumentsButton">
+                    <i class="bi bi-star-fill"></i>
+                    Ver favoritos
+                </button>
+
                 <button class="btn-primary" id="downloadLawsuitButton">
                     <i class="bi bi-download"></i>
                     Baixar Processo
@@ -612,7 +747,7 @@
 
 
                 <button class="btn-primary" id="aiOptionsButton">
-                    <i class="bi bi-ai"></i>
+                    <i class="bi bi-chat"></i>
                     IA
                 </button>
 
@@ -648,7 +783,7 @@
 
             <div class="summary-card">
                 <span class="summary-label">Mais informações</span>
-                <strong id="case-data">clique para saber mais</strong>
+                <strong id="case-data">CLIQUE PARA SABER MAIS</strong>
             </div>
 
         </section>
@@ -727,6 +862,10 @@
 
 
                     <div class="toolbar-actions">
+                        <button id="favoriteDocumentBtn">
+                            <i class="bi bi-star"></i>
+                        </button>
+
                         <button id="downloadDocumentBtn">
                             <i class="bi bi-download"></i>
                         </button>
@@ -744,10 +883,57 @@
                     <iframe id="document-viewer" src="about:blank">
                     </iframe>
                 </div>
-    </div>
 
-    </section>
-    </section>
+
+                <!-- </div> -->
+
+            </section>
+            <aside class="favorites-panel" hidden>
+
+                <div class="favorites-header">
+
+                    <button class="favorite-toggle">
+                        <i class="bi bi-star-fill"></i>
+                    </button>
+
+                    <span>Favoritos</span>
+
+                </div>
+
+                <div class="favorites-list">
+                    <div class="favorite-item">
+                        <div class="favorite-icon">
+                            <i class="fa-solid fa-file"></i>
+                        </div>
+                        <div class="favorite-info">
+                            <div class="favorite-title">
+                                Petição Inicial
+                            </div>
+                            <div class="favorite-date">
+                                12/05/2026
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="favorite-item">
+                        <div class="favorite-icon">
+                            <i class="fa-solid fa-gavel"></i>
+                        </div>
+                        <div class="favorite-info">
+                            <div class="favorite-title">
+                                Decisão
+                            </div>
+                            <div class="favorite-date">
+                                19/05/2026
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </aside>
+        </section>
     </div>
     <script type="module" src="../eclipse/lawsuit/index.ts"></script>
 
