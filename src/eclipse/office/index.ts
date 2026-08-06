@@ -5,7 +5,7 @@ import type { Worker } from "../types/workers";
 import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
 import { convertTextDateToDate, formatDate, getDefenders, getUserCredentials, isValidDate, renderModal, sendMessage } from "../utils"
-import { getBusinessDays, localDateToIsoDate } from "../utils/date";
+import { getDeadline, localDateToIsoDate } from "../utils/date";
 import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
 import { addBusinessDays, addDays, differenceInBusinessDays, isSameWeek } from "date-fns";
@@ -17,6 +17,9 @@ const iframeTitle = document.querySelector("#iframeTitle") as HTMLHeadingElement
 const filterAssignedTo = document.querySelector("#filterAssignedTo") as HTMLSelectElement
 const filterAssignedTo2 = document.querySelector("#filterAssignedTo2") as HTMLSelectElement
 const taskSearchInput = document.querySelector("#searchTaskInput") as HTMLInputElement
+let currentPage = 1;
+const pageSize = 20;
+let filteredLawsuits: Lawsuits[] = [];
 const filters = {
   mainPage: {
     circuit: (row: HTMLTableRowElement) =>
@@ -36,7 +39,7 @@ const filters = {
       row.dataset.dueToday === "true",
     dueThisWeek: (row: HTMLTableRowElement) =>
       !activeFilters.mainPage.dueThisWeek ||
-      row.dataset.dueToday === "true",
+      row.dataset.dueThisWeek === "true",
     search: (item: HTMLDivElement) =>
       !activeFilters.mainPage.search ||
       item.dataset.number?.includes(activeFilters.mainPage.search.toUpperCase())
@@ -102,10 +105,112 @@ function getDeadlineClass(days: number) {
   return "deadline-ok";
 }
 
-// function getStatusClass(status: string) {
-//   if (status === "late") return "status-late";
-//   if (status === "closed") return "status-closed";
-//   return "status-open";
+function paginate(data: Lawsuits[]) {
+
+    filteredLawsuits = data;
+
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+
+    renderTable(
+        filteredLawsuits.slice(start, end),
+        holidaysData,
+        (document.querySelector("#checkCalendarDays") as HTMLInputElement).checked
+    );
+
+    renderPagination();
+}
+
+function renderPagination() {
+
+    const container = document.getElementById("pagination")!;
+
+    container.innerHTML = "";
+
+    const totalPages = Math.ceil(filteredLawsuits.length / pageSize);
+
+    const previous = document.createElement("button");
+    previous.textContent = "◀";
+    previous.disabled = currentPage === 1;
+
+    previous.onclick = () => {
+        currentPage--;
+        paginate(filteredLawsuits);
+    };
+
+    container.append(previous);
+
+    for (let i = 1; i <= totalPages; i++) {
+
+        const btn = document.createElement("button");
+
+        btn.textContent = String(i);
+
+        if (i === currentPage)
+            btn.classList.add("active");
+
+        btn.onclick = () => {
+            currentPage = i;
+            paginate(filteredLawsuits);
+        };
+
+        container.append(btn);
+    }
+
+    const next = document.createElement("button");
+    next.textContent = "▶";
+    next.disabled = currentPage === totalPages;
+
+    next.onclick = () => {
+        currentPage++;
+        paginate(filteredLawsuits);
+    };
+
+    container.append(next);
+}
+
+function getFilteredLawsuits() {
+
+    return lawsuitsData.filter(item => {
+
+        if (activeFilters.mainPage.circuit &&
+            item.circuit !== activeFilters.mainPage.circuit)
+            return false;
+
+        if (activeFilters.mainPage.status &&
+            item.status !== activeFilters.mainPage.status)
+            return false;
+
+        if (activeFilters.mainPage.side &&
+            (item.isDefendant ? "Passivo" : "Ativo") !== activeFilters.mainPage.side)
+            return false;
+
+        if (activeFilters.mainPage.search) {
+
+            const txt = activeFilters.mainPage.search.toUpperCase();
+
+            if (
+                !item.number.includes(txt) &&
+                !item.assisted.toUpperCase().includes(txt)
+            )
+                return false;
+        }
+
+        return true;
+    });
+
+} 
+
+console.log(getFilteredLawsuits)
+// function filterItems() {
+
+//     currentPage = 1;
+
+//     const filtered = getFilteredLawsuits();
+
+//     paginate(filtered);
+
+//     updateCards();
 // }
 
 const activeFilters = {
@@ -134,12 +239,14 @@ let workersData = Array<Worker>();
 
     const hour = new Date().getHours()
     const title = document.querySelector("#page-title") as HTMLHeadingElement
+    const hostName = user!.nome.split(" ")[0]
+    const name = hostName[0].toUpperCase() + hostName?.substring(1).toLowerCase()
     if (hour > 5 && hour < 12)
-      title.innerHTML = "Bom dia, Dr(a). " + user?.nome
+      title.innerHTML = "Bom dia, Dr(a). " + name
     if (hour > 11 && hour < 18)
-      title.innerHTML = "Boa tarde, Dr(a). " + user?.nome
+      title.innerHTML = "Boa tarde, Dr(a). " + name
     else
-      title.innerHTML = "Boa noite, Dr(a). " + user?.nome
+      title.innerHTML = "Boa noite, Dr(a). " + name
 
 
     const login = await isLoggedIn()
@@ -340,7 +447,9 @@ let workersData = Array<Worker>();
   } catch (error) {
     console.log(error)
   }
-
+  updateCards()
+  const fab = document.querySelector("#toggleable-actions") as HTMLButtonElement
+  fab.hidden = true
 
 }())
 
@@ -385,7 +494,7 @@ async function updateLawsuitTable() {
   }
 }
 // Abre o painel e preenche com os dados da linha
-function openPanel(id: number) {
+function openPanel(currentLawsuit?: Lawsuits) {
   const number = document.querySelector('#editNumber') as HTMLInputElement
   const assisted = document.querySelector('#editAssisted') as HTMLInputElement
   const circuit = document.querySelector('#editCircuit') as HTMLSelectElement
@@ -401,61 +510,76 @@ function openPanel(id: number) {
   document.querySelector(".btn-close")?.addEventListener("click", () => {
     closePanel()
   })
-  const data = [...lawsuitsData].find(c => c.id === id)
-  if (data) {
+  if (currentLawsuit) {
     deleteBtn.disabled = false
-    number.value = data.number;
-    assisted.value = data.assisted;
+    number.value = currentLawsuit.number;
+    assisted.value = currentLawsuit.assisted;
     circuits.forEach(c => {
       const opt = document.createElement("option")
       opt.textContent = c
       circuit.options.add(opt)
-      if (data.circuit === c) opt.selected = true
+      if (currentLawsuit.circuit === c) opt.selected = true
     })
-    if (data.status === "Aberto") status.selectedIndex = 0
+    if (currentLawsuit.status === "Aberto") status.selectedIndex = 0
     else status.selectedIndex = 1
-    if (data.isDefendant) side.selectedIndex = 1
+    if (currentLawsuit.isDefendant) side.selectedIndex = 1
     else side.selectedIndex = 0
-    awareness.value = !data.awarenessDate ? "" : new Date(data.awarenessDate).toLocaleDateString()
-    startDeadline.value = !data.initialDeadline ? "" : new Date(data.initialDeadline).toLocaleDateString()
-    endDeadline.value = !data.deadline ? "" : new Date(data.deadline).toLocaleDateString()
+    awareness.value = !currentLawsuit.awarenessDate ? "" : new Date(currentLawsuit.awarenessDate).toISOString().split("T")[0]
+    startDeadline.value = !currentLawsuit.initialDeadline ? "" : new Date(currentLawsuit.initialDeadline).toISOString().split("T")[0]
+    endDeadline.value = !currentLawsuit.deadline ? "" : new Date(currentLawsuit.deadline).toISOString().split("T")[0]
 
     saveBtn.onclick = async () => {
       const form = document.querySelector("#editForm") as HTMLFormElement
       const formData = Object.fromEntries(new FormData(form))
       let awarenessDate = formData["awarenessDate"] as string
-      if (awarenessDate) awarenessDate = localDateToIsoDate(awarenessDate!, false)
       let initialDeadline = formData["initialDeadline"] as string
-      if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline!, false)
       let deadline = formData["deadline"] as string
-      if (deadline) deadline = localDateToIsoDate(deadline!, false)
+
+      if (new Date(awarenessDate) > new Date(initialDeadline)) {
+        showToast("Data de ciência maior do que prazo inicial.")
+        return
+      }
+      if (new Date(initialDeadline) > new Date(deadline)) {
+        showToast("Prazo inicial maior do que prazo final.")
+        return
+      }
+      // if (awarenessDate) awarenessDate = localDateToIsoDate(awarenessDate!, false)
+      // if (initialDeadline) initialDeadline = localDateToIsoDate(initialDeadline!, false)
+      // if (deadline) deadline = localDateToIsoDate(deadline!, false)
 
       const lawsuit: Lawsuits = {
         assisted: formData["assisted"] as string,
         awarenessDate,
         circuit: formData["circuit"] as string,
         deadline,
-        defender: data.defender,
-        givenDeadLine: data.givenDeadLine,
+        defender: currentLawsuit.defender,
+        givenDeadLine: currentLawsuit.givenDeadLine,
         initialDeadline,
         isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
         number: formData["number"] as string,
-        source: data.source,
+        source: currentLawsuit.source,
         status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
-        id: id
+        id: currentLawsuit.id,
+        class: currentLawsuit.class,
+        daysLeft: currentLawsuit.daysLeft,
+        updatedAt: new Date(),
+        summon: currentLawsuit.summon,
+        summonURL: currentLawsuit.summonURL,
+        favoriteEvents: currentLawsuit.favoriteEvents,
+        createdAt: currentLawsuit.createdAt
       }
       await updateLawsuit(lawsuit)
       showAlert("Processo atualizado com sucesso.", "success")
-      const i = lawsuitsData.findIndex(c => c.id === id)
+      const i = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       lawsuitsData[i] = { ...lawsuit }
       closePanel()
       renderTableWithOptions()
     }
 
     deleteBtn.onclick = async () => {
-      await deleteLawsuit(id)
+      await deleteLawsuit(currentLawsuit.id ?? 0)
       showAlert("Processo deletado com sucesso.", "success")
-      const idx = lawsuitsData.findIndex(c => c.id === id)
+      const idx = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       lawsuitsData = lawsuitsData.splice(idx, 1)
       closePanel()
       renderTableWithOptions()
@@ -542,7 +666,7 @@ function sortTable<Lawsuits>(arr: Lawsuits[], property: keyof Lawsuits, order: s
   });
 }
 async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDays = false, initialRender = false) {
-  const table = document.getElementById("processTable");
+  const table = document.getElementById("lawsuitTable");
   table?.replaceChildren()
   table!.innerHTML = "";
   const today = new Date()
@@ -550,14 +674,14 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     let dates = { days: 0, deadline: new Date, isDueDate: false }
     if (p.initialDeadline && p.deadline) {
       const dateComponents = p.deadline.toString().split("-")
-      dates = getBusinessDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays)
+      dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays)
     }
 
 
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
     tr.dataset.status = p.status
-    const timeLeft = 23 - new Date().getHours() + " horas e " + (60 - today.getMinutes()) + " minutos restantes"
+    const timeLeft = 23 - new Date().getHours() + " hora(s) e " + (60 - today.getMinutes()) + " minuto(s) restante(s)"
     let deadline = ""
     if (p.status === "Aberto") deadline = p.awarenessDate.toString()
     else deadline = p.deadline.toString()
@@ -590,7 +714,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
         <td>${!deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
         <td class="${getDeadlineClass(dates.days)}">
-          ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dias" : timeLeft}
+          ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dia(s)" : timeLeft}
         </td>
         <td id="task-assigned-to">
         <label class="filter-label">Responsável</label>
@@ -598,11 +722,17 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
               </select>
         </td>
       `;
+
+    const curDate = new Date()
+    let lastWeekWorkingDay = new Date(curDate.setDate(curDate.getDate() - curDate.getDay() + 5));
+    const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
+    lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
+    const isoDeadline = new Date(p.deadline + "T03:00:00.000Z")
     tr.dataset.circuit = p.circuit
     tr.dataset.status = p.status
     tr.dataset.side = `${p.isDefendant ? "Passivo" : "Ativo"}`
     tr.dataset.dueToday = dates.days > 0 ? "false" : "true"
-    tr.dataset.dueThisWeek = dates.days < 6 ? "true" : "false"
+    tr.dataset.dueThisWeek = dates.days < 5 && lastWeekWorkingDay >= isoDeadline ? "true" : "false"
     tr.dataset.assisted = p.assisted
     tr.dataset.number = p.number
     if (initialRender && p.status === "Aguardando Abertura") tr.hidden = true
@@ -622,7 +752,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     }
 
     editLawsuitButton.onclick = () => {
-      if (p.id) openPanel(p.id);
+      openPanel(p);
     }
 
     viewTasksButton.onclick = () => {
@@ -682,7 +812,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     });
 
     table!.appendChild(tr);
-
+    renderPagination()
   })
 
 
@@ -798,7 +928,7 @@ document.querySelector(".card.yellow")?.addEventListener("click", () => {
 document.querySelector("#toggleable-actions")?.addEventListener("click", async () => {
   const items = document.querySelector(".nav-links") as HTMLElement
   if (items.children.item(0)?.className.includes("active"))
-    openPanel(0)
+    openPanel()
   else if (items.children.item(1)?.className.includes("active")) await openEditModal()
   else {
 
@@ -815,45 +945,59 @@ function updateCards() {
   if (navItems.item(1).className === "nav-item active") activePage = 1
   if (!activePage) {
     const rows = document.querySelectorAll("tbody tr") as NodeListOf<HTMLTableRowElement>
+    const today = new Date()
     for (const row of rows) {
 
       if (row.dataset.status === "Aberto" && !row.hidden) {
         activeCount++
+
+        let lastWeekWorkingDay = new Date(today.setDate(today.getDate() - today.getDay() + 5));
+        const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
+        lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
         document.querySelector(".card.red > .label")!.innerHTML = "Vencendo hoje"
         document.querySelector(".card.yellow > .label")!.innerHTML = "Vencendo esta semana"
         document.querySelector(".card.blue > .label")!.innerHTML = "Processos ativos"
-        const date = row.cells.item(6)?.outerText ?? ""
-        if (date.includes("dias") || date.includes("horas")) {
-          if (date.includes("dias")) {
-            const daysLeft = Number(date.split(" ")[0])
-            if (daysLeft < 6) weekCount++
+        const remainingDays = row.cells.item(6)?.outerText ?? ""
+        const localDeadline = row.cells.item(5)?.outerText ?? ""
+
+        if (remainingDays.includes("dia") || remainingDays.includes("hora") || remainingDays.includes("Perdido")) {
+          if (remainingDays.includes("dia")) {
+            const daysLeft = Number(remainingDays.split(" ")[0])
+            const deadlineParts = localDeadline.split("/")
+            const deadline = new Date(deadlineParts[2] + "-" + deadlineParts[1] + "-" + deadlineParts[0] + "T03:00:00.000Z")
+            if (daysLeft < 5 && deadline <= lastWeekWorkingDay) weekCount++
           } else {
             dueTodayCount++
             weekCount++
           }
 
         }
-        // if (row.dataset.dueToday === "true") dueTodayCount++
 
       }
 
 
       else if (row.dataset.status === "Aguardando Abertura" && !row.hidden) {
         activeCount++
+        let lastWeekWorkingDay = new Date(today.setDate(today.getDate() - today.getDay() + 5));
+        const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
+        lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
         document.querySelector(".card.red > .label")!.innerHTML = "Abrindo hoje"
         document.querySelector(".card.yellow > .label")!.innerHTML = "Abrindo esta semana"
         document.querySelector(".card.blue > .label")!.innerHTML = "Aguardando abertura"
-        const date = row.cells.item(6)?.outerText ?? ""
-        if (date.includes("dias") || date.includes("horas")) {
-          if (date.includes("dias")) {
-            const daysLeft = Number(date.split(" ")[0])
-            if (daysLeft < 6) weekCount++
+        const remainingDays = row.cells.item(6)?.outerText ?? ""
+        const localDeadline = row.cells.item(5)?.outerText ?? ""
+
+        if (remainingDays.includes("dia") || remainingDays.includes("hora") || remainingDays.includes("Perdido")) {
+          if (remainingDays.includes("dia")) {
+            const daysLeft = Number(remainingDays.split(" ")[0])
+            const deadlineParts = localDeadline.split("/")
+            const deadline = new Date(deadlineParts[2] + "-" + deadlineParts[1] + "-" + deadlineParts[0] + "T03:00:00.000Z")
+            if (daysLeft < 5 && deadline <= lastWeekWorkingDay) weekCount++
           } else {
             dueTodayCount++
             weekCount++
           }
         }
-        // if (row.dataset.dueToday === "true") dueTodayCount++
 
       }
 
@@ -927,6 +1071,11 @@ function updateChipText() {
     updateChips("dueToday", "Vence hoje: sim")
   }
 
+  if (activeFilters.mainPage.dueThisWeek) {
+
+    updateChips("dueThisWeek", "Vence essa semana: sim")
+  }
+
   if (activeFilters.todoPage.dueToday)
     updateChips("dueToday", "Vence hoje: sim")
   if (activeFilters.todoPage.assignedTo)
@@ -967,7 +1116,12 @@ function goToPage(index: number) {
 
     // Atualiza o estado visual do texto
     items.forEach((item, i) => {
+      const fab = document.querySelector("#toggleable-actions") as HTMLButtonElement
+
       if (i === index) {
+        if (index === 0 || index === 2) fab.hidden = true
+        else fab.hidden = false
+        document.querySelector("#toggleable-actions")
         item.classList.add('active');
       } else {
         item.classList.remove('active');
@@ -1015,7 +1169,7 @@ async function openEditModal(task?: Tasks) {
       }
          <div class="form-group">
           <label>Prazo</label>
-          <input name="dueDate" type="text" id="dueDateInput" value="${new Date(String(task?.dueDate)).toLocaleString().split(",")[0] ?? ""}">
+          <input id="dueDateInput" name="dueDate" type="date" max="2099-11-31" value="${task?.dueDate ? task?.dueDate : ""}">
         </div>
         <div class="form-group">
           <label>Responsável</label>
@@ -1119,7 +1273,7 @@ async function renderTasks() {
     const today = new Date()
     const dateComponents = String(t.dueDate).split("-")
     let dates = { days: 0, deadline: new Date, isDueDate: false }
-    dates = getBusinessDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), [], false)
+    dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), [], false)
     const date = new Date(String(t?.dueDate))
     const textDate = date.toLocaleString().split(",")[0]
     return `<div class="todo-item" data-task-id="${t.id}" data-title="${t.title.toUpperCase()}" data-case-number="${t.lawsuit?.number}" data-number="${t.lawsuit?.number}" data-assigned-to="${t.assignedTo.name}" data-status="${t.status}" data-circuit="${t.lawsuit?.circuit}" date-due-today="${dates.days > 1 ? "false" : "true"}">
@@ -1324,8 +1478,8 @@ document.addEventListener("click", (e) => {
         break;
 
       case "status":
-        activeFilters.mainPage.status = "";
-        (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 0;
+        activeFilters.mainPage.status = "Aberto";
+        (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 1;
         break;
 
       case "side":
@@ -1340,6 +1494,9 @@ document.addEventListener("click", (e) => {
 
       case "dueToday":
         activeFilters.mainPage.dueToday = false;
+        break;
+      case "dueThisWeek":
+        activeFilters.mainPage.dueThisWeek = false;
         break;
     }
 
@@ -1376,7 +1533,7 @@ document.addEventListener("click", (e) => {
 function clearAllFilters() {
 
   activeFilters.mainPage.circuit = "";
-  activeFilters.mainPage.status = "";
+  activeFilters.mainPage.status = "Aberto";
   activeFilters.mainPage.side = "";
   activeFilters.mainPage.assignedTo = "";
   activeFilters.mainPage.dueToday = false;

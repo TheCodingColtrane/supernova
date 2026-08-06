@@ -2,7 +2,7 @@ import type { Holidays } from "../db/schemas/holidays"
 import type { Lawsuits } from "../db/schemas/lawsuits"
 import { getHolidaysData } from "../repository/holidays"
 import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData} from "../repository/lawsuits"
-import { getBusinessDays } from '../utils/date'
+import { getDeadline } from '../utils/date'
 
 type WeekLawsuits = { number: string; assisted: string; initialDeadline: string | Date; deadline: string | Date; status: string }
 // type WeekLawsuitsBusinessDays = WeekLawsuits & {
@@ -33,7 +33,7 @@ export async function getWeekLawsuits(considerHoliday = false) {
         }
         const lawsuits = Array<{ number: string, assisted: string, deadline: string, status: string }>()
         for (const lawsuit of data) {
-            let dates = getBusinessDays(new Date(), new Date(lawsuit.deadline), holidays)
+            let dates = getDeadline(new Date(), new Date(lawsuit.deadline), holidays)
             lawsuit.deadline = dates.deadline.toLocaleDateString()
             const businessDaysLeft = dates.days
             lawsuits.push({

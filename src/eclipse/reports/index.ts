@@ -1,6 +1,6 @@
 import { Document, Paragraph, Packer, TextRun } from "docx";
 import type { Lawsuits } from "../types/lawsuits";
-import { getBusinessDays } from "../utils/date";
+import { getDeadline } from "../utils/date";
 
 export async function writeDOCX(lawsuits: Lawsuits[]) {
     const paragraphs = lawsuits.map(c =>
@@ -56,7 +56,7 @@ function getDays(earlierDate: string, endDate: string){
         const lastDateComponents = endDate.split("-")
         const firstDate = new Date(Number(firstDateComponents[0]), Number(firstDateComponents[1]) - 1, Number(firstDateComponents[2]))
         const lastDate = new Date(Number(lastDateComponents[0]), Number(lastDateComponents[1]) - 1, Number(lastDateComponents[2]))
-        return getBusinessDays(firstDate, lastDate, undefined, false)
+        return getDeadline(firstDate, lastDate, undefined, false)
 
     }
     

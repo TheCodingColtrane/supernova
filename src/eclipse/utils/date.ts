@@ -34,7 +34,7 @@ export function getNextBusinessDay(date: Date) {
 
 
 
-export function getBusinessDays(startDate: Date, endDate: Date, holidays?: Holidays[], isElapsedDays = false) {
+export function getDeadline(startDate: Date, endDate: Date, holidays?: Holidays[], isElapsedDays = false) {
     if (!isBusinessDay(startDate))
         startDate = new Date(getNextBusinessDay(startDate))
     if (!isBusinessDay(endDate))
