@@ -1,8 +1,8 @@
 import { writeJSON, writeDOCX } from "../../reports";
 import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
-import { convertTextDateToDate, getLawsuit, isValidDate, renderModal, sendMessage } from "../../utils";
-import { getBusinessDays } from "../../utils/date";
+import { getLawsuit, renderModal, sendMessage } from "../../utils";
+import { getDeadline } from "../../utils/date";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
 
 const utilities = [
@@ -130,11 +130,11 @@ async function openDeadlineCalculator() {
        <form id="deadlineForm">
           <div class="form-group">
             <label>Data anterior</label>
-            <input name="earlierDate" type="text" id="earlierDate">
+            <input id="earlierDate" name="earlierDate" type="date" max="2099-11-31">
           </div>
           <div class="form-group">
             <label>Data Posterior</label>
-            <input name="endDate" type="text" id="endDate">
+            <input id="endDate" name="endDate" type="date" max="2099-11-31">
           </div>
             <input type="checkbox" id="holidaysChk" name="isHolidays">
             <label for="holidaysChk">Considerar Feriados</label>
@@ -155,15 +155,12 @@ async function openDeadlineCalculator() {
                     const rawEndDate = formData.get("endDate") as string
                     const holidaysChk = formData.get("isHolidays") as string
                     const isElapsedDays = formData.get("isElapsedDays") as string
-                    console.log(isElapsedDays, holidaysChk, holidays)
-                    if (isValidDate(rawEarlierDate) && isValidDate(rawEndDate)) {
-                        const earlierDate = convertTextDateToDate(rawEarlierDate)
-                        const endDate = convertTextDateToDate(rawEndDate)
-                        if (Number(earlierDate) < Number(endDate)) {
-                            let dates = { days: 0, deadline: new Date, isDueDate: false }
-                            dates = getBusinessDays(earlierDate, endDate, holidaysChk ? holidays : undefined, isElapsedDays ? true : false)
-                            document.querySelector("#result")!.innerHTML = "Resultado " + String(dates.days) + " dias."
-                        }
+                    const earlierDate = new Date(rawEarlierDate + "T03:00:00.000Z")
+                    const endDate = new Date(rawEndDate + "T03:00:00.000Z")
+                    if (earlierDate < endDate) {
+                        let dates = { days: 0, deadline: new Date, isDueDate: false }
+                        dates = getDeadline(earlierDate, endDate, holidaysChk ? holidays : undefined, isElapsedDays ? true : false)
+                        document.querySelector("#result")!.innerHTML = "Resultado " + String(dates.days) + " dias."
                     } else {
                         showToast("Uma das datas está inválida.")
                         return

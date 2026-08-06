@@ -880,7 +880,7 @@ function parseSolarAPIResult(results: SolarResponse[]){
 
       let initialDeadline = "", deadline = ""
       if (result.situacao === "Aguardando Abertura") {
-        initialDeadline = result.data_disponibilizacao ? initialDeadline = result.data_disponibilizacao.split("T")[0] : ""
+        initialDeadline = result.data_disponibilizacao ? result.data_disponibilizacao.split("T")[0] : ""
         deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : ""
       }
       else {
@@ -894,13 +894,12 @@ function parseSolarAPIResult(results: SolarResponse[]){
         assisted: result.destinatario.pessoa.nome,
         isDefendant: result.polo_destinatario === "PA" ? false : true,
         source: result.sistema_webservice,
-        awarenessDate: result.prazo_ciencia,
+        awarenessDate: result.prazo_ciencia.split("T")[0],
         summonURL,
         summon,
         class: result.processo.classe.nome,
         initialDeadline,
         deadline,
-        // deadline: function (deadline) { return deadline.split("T")[0] }(result.prazo_final || result.prazo_ciencia),
         givenDeadLine: result.prazo ? result.prazo : 0,
         defender: [],
         createdAt: new Date(),
