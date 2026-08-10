@@ -1240,52 +1240,47 @@
     <div class="panel-body">
       <form id="editForm">
         <div class="form-group">
-          <label>Número do Processo</label>
+          <label for="number">Número do Processo</label>
           <input name="number" type="text" id="editNumber" readonly>
         </div>
         <div class="form-group">
-          <label>Vara</label>
+          <label for="circuit">Vara</label>
           <select name="circuit" id="editCircuit">
           </select>
         </div>
         <div class="form-group">
-          <label>Assistido(a)</label>
+          <label for="assisted">Assistido(a)</label>
           <input name="assisted" type="text" id="editAssisted">
         </div>
         <div class="form-group">
-          <label>Status</label>
+          <label for="status">Status</label>
           <select name="status" id="editStatus">
             <option value="0">Aguardando Abertura</option>
             <option value="1">Aberto</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Polo</label>
+          <label for="isDefendant">Polo</label>
           <select name="isDefendant" id="editSide">
             <option value="1">Ativo</option>
             <option value="0">Passivo</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Data de ciência</label>
+          <label for="awarenessDate">Data de ciência</label>
           <input id="editAwarenessDate" name="awarenessDate" type="date" max="2099-11-31">
           <!-- <input name="awarenessDate" type="text" id="editAwarenessDate"> -->
         </div>
         <div class="form-group">
-          <label>Inicio do Prazo</label>
+          <label for="initialDeadline">Inicio do Prazo</label>
           <input id="editStartDeadline" name="initialDeadline" type="date" max="2099-11-31">
           <!-- <input type="text" name="initialDeadline" id="editStartDeadline"> -->
         </div>
         <div class="form-group">
-          <label>Final do Prazo</label>
+          <label for="deadline">Final do Prazo</label>
           <!-- <input type="text" name="deadline" id="editEndDeadline"> -->
           <input id="editEndDeadline" name="deadline" type="date" max="2099-11-31">
         </div>
-        <div class="form-group">
-          <label>Observações Internas</label>
-          <textarea id="editNotes" rows="4"></textarea>
-        </div>
-
         <div class="panel-actions">
           <button type="button" class="btn-save">Salvar Alterações</button>
           <button type="button" class="btn-delete">Excluir Processo</button>
@@ -1368,20 +1363,20 @@
             <div id="activeFiltersBar" class="active-filters"></div>
             <div class="filters-row-main">
               <div class="filter-group">
-                <label class="filter-label">Vara</label>
+                <label for="filterCircuit" class="filter-label" >Vara</label>
                 <select class="filter-select" id="filterCircuit">
                   <option value="">Todas</option>
                 </select>
               </div>
               <div class="filter-group">
-                <label class="filter-label">Status</label>
+                <label for="filterStatus" class="filter-label">Status</label>
                 <select class="filter-select" id="filterStatus">
                   <option value="0">Aguardando Abertura</option>
                   <option value="1" selected>Aberto</option>
                 </select>
               </div>
               <div class="filter-group">
-                <label class="filter-label">Polo</label>
+                <label for="filterSide" class="filter-label">Polo</label>
                 <select class="filter-select" id="filterSide">
                   <option value="">Todos</option>
                   <option value="ativo">Ativo</option>
@@ -1395,13 +1390,13 @@
                 </select>
               </div> -->
               <div class="filter-group">
-                <label class="filter-label">Ação</label>
+                <label for="filterClass" class="filter-label">Ação</label>
                 <select class="filter-select" id="filterClass">
                   <option value="">Todos</option>
                 </select>
               </div>
               <div class="filter-group">
-                <label class="filter-label">Quantidade de Registros</label>
+                <label for="filterRowCount" class="filter-label">Quantidade de Registros</label>
                 <select class="filter-select" id="filterRowCount">
                   <option value="0">30</option>
                   <option value="1">60</option>
@@ -1411,15 +1406,15 @@
             </div>
 
             <div class="filter-options">
-              <label class="checkbox-container">
+              <label for="checkHolidays" class="checkbox-container">
                 <input type="checkbox" id="checkHolidays">
                 Considerar Feriados
               </label>
-              <label class="checkbox-container">
+              <label for="checkCalendarDays" class="checkbox-container">
                 <input type="checkbox" id="checkCalendarDays">
                 Considerar Dias Corridos
               </label>
-              <label class="checkbox-container">
+              <label for="groupLawsuits" class="checkbox-container">
                 <input type="checkbox" id="groupLawsuits">
                 Agrupar processos
               </label>
@@ -1488,14 +1483,14 @@
             <div id="activeFiltersBar" class="active-filters"></div>
             <div class="filters-row-main">
               <div class="filter-group">
-                <label class="filter-label">Vara</label>
+                <label for="filterCircuit2" class="filter-label">Vara</label>
                 <select class="filter-select" id="filterCircuit2">
                   <option value="">Todas</option>
                 </select>
               </div>
               </select>
               <div class="filter-group">
-                <label class="filter-label">Status</label>
+                <label for="filterStatus2" class="filter-label">Status</label>
                 <select class="filter-select" id="filterStatus2">
                   <option value="">Todos</option>
                   <option value="pendente">Não Iniciada</option>
@@ -1504,83 +1499,91 @@
                 </select>
               </div>
               <div class="filter-group">
-                <label class="filter-label">Responsável</label>
+                <label  for="filterAssignedTo2" class="filter-label">Responsável</label>
                 <select class="filter-select" id="filterAssignedTo2">
                   <option value="">Todos</option>
                   <option value="me">Atribuídas a mim</option>
                 </select>
               </div>
+              <div class="filter-group">
+                <label for="filterTasksRowCount" class="filter-label">Quantidade de Registros</label>
+                <select class="filter-select" id="filterTasksRowCount">
+                  <option value="0">12</option>
+                  <option value="1">24</option>
+                  <option value="2">36</option>
+                </select>
+              </div>
             </div>
           </div>
-
           <!-- Lista de Tarefas Estilizada -->
-          <div class="todo-list" id="todoContainer">
+          <div class="todo-list" id="todoContainer"></div>
+          <div id="pagination" class="pagination"></div>
+          <button id="new-task" class="fab">+</button>
 
-          </div>
         </div>
-        <button id="new-task" class="fab">+</button>
-      </section>
-      <section class="page">
-        <div class="container">
-          <div class="search-box">
-            <i class="bi bi-search"></i>
-            <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
-          </div>
-
-          <section id="favoriteSection">
-
-            <h3 class="utility-section-title">
-              <i class="bi bi-star"></i>
-              Favoritas
-            </h3>
-
-            <div class="utilities-grid" id="favoriteGrid"></div>
-
-          </section>
-
-          <section>
-
-            <h3 class="utility-section-title">
-              Todas as ferramentas
-            </h3>
-
-            <div class="utilities-grid" id="utilitiesGrid"></div>
-
-          </section>
-        </div>
-      </section>
-    </div>
-    <button id="toggleable-actions" class="fab">+</button>
-    <!-- Modal para Visualização de Iframe -->
-    <div id="iframeModal" class="iframe-modal">
-      <div class="iframe-modal-content">
-
-        <div class="iframe-modal-header">
-          <h3 id="iframeTitle">Visualização</h3>
-
-          <div class="iframe-actions">
-            <button id="openNewTab" class="iframe-btn" title="Abrir em nova aba">
-              <i class="bi bi-box-arrow-up-right"></i>
-            </button>
-
-            <button id="closeIframeModal" class="iframe-btn danger">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
+    <!-- </div> -->
+    </section>
+    <section class="page">
+      <div class="container">
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
         </div>
 
-        <div class="iframe-modal-body">
-          <iframe id="iframeViewer" src="" frameborder="0" loading="lazy">
-          </iframe>
-        </div>
+        <section id="favoriteSection">
 
+          <h3 class="utility-section-title">
+            <i class="bi bi-star"></i>
+            Favoritas
+          </h3>
+
+          <div class="utilities-grid" id="favoriteGrid"></div>
+
+        </section>
+
+        <section>
+
+          <h3 class="utility-section-title">
+            Todas as ferramentas
+          </h3>
+
+          <div class="utilities-grid" id="utilitiesGrid"></div>
+
+        </section>
       </div>
+    </section>
+  </div>
+  <button id="toggleable-actions" class="fab">+</button>
+  <!-- Modal para Visualização de Iframe -->
+  <div id="iframeModal" class="iframe-modal">
+    <div class="iframe-modal-content">
+
+      <div class="iframe-modal-header">
+        <h3 id="iframeTitle">Visualização</h3>
+
+        <div class="iframe-actions">
+          <button id="openNewTab" class="iframe-btn" title="Abrir em nova aba">
+            <i class="bi bi-box-arrow-up-right"></i>
+          </button>
+
+          <button id="closeIframeModal" class="iframe-btn danger">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="iframe-modal-body">
+        <iframe id="iframeViewer" src="" frameborder="0" loading="lazy">
+        </iframe>
+      </div>
+
     </div>
+  </div>
   </div>
 
   </div>
 </body>
 
 </html>
-<script type="module" src="../eclipse/office/index.ts" defer></script>
+<script type="module" src="../eclipse/office/index.ts"></script>
 <!-- <script src="tasks.js" defer></script> -->
