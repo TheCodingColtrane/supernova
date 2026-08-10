@@ -4,7 +4,7 @@ import type { Holidays } from "../types/holidays";
 import type { Worker } from "../types/workers";
 import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
-import { convertTextDateToDate, formatDate, getDefenders, getUserCredentials, isValidDate, renderModal, sendMessage } from "../utils"
+import { convertTextDateToDate, getDefenders, getUserCredentials, renderModal, sendMessage } from "../utils"
 import { getDeadline, localDateToIsoDate } from "../utils/date";
 import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
@@ -17,11 +17,13 @@ const iframeTitle = document.querySelector("#iframeTitle") as HTMLHeadingElement
 const filterAssignedTo2 = document.querySelector("#filterAssignedTo2") as HTMLSelectElement
 const taskSearchInput = document.querySelector("#searchTaskInput") as HTMLInputElement
 const filterRowCount = document.querySelector("#filterRowCount") as HTMLSelectElement
+const filterTasksRowCount = document.querySelector("#filterTasksRowCount") as HTMLSelectElement
 let availableWorkers = "<option value='0'>A definir</option>"
 let currentPage = 1;
-let pageSize = 30;
+let lawsuitPageSize = 30;
+let taskPageSize = 12
 let filteredLawsuits: Lawsuits[] = [];
-
+let filteredTasks: Tasks[] = []
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
 
@@ -56,12 +58,11 @@ function getDeadlineClass(days: number) {
   return "deadline-ok";
 }
 
-function paginate(data: Lawsuits[], initialRender = false) {
+function paginateLawsuitTable(data: Lawsuits[], initialRender = false) {
 
   filteredLawsuits = data;
-
-  const start = (currentPage - 1) * pageSize;
-  const end = start + pageSize;
+  const start = (currentPage - 1) * lawsuitPageSize;
+  const end = start + lawsuitPageSize;
   const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
   const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
   renderTable(
@@ -71,17 +72,32 @@ function paginate(data: Lawsuits[], initialRender = false) {
     initialRender
   );
 
-  renderPagination();
- 
+  renderPagination(0);
+
 }
 
-function renderPagination() {
 
-  const container = document.getElementById("pagination")!;
+async function paginateTasks(data: Tasks[]) {
+
+  filteredTasks = data;
+
+  const start = (currentPage - 1) * taskPageSize;
+  const end = start + taskPageSize;
+  await renderTasks(filteredTasks.slice(start, end));
+
+  renderPagination(1);
+
+}
+
+function renderPagination(activePage = 0) {
+  // let activePage = 0
+  // const navItems = document.querySelectorAll(".nav-item")
+  // if (navItems.item(1).className === "nav-item active") activePage = 1
+  const container = document.querySelector(!activePage ? ".table-container >.pagination" : ".container > .pagination")!;
 
   container.innerHTML = "";
 
-  const totalPages = Math.ceil(filteredLawsuits.length / pageSize);
+  const totalPages = !activePage ? Math.ceil(filteredLawsuits.length / lawsuitPageSize) : Math.ceil(filteredTasks.length / taskPageSize);
 
   const previous = document.createElement("button");
   previous.innerHTML = "<i class='bi bi-arrow-left'></i>";
@@ -89,7 +105,12 @@ function renderPagination() {
 
   previous.onclick = () => {
     currentPage--;
-    paginate(filteredLawsuits);
+    if (!activePage)
+      paginateLawsuitTable(filteredLawsuits);
+    else
+      paginateTasks(filteredTasks)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
   };
 
   container.append(previous);
@@ -105,7 +126,12 @@ function renderPagination() {
 
     btn.onclick = () => {
       currentPage = i;
-      paginate(filteredLawsuits);
+      if (!activePage)
+        paginateLawsuitTable(filteredLawsuits);
+      else
+        paginateTasks(filteredTasks)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
     };
 
     container.append(btn);
@@ -117,13 +143,18 @@ function renderPagination() {
 
   next.onclick = () => {
     currentPage++;
-    paginate(filteredLawsuits);
+    if (!activePage)
+      paginateLawsuitTable(filteredLawsuits);
+    else
+      paginateTasks(filteredTasks)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
   };
 
   container.append(next);
 }
 
-function getFilteredLawsuits() {
+function getFilteredItems() {
   let activePage = 0
   const navItems = document.querySelectorAll(".nav-item")
 
@@ -133,80 +164,101 @@ function getFilteredLawsuits() {
   const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
   lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
   let isoDeadline = new Date()
-  return lawsuitsData.filter(item => {
-    if(item.deadline)
-      isoDeadline = new Date(item.deadline + "T03:00:00.000Z")
+  if (!activePage)
+    return lawsuitsData.filter((item, i) => {
+  console.log(i)
+      if (item.deadline)
+        isoDeadline = new Date(item.deadline + "T03:00:00.000Z")
 
-    if (activeFilters.mainPage.circuit &&
-      item.circuit !== activeFilters.mainPage.circuit)
-      return false;
-
-    if (activeFilters.mainPage.status &&
-      item.status !== activeFilters.mainPage.status)
-      return false;
-
-    if (activeFilters.mainPage.side &&
-      (item.isDefendant ? "Passivo" : "Ativo") !== activeFilters.mainPage.side)
-      return false;
-
-    if (activeFilters.mainPage.class && item.class !== activeFilters.mainPage.class)
-      return false
-
-    if (activeFilters.mainPage.dueToday && item.daysLeft !== 0)
-      return false
-
-    if (activeFilters.mainPage.dueThisWeek && item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
-      return false
-
-    if (activeFilters.mainPage.search) {
-
-      const txt = activeFilters.mainPage.search.toUpperCase();
-
-      if (
-        !item.number.includes(txt) &&
-        !item.assisted.toUpperCase().includes(txt)
-      )
+      if (activeFilters.mainPage.circuit &&
+        item.circuit !== activeFilters.mainPage.circuit)
         return false;
-    }
 
+      if (activeFilters.mainPage.status &&
+        item.status !== activeFilters.mainPage.status)
+        return false;
 
-    if (!activePage) {
+      if (activeFilters.mainPage.side &&
+        (item.isDefendant ? "Passivo" : "Ativo") !== activeFilters.mainPage.side)
+        return false;
+
+      if (activeFilters.mainPage.class && item.class !== activeFilters.mainPage.class)
+        return false
+
+      if (activeFilters.mainPage.dueToday)
+         if(item.daysLeft !== 0)
+        return false
+
+      if (activeFilters.mainPage.dueThisWeek)
+        if(item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
+        return false
+
+      if (activeFilters.mainPage.search) {
+
+        const txt = activeFilters.mainPage.search.toUpperCase();
+
+        if (
+          !item.assisted.toUpperCase().includes(txt) &&
+          !item.number.includes(txt)
+        )
+          return false;
+
+      }
+
+      return true;
+    });
+  else
+    return tasksData.filter(task => {
+
       if (activeFilters.todoPage.circuit &&
-        item.circuit !== activeFilters.todoPage.circuit)
+        task.lawsuit?.circuit !== activeFilters.todoPage.circuit)
         return false;
 
       if (activeFilters.todoPage.status &&
-        item.status !== activeFilters.todoPage.status)
+        task.status !== activeFilters.todoPage.status)
         return false;
 
       if (activeFilters.todoPage.assignedTo &&
-        activeFilters.todoPage.assignedTo !== filterAssignedTo2[filterAssignedTo2.selectedIndex].label
+        activeFilters.todoPage.assignedTo !== task.assignedTo.name
+      )
+        return false;
+
+      const txt = activeFilters.todoPage.search.toUpperCase();
+      if (
+        !task.lawsuit?.number.includes(txt) &&
+        !task.title.toUpperCase().includes(txt)
       )
         return false;
 
 
-    }
 
-    return true;
-  });
+      return true
+
+    })
+
+
 
 }
 
-console.log(getFilteredLawsuits)
+console.log(getFilteredItems)
 function filterItems() {
-
+  let activePage = 0
+  const navItems = document.querySelectorAll(".nav-item")
+  if (navItems.item(1).className === "nav-item active") activePage = 1
   currentPage = 1;
 
-  const filtered = getFilteredLawsuits();
+  const filtered = getFilteredItems();
   console.log("itens fitrados", filtered)
-  paginate(filtered);
-
+  if (!activePage)
+    paginateLawsuitTable(filtered as Lawsuits[]);
+  else
+    paginateTasks(filtered as Tasks[])
   updateCards();
 }
 
 const activeFilters = {
   mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "" },
-  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, title: "", caseNumber: "" }
+  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, title: "", caseNumber: "", search: "" }
 };
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
@@ -271,8 +323,6 @@ let workersData = Array<Worker>();
       return c
     })
 
-      console.log("dados puros", lawsuitsData)
-
     const select = document.querySelector("#filterCircuit") as HTMLSelectElement
     const circuitSelect = document.querySelector("#filterCircuit2") as HTMLSelectElement
     const filterClass = document.querySelector("#filterClass") as HTMLSelectElement
@@ -320,8 +370,8 @@ let workersData = Array<Worker>();
     })
 
     filterRowCount.addEventListener("change", () => {
-      pageSize = Number(filterRowCount[filterRowCount.selectedIndex].label)
-      paginate(lawsuitsData)
+      lawsuitPageSize = Number(filterRowCount[filterRowCount.selectedIndex].label)
+      paginateLawsuitTable(lawsuitsData)
     })
 
 
@@ -332,7 +382,7 @@ let workersData = Array<Worker>();
       const defenders = await getDefenders()
       if (defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
     }
-    await renderTasks()
+    paginateTasks(tasksData)
     try {
       if (lawsuitsData.length) {
         const rawLastUpdate = localStorage.getItem("lastUpdate")
@@ -344,11 +394,11 @@ let workersData = Array<Worker>();
           if (new Date() > nextDate) {
             await updateLawsuitTable()
           } else {
-            paginate(lawsuitsData)
+            paginateLawsuitTable(lawsuitsData)
             // renderTable(lawsuitsData, [], undefined, true)
 
           }
-        } else paginate(lawsuitsData) //renderTable(lawsuitsData, [], undefined, true)
+        } else paginateLawsuitTable(lawsuitsData) //renderTable(lawsuitsData, [], undefined, true)
 
         const ths = Array.from(document.querySelectorAll("thead th"))
         for (const th of ths) {
@@ -385,6 +435,7 @@ let workersData = Array<Worker>();
         const searchField = document.querySelector("#searchLawsuitInput")!
         searchField.addEventListener("keyup", (e) => {
           activeFilters.mainPage.search = (e.target as HTMLInputElement).value
+          // paginateLawsuitTable(lawsuitsData)
           updateChipText()
         })
 
@@ -398,20 +449,20 @@ let workersData = Array<Worker>();
         document.querySelector("#activeCount-p1")!.innerHTML = lawsuitsData.length.toString()
 
 
-        document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
+        document.querySelector("#checkHolidays")?.addEventListener("change", () => {
           if (holidaysData) {
-            const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
-            const input = e.target as HTMLInputElement
-            renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
+            // const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+            // const input = e.target as HTMLInputElement
+            paginateLawsuitTable(lawsuitsData)
+            // renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
           }
 
         })
 
-        document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
+        document.querySelector("#checkCalendarDays")?.addEventListener("change", () => {
           if (holidaysData) {
-            const isElapsedDaysInput = e.target as HTMLInputElement
-            const checkHolidaysInput = document.querySelector("#checkHolidays") as HTMLInputElement
-            return renderTable(lawsuitsData, checkHolidaysInput.checked ? holidaysData : [], isElapsedDaysInput.checked)
+            paginateLawsuitTable(lawsuitsData)
+
           }
         })
 
@@ -496,7 +547,7 @@ async function updateLawsuitTable() {
     document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
     hideLoadingSpinner()
     //renderTableWithOptions()
-    paginate(lawsuitsData)
+    paginateLawsuitTable(lawsuitsData)
   }
 }
 // Abre o painel e preenche com os dados da linha
@@ -576,7 +627,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       const i = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       lawsuitsData[i] = { ...lawsuit }
       closePanel()
-      paginate(lawsuitsData)
+      paginateLawsuitTable(lawsuitsData)
       // renderTableWithOptions()
     }
 
@@ -586,7 +637,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       const idx = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       lawsuitsData = lawsuitsData.splice(idx, 1)
       closePanel()
-      paginate(lawsuitsData)
+      paginateLawsuitTable(lawsuitsData)
 
       // renderTableWithOptions()
     }
@@ -626,7 +677,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       lawsuitsData.push({ ...lawsuit })
       closePanel()
       //renderTableWithOptions()
-      paginate(lawsuitsData)
+      paginateLawsuitTable(lawsuitsData)
 
     }
 
@@ -725,8 +776,8 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
           ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dia(s)" : timeLeft}
         </td>
         <td id="task-assigned-to">
-        <label class="filter-label">Responsável</label>
-            <select class="filter-select">
+        <label for="selectedWorker"class="filter-label">Responsável</label>
+            <select name="selectedWorker" class="filter-select">
               ${availableWorkers}
               </select>
         </td>
@@ -830,8 +881,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
 taskSearchInput.addEventListener("keyup", (e) => {
   const value = (e.target as HTMLInputElement).value
-  activeFilters.todoPage.title = value
-  activeFilters.todoPage.caseNumber = value
+  activeFilters.todoPage.search = value
   updateChipText()
 
 })
@@ -845,7 +895,7 @@ document.querySelector("#filterCircuit2")?.addEventListener("change", (e) => {
   } else {
     activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
     updateChipText()
-  }
+    }
 })
 
 document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
@@ -871,6 +921,10 @@ document.querySelector("#filterAssignedTo2")?.addEventListener("change", (e) => 
   }
 })
 
+filterTasksRowCount.addEventListener("change", () => {
+  taskPageSize = Number(filterTasksRowCount[filterTasksRowCount.selectedIndex].label)
+  paginateTasks(filteredTasks)
+})
 
 
 document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
@@ -1072,10 +1126,8 @@ function updateChipText() {
     updateChips("status", "Status: " + activeFilters.todoPage.status)
   if (activeFilters.todoPage.circuit)
     updateChips("circuit", "Vara: " + activeFilters.todoPage.circuit)
-  if (activeFilters.todoPage.number)
-    updateChips("number", "Processo: " + activeFilters.todoPage.number)
-  if (activeFilters.todoPage.title || activeFilters.todoPage.caseNumber)
-    updateChips("title", "Pesquisa: " + activeFilters.todoPage.title)
+  if (activeFilters.todoPage.search)
+    updateChips("number", "Pesquisa: " + activeFilters.todoPage.search)
 
   filterItems()
   updateCards()
@@ -1129,33 +1181,33 @@ async function openEditModal(task?: Tasks) {
     content: `
      <form id="taskForm" data-id=${task?.id}>
         <div class="form-group">
-          <label>Número do Processo</label>
+          <label for="number">Número do Processo</label>
           <input name="number" type="text" id="editNumber" value="${task?.lawsuit?.number ?? ""}"s>
         </div>
         <div class="form-group">
-          <label>Titulo da tarefa</label>
+          <label for="title">Titulo da tarefa</label>
           <input name="title" type="text" id="editNumber" value="${task?.title ?? ""}">
         </div>
          <div class="form-group">
-          <label>Descrição da tarefa</label>
+          <label for="description">Descrição da tarefa</label>
           <textarea name="description" rows="12">${task?.description ?? ""}</textarea>
         </div>
         ${task ? `<div class="form-group">
-          <label>Status</label>
+          <label for="status">Status</label>
           <select name="status" id="editSide">
-            <option>Não Iniciada</option>
-            <option>Em Andamento</option>
-            <option>Concluída</option>
+            <option value="0">Não Iniciada</option>
+            <option value="1">Em Andamento</option>
+            <option value="2">Concluída</option>
             </option>Vencida</option>
           </select>
         </div>`: ``
       }
          <div class="form-group">
-          <label>Prazo</label>
+          <label for="dueDateInput">Prazo</label>
           <input id="dueDateInput" name="dueDate" type="date" max="2099-11-31" value="${task?.dueDate ? task?.dueDate : ""}">
         </div>
         <div class="form-group">
-          <label>Responsável</label>
+          <label for="assignedTo">Responsável</label>
           <select name="assignedTo" id="editSide">
            ${officeWorkers}
           </select>        
@@ -1165,16 +1217,12 @@ async function openEditModal(task?: Tasks) {
     `,
     actions: task?.id ? [
       { label: 'Deletar tarefa', className: 'btn-delete', callback: async () => await deleteTask() },
-      { label: 'Atualizar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, true) }
+      { label: 'Atualizar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, true), preventClose: true }
     ] : [
-      { label: 'Salvar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, false) }
+      { label: 'Salvar tarefa', className: 'btn-primary', callback: async () => await saveTask(workersData, false), preventClose: true }
     ]
   })
 
-  const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
-  dueDateInput.onkeyup = (e) => {
-    formatDate(e.target as HTMLInputElement)
-  }
 }
 
 async function saveTask(workers: Worker[], edit: boolean) {
@@ -1197,19 +1245,17 @@ async function saveTask(workers: Worker[], edit: boolean) {
       break
   }
 
-  if (!isValidDate(formFields["dueDate"] as string)) {
+  if (new Date(formFields["dueDate"] as string + "T03:00:00.000Z") < new Date() || !formFields["dueDate"].toString()) {
     const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
     dueDateInput.focus()
     showToast("Data inválida.")
     return
   } else {
-    const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
-    const dueDateText = formatISO(convertTextDateToDate(dueDateInput.value))
     const task: Tasks = {
       assignedTo: workers.find(c => c.id === Number(formFields["assignedTo"])) ?? workers[0]!,
       createdAt: new Date(),
       description: formFields["description"] as string,
-      dueDate: dueDateText,
+      dueDate: formFields["dueDate"] as string,
       lawsuit,
       status: edit ?
         formFields["status"] === "0" ? "Não Iniciada" :
@@ -1226,15 +1272,20 @@ async function saveTask(workers: Worker[], edit: boolean) {
       await sendMessage("UPDATE_TASK", { task })
       showAlert("Tarefa atualizada com sucesso.", "success")
       const i = tasksData.findIndex(c => c.id === task.id)
-      if (i > -1) tasksData[i] = task
+      if (i > -1) {
+        tasksData[i] = task;
+        (document.querySelector(".modal-close") as HTMLButtonElement).click()
+      }
     }
     else {
       await sendMessage("SAVE_TASK", { task })
       showAlert("Tarefa criada com sucesso.", "success")
-      tasksData.push(task)
+      tasksData.push(task);
+      (document.querySelector(".modal-close") as HTMLButtonElement).click()
+
     }
 
-    renderTasks()
+    await paginateTasks(tasksData)
   }
 }
 
@@ -1249,16 +1300,15 @@ async function deleteTask() {
 
 }
 
-async function renderTasks() {
+async function renderTasks(tasks: Tasks[]) {
   const todoList = document.querySelector(".todo-list") as HTMLElement
 
-  todoList.innerHTML = tasksData.map(t => {
+  todoList.innerHTML = tasks.map(t => {
     const today = new Date()
     const dateComponents = String(t.dueDate).split("-")
     let dates = { days: 0, deadline: new Date, isDueDate: false }
     dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), [], false)
-    const date = new Date(String(t?.dueDate))
-    const textDate = date.toLocaleString().split(",")[0]
+    const dueDate = (t?.dueDate as string).split("-")
     return `<div class="todo-item" data-task-id="${t.id}" data-title="${t.title.toUpperCase()}" data-case-number="${t.lawsuit?.number}" data-number="${t.lawsuit?.number}" data-assigned-to="${t.assignedTo.name}" data-status="${t.status}" data-circuit="${t.lawsuit?.circuit}" date-due-today="${dates.days > 1 ? "false" : "true"}">
               <div class="todo-header">
                 <span class="todo-lawsuit">${t.lawsuit?.number}</span>
@@ -1278,7 +1328,7 @@ async function renderTasks() {
                 </div>
                 <div class="todo-info">
                   <span class="info-label">Prazo:</span>
-                  <span class="info-value">${textDate}</span>
+                  <span class="info-value">${dueDate[2] + "/" + dueDate[1] + "/" + dueDate[0]}</span>
                 </div>
               </div>
             </div> `
@@ -1402,9 +1452,9 @@ function renderActiveFilters() {
       value: activeFilters.todoPage.dueToday ? "Sim" : ""
     },
     {
-      key: "title",
+      key: "search",
       label: "Pesquisa",
-      value: activeFilters.todoPage.title
+      value: activeFilters.todoPage.search
     }
   ];
 
@@ -1481,7 +1531,7 @@ document.addEventListener("click", (e) => {
         (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
         break;
 
-      case "assignedTo":
+      case "class":
         activeFilters.mainPage.class = "";
         (document.querySelector("#filterClass") as HTMLSelectElement).selectedIndex = 0;
         break;
@@ -1491,6 +1541,9 @@ document.addEventListener("click", (e) => {
         break;
       case "dueThisWeek":
         activeFilters.mainPage.dueThisWeek = false;
+        break;
+      case "search":
+        activeFilters.mainPage.search = "";
         break;
     }
 
@@ -1516,6 +1569,10 @@ document.addEventListener("click", (e) => {
       case "dueToday":
         activeFilters.todoPage.dueToday = false;
         break;
+      case "search":
+        activeFilters.todoPage.search = "";
+        break;
+
     }
   }
   updateChipText();
