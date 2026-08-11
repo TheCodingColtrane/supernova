@@ -2,10 +2,11 @@ import { PDFDocument, rgb } from "pdf-lib"
 import { sendToOffscreenProcessor } from "../../solar/atendimento/eproc"
 import type { Processo, ProcessoQueryResult, Vinculado } from "../../solar/types/lawsuit"
 import { concurrentDownload, downloadPDF } from "../../util"
-import { createDownloadToast, finishDownloadToast, generateModalStructure, hideLoadingSpinner, showLoadingSpinner, showToast, updateDownloadProgress } from "../utils/ui"
+import { createDownloadToast, finishDownloadToast, generateModalStructure, hideLoadingSpinner, jsonToPrompt, showLoadingSpinner, showToast, updateDownloadProgress } from "../utils/ui"
 import { getGeminiLawsuitOutput } from "../gemini"
 import { getLawsuit, renderModal, sendMessage } from "../utils"
 import type { Lawsuits } from "../types/lawsuits"
+import prompt from '../../promtps.json'
 const params = new URLSearchParams(window.location.search)
 let lawsuitQueryResult: ProcessoQueryResult | undefined
 let lawsuit: Processo
@@ -33,6 +34,8 @@ let savedLawsuit: Partial<Lawsuits> = {}
 let maxDocumentCount = 0
 let selectedEvent = ""
 const viewFavoriteDocumentsButton = document.querySelector("#favoriteDocumentsButton") as HTMLButtonElement
+
+
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -282,7 +285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             return `<tr>
                               <td>${c.vinculo}</td>
                               <td>${c.numero}</td>
-                              <td>${c.orgao_julgador?.nome ? c.orgao_julgador?.nome:  ""}</td>
+                              <td>${c.orgao_julgador?.nome ? c.orgao_julgador?.nome : ""}</td>
                               <td>${c.classe ? c.classe : ""}</td>
                              </tr>`
                         }).join("")}
@@ -304,10 +307,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                             ${lawsuit.partes.map(c => {
                             return `<tr>
                               <td>${c.pessoa.nome} (${c.tipo === "AT" ? "Autor(a)" : "Ré"})</td>
-                              <td>${c.pessoa.sexo === "M" ? "Masculino" : c.pessoa.sexo === "F" ? "Feminino" : c.pessoa.sexo === "D" ? "Pessoa Jurídica" : "Informação não fornecida" }</td>
-                              <td>${ c.pessoa.data_nascimento ? new Date(c.pessoa.data_nascimento).toLocaleString() : ""}</td>
-                              <td>${c.pessoa.cidade_natural ?  c.pessoa.cidade_natural : ""}</td>
-                              <td>${c.pessoa.estado_natural ? c.pessoa.estado_natural : "" }</td>
+                              <td>${c.pessoa.sexo === "M" ? "Masculino" : c.pessoa.sexo === "F" ? "Feminino" : c.pessoa.sexo === "D" ? "Pessoa Jurídica" : "Informação não fornecida"}</td>
+                              <td>${c.pessoa.data_nascimento ? new Date(c.pessoa.data_nascimento).toLocaleString() : ""}</td>
+                              <td>${c.pessoa.cidade_natural ? c.pessoa.cidade_natural : ""}</td>
+                              <td>${c.pessoa.estado_natural ? c.pessoa.estado_natural : ""}</td>
                              </tr>`
                         }).join("")}
                             
@@ -345,7 +348,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 })
                 nextDocButton.addEventListener("click", () => changeDocuments(true, 1))
                 downloadButton.addEventListener("click", async () => await donwloadLawsuit())
-                aiutton.addEventListener("click", async () => await geminiOutput(false))
+                aiutton.addEventListener("click", () => openGeminiPromptsModal())
                 renderFavoriteList()
                 document.querySelector("#last-document")!.textContent = maxDocumentCount.toString()
                 document.querySelector("#current-document")!.textContent = maxDocumentCount.toString()
@@ -358,7 +361,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 })
 
+function openGeminiPromptsModal() {
+    generateModalStructure()
+    renderModal().open({
+        title: "Selecione o prompt",
+        content: `
+       <form id="promptForm">
+          <div class="form-group">
+            <label for="promptType">Formato do arquivo</label>
+             <select name="prompt" id="promptType">
+              <option value="-1">Selecione o seu prompt</option>
+              <option value="0">Resumir Processo</option>
+              <option value="1">Manifestar sobre a última intimação</option>
+              <option value="2">Criar quesitos</option>
+              <option value="3">Verificar nulidade de citação.</option>
+              <option value="4">Personalizado</option>
+             </select>
+             </div>
+             <input type="checkbox" name="downloadLawsuitFile"/>
+            <label for="downloadLawsuitFile">Baixar arquivo</label>
+             <div class="form-group">
+             <label for="prompText">Escreva seu prompt</label>
+                <textarea rows="12" id="promptText" name="promptTextDesc" disabled0></textarea>
+             </div>
+        </form>
+      
+      `,
+        actions: [
+            {
+                label: 'Enviar Prompt', className: 'btn-primary', preventClose: true, callback: async () => {
+                    const form = document.querySelector("#promptForm") as HTMLFormElement
+                    const formData = new FormData(form)
+                    const selectedPrompt = formData.get("promptTextDesc") as string
+                    const download = formData.get("downloadLawsuitFile") as string
+                    await geminiOutput(download === "on", selectedPrompt)
 
+                }
+            }
+        ]
+    })  
+
+
+    const promptSelect = document.querySelector("#promptType") as HTMLSelectElement
+    promptSelect.onchange = () => {
+        const i = Number(promptSelect.options.item(promptSelect.options.selectedIndex)?.value!)
+        if (i > -1) {
+            if (i < 4) {
+                const results = jsonToPrompt(prompt.results[i])
+                document.querySelector("#promptText")!.innerHTML = results
+                const textarea = document.querySelector("#promptText") as HTMLTextAreaElement
+                textarea.disabled = true
+            } else {
+                const textarea = document.querySelector("#promptText") as HTMLTextAreaElement
+                textarea.disabled = false
+            }
+
+        }
+    }
+}
 
 
 function renderFavoriteList() {
@@ -724,12 +784,11 @@ async function donwloadLawsuit(download = true) {
         const pdf = await mergePDF(rawDocuments, lawsuitDocuments)
         finishDownloadToast()
 
-        if (download) {
-            await downloadPDF(pdf, params.get("numero")!)
-        } else {
-            const blob = new Blob([new Uint8Array(pdf)], { type: 'application/pdf' });
-            return blob
-        }
+
+        if (download) await downloadPDF(pdf, params.get("numero")!)
+        const blob = new Blob([new Uint8Array(pdf)], { type: 'application/pdf' });
+        return blob
+
 
     }
 
@@ -780,10 +839,9 @@ async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ event: string, docC
 
 
 
-async function geminiOutput(donwload = false, prompt = "") {
+async function geminiOutput(donwload: boolean, prompt: string) {
     const blob = await donwloadLawsuit(donwload)
     if (blob) {
-        prompt = "Você é um defensor público com 15 anos de experiência em direito civil. Faça o resumo deste processo de forma detalhada."
         await getGeminiLawsuitOutput(blob, params.get("numero")!, prompt)
         return
     }

@@ -4,11 +4,11 @@ import type { Holidays } from "../types/holidays";
 import type { Worker } from "../types/workers";
 import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
-import { convertTextDateToDate, getDefenders, getUserCredentials, renderModal, sendMessage } from "../utils"
+import { getDefenders, getUserCredentials, renderModal, sendMessage } from "../utils"
 import { getDeadline, localDateToIsoDate } from "../utils/date";
 import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
-import { addBusinessDays, addDays, differenceInBusinessDays, isSameWeek } from "date-fns";
+import { addBusinessDays, addDays } from "date-fns";
 import { renderUtilities } from "./utilities";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
@@ -65,6 +65,12 @@ function paginateLawsuitTable(data: Lawsuits[], initialRender = false) {
   const end = start + lawsuitPageSize;
   const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
   const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
+  if (initialRender) {
+    activeFilters.mainPage.status = "Aberto"
+    filterItems()
+    renderPagination(0);
+    return
+  }
   renderTable(
     filteredLawsuits.slice(start, end),
     isHolidays.checked ? holidaysData : [],
@@ -160,13 +166,14 @@ function getFilteredItems() {
 
   if (navItems.item(1).className === "nav-item active") activePage = 1
   const curDate = new Date()
-  let lastWeekWorkingDay = new Date(curDate.setDate(curDate.getDate() - curDate.getDay() + 4));
-  const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
-  lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
+  const friday = new Date(curDate);
+  friday.setDate(curDate.getDate() - curDate.getDay() + 5);
+  // const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")[0]
+  const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
   let isoDeadline = new Date()
+  const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
   if (!activePage)
-    return lawsuitsData.filter((item, i) => {
-  console.log(i)
+    return lawsuitsData.filter(item => {
       if (item.deadline)
         isoDeadline = new Date(item.deadline + "T03:00:00.000Z")
 
@@ -186,12 +193,12 @@ function getFilteredItems() {
         return false
 
       if (activeFilters.mainPage.dueToday)
-         if(item.daysLeft !== 0)
-        return false
+        if (item.daysLeft !== 0)
+          return false
 
       if (activeFilters.mainPage.dueThisWeek)
-        if(item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
-        return false
+        if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
+          return false
 
       if (activeFilters.mainPage.search) {
 
@@ -209,6 +216,8 @@ function getFilteredItems() {
     });
   else
     return tasksData.filter(task => {
+      if (task.dueDate)
+        isoDeadline = new Date(task.dueDate + "T03:00:00.000Z")
 
       if (activeFilters.todoPage.circuit &&
         task.lawsuit?.circuit !== activeFilters.todoPage.circuit)
@@ -223,13 +232,26 @@ function getFilteredItems() {
       )
         return false;
 
-      const txt = activeFilters.todoPage.search.toUpperCase();
-      if (
-        !task.lawsuit?.number.includes(txt) &&
-        !task.title.toUpperCase().includes(txt)
-      )
-        return false;
+      if (activeFilters.todoPage.dueToday) {
 
+        if (isoDeadline.toISOString() !== isoToday.toISOString())
+          return false
+      }
+      if (activeFilters.todoPage.dueThisWeek) {
+        if (isoDeadline > lastWeekWorkingDay)
+          return false
+      }
+
+
+      if (activeFilters.todoPage.search) {
+
+        const txt = activeFilters.todoPage.search.toUpperCase();
+        if (
+          !task.lawsuit?.number.includes(txt) &&
+          !task.title.toUpperCase().includes(txt)
+        )
+          return false;
+      }
 
 
       return true
@@ -248,7 +270,6 @@ function filterItems() {
   currentPage = 1;
 
   const filtered = getFilteredItems();
-  console.log("itens fitrados", filtered)
   if (!activePage)
     paginateLawsuitTable(filtered as Lawsuits[]);
   else
@@ -258,7 +279,7 @@ function filterItems() {
 
 const activeFilters = {
   mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "" },
-  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, title: "", caseNumber: "", search: "" }
+  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, dueThisWeek: false, caseNumber: "", search: "" }
 };
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
@@ -328,10 +349,15 @@ let workersData = Array<Worker>();
     const filterClass = document.querySelector("#filterClass") as HTMLSelectElement
 
 
-    circuitSelect.addEventListener("change", () => {
-      const selectedItem = circuitSelect.options.item(circuitSelect.selectedIndex)!.label
-      activeFilters.todoPage.circuit = selectedItem
-      updateChipText()
+    circuitSelect.addEventListener("change", (e) => {
+      const select = e.target as HTMLSelectElement
+      if (select.selectedOptions.item(0)?.textContent === "Todas") {
+        activeFilters.todoPage.circuit = ""
+        updateChipText()
+      } else {
+        activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
+        updateChipText()
+      }
     })
     filterClass.addEventListener("change", () => {
       const selectedItem = filterClass.options.item(filterClass.selectedIndex)!.label
@@ -392,13 +418,13 @@ let workersData = Array<Worker>();
           let nextDate = addDays(date, 1)
           // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
-            await updateLawsuitTable()
+            await updateLawsuitTable(true)
           } else {
-            paginateLawsuitTable(lawsuitsData)
+            paginateLawsuitTable(lawsuitsData, true)
             // renderTable(lawsuitsData, [], undefined, true)
 
           }
-        } else paginateLawsuitTable(lawsuitsData) //renderTable(lawsuitsData, [], undefined, true)
+        } else paginateLawsuitTable(lawsuitsData, true) //renderTable(lawsuitsData, [], undefined, true)
 
         const ths = Array.from(document.querySelectorAll("thead th"))
         for (const th of ths) {
@@ -536,7 +562,7 @@ async function deleteLawsuit(id: number) {
 }
 
 
-async function updateLawsuitTable() {
+async function updateLawsuitTable(initialRender = false) {
   showLoadingSpinner()
   const lawsuits = await updateLawsuitDashboard()
   if (lawsuits) {
@@ -547,7 +573,7 @@ async function updateLawsuitTable() {
     document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
     hideLoadingSpinner()
     //renderTableWithOptions()
-    paginateLawsuitTable(lawsuitsData)
+    paginateLawsuitTable(lawsuitsData, initialRender)
   }
 }
 // Abre o painel e preenche com os dados da linha
@@ -729,11 +755,17 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
   table?.replaceChildren()
   table!.innerHTML = "";
   const today = new Date()
+  let initialDeadline = "", deadline = ""
   data.forEach((p: Lawsuits) => {
     let dates = { days: 0, deadline: new Date, isDueDate: false }
     if (p.initialDeadline && p.deadline) {
-      const dateComponents = p.deadline.toString().split("-")
-      dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(dateComponents[0]), Number(dateComponents[1]) - 1, Number(dateComponents[2])), holidays, isElapsedDays)
+      const deadlineDateComponents = p.deadline.toString().split("-")
+      const iDeadlineDateComponents = p.initialDeadline.toString().split("-")
+
+      dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(deadlineDateComponents[0]), Number(deadlineDateComponents[1]) - 1, Number(deadlineDateComponents[2])), holidays, isElapsedDays)
+      initialDeadline = `<span>Inicial: ${iDeadlineDateComponents[2] + "/" + iDeadlineDateComponents[1] + "/" + iDeadlineDateComponents[0]}</span>`
+      deadline = `<span>Final: ${deadlineDateComponents[2] + "/" + deadlineDateComponents[1] + "/" + deadlineDateComponents[0]}</span>`
+
     }
 
 
@@ -741,9 +773,9 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     tr.dataset.id = p.id?.toString()
     tr.dataset.status = p.status
     const timeLeft = 23 - new Date().getHours() + " hora(s) e " + (60 - today.getMinutes()) + " minuto(s) restante(s)"
-    let deadline = ""
-    if (p.status === "Aberto") deadline = p.awarenessDate.toString()
-    else deadline = p.deadline.toString()
+    // let deadline = ""
+    // if (p.status === "Aberto") deadline = p.awarenessDate.toString()
+    // else deadline = p.deadline.toString()
     const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
     //<td class="actions-cell">
 
@@ -771,7 +803,10 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.class}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
-        <td>${!deadline ? "Não definido" : new Date(dates.deadline).toLocaleDateString()}</td>
+        <td>
+        ${!initialDeadline ? "Não definido" : initialDeadline}
+        ${!deadline ? "Não definido" : deadline}
+        </td>
         <td class="${getDeadlineClass(dates.days)}">
           ${dates.isDueDate ? "Prazo Perdido" : dates.days > 0 ? dates.days + " dia(s)" : timeLeft}
         </td>
@@ -887,16 +922,16 @@ taskSearchInput.addEventListener("keyup", (e) => {
 })
 
 
-document.querySelector("#filterCircuit2")?.addEventListener("change", (e) => {
-  const select = e.target as HTMLSelectElement
-  if (select.selectedOptions.item(0)?.textContent === "Todas") {
-    activeFilters.todoPage.circuit = ""
-    updateChipText()
-  } else {
-    activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
-    }
-})
+// document.querySelector("#filterCircuit2")?.addEventListener("change", (e) => {
+//   const select = e.target as HTMLSelectElement
+//   if (select.selectedOptions.item(0)?.textContent === "Todas") {
+//     activeFilters.todoPage.circuit = ""
+//     updateChipText()
+//   } else {
+//     activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
+//     updateChipText()
+//   }
+// })
 
 document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
@@ -983,6 +1018,21 @@ document.querySelector(".card.yellow")?.addEventListener("click", () => {
   updateChipText()
 })
 
+document.querySelector("#redCard")?.addEventListener("click", () => {
+  activeFilters.todoPage.dueToday = true
+  updateChipText()
+})
+
+document.querySelector("#yellowCard")?.addEventListener("click", () => {
+  activeFilters.todoPage.dueThisWeek = true
+  updateChipText()
+})
+
+
+
+
+
+
 document.querySelector("#toggleable-actions")?.addEventListener("click", async () => {
   const items = document.querySelector(".nav-links") as HTMLElement
   if (items.children.item(0)?.className.includes("active"))
@@ -996,83 +1046,49 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
 
 function updateCards() {
   let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0
-  const today = new Date();
-  const firstDay = new Date(today.setDate(today.getDate() - today.getDay() + 1));
-  const lastDay = addDays(firstDay, 4)
+  const curDate = new Date()
+  const friday = new Date(curDate);
+  const monday = new Date(curDate)
+  friday.setDate(curDate.getDate() - curDate.getDay() + 5);
+  monday.setDate(curDate.getDate() - curDate.getDay() + 1);
+  const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
+  const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
   const navItems = document.querySelectorAll(".nav-item")
   if (navItems.item(1).className === "nav-item active") activePage = 1
   if (!activePage) {
-    const rows = document.querySelectorAll("tbody tr") as NodeListOf<HTMLTableRowElement>
-    const today = new Date()
-    for (const row of rows) {
+    const selectedStatus = document.querySelector("#filterStatus") as HTMLSelectElement
 
-      if (row.dataset.status === "Aberto" && !row.hidden) {
-        activeCount++
-
-        let lastWeekWorkingDay = new Date(today.setDate(today.getDate() - today.getDay() + 5));
-        const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
-        lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
-        document.querySelector(".card.red > .label")!.innerHTML = "Vencendo hoje"
-        document.querySelector(".card.yellow > .label")!.innerHTML = "Vencendo esta semana"
-        document.querySelector(".card.blue > .label")!.innerHTML = "Processos ativos"
-        const remainingDays = row.cells.item(6)?.outerText ?? ""
-        const localDeadline = row.cells.item(5)?.outerText ?? ""
-
-        if (remainingDays.includes("dia") || remainingDays.includes("hora") || remainingDays.includes("Perdido")) {
-          if (remainingDays.includes("dia")) {
-            const daysLeft = Number(remainingDays.split(" ")[0])
-            const deadlineParts = localDeadline.split("/")
-            const deadline = new Date(deadlineParts[2] + "-" + deadlineParts[1] + "-" + deadlineParts[0] + "T03:00:00.000Z")
-            if (daysLeft < 5 && deadline <= lastWeekWorkingDay) weekCount++
-          } else {
-            dueTodayCount++
-            weekCount++
-          }
-
-        }
-
+    activeCount = lawsuitsData.filter(c => c.status === selectedStatus[selectedStatus.selectedIndex].label).length
+    for (const lawsuit of filteredLawsuits) {
+      if (lawsuit.deadline) {
+        const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
+        const midnightMonday = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
+        if (isoToday.toISOString().split("T")[0] === lawsuit.deadline || lawsuit.daysLeft === 0) dueTodayCount++
+        else if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
       }
-
-
-      else if (row.dataset.status === "Aguardando Abertura" && !row.hidden) {
-        activeCount++
-        let lastWeekWorkingDay = new Date(today.setDate(today.getDate() - today.getDay() + 5));
-        const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")
-        lastWeekWorkingDay = new Date(isolastWeekWorkingDay[0] + "T03:00:00.000Z")
-        document.querySelector(".card.red > .label")!.innerHTML = "Abrindo hoje"
-        document.querySelector(".card.yellow > .label")!.innerHTML = "Abrindo esta semana"
-        document.querySelector(".card.blue > .label")!.innerHTML = "Aguardando abertura"
-        const remainingDays = row.cells.item(6)?.outerText ?? ""
-        const localDeadline = row.cells.item(5)?.outerText ?? ""
-
-        if (remainingDays.includes("dia") || remainingDays.includes("hora") || remainingDays.includes("Perdido")) {
-          if (remainingDays.includes("dia")) {
-            const daysLeft = Number(remainingDays.split(" ")[0])
-            const deadlineParts = localDeadline.split("/")
-            const deadline = new Date(deadlineParts[2] + "-" + deadlineParts[1] + "-" + deadlineParts[0] + "T03:00:00.000Z")
-            if (daysLeft < 5 && deadline <= lastWeekWorkingDay) weekCount++
-          } else {
-            dueTodayCount++
-            weekCount++
-          }
-        }
-
-      }
-
-
 
     }
 
-  } else {
-    const tasks = document.querySelectorAll('.todo-item') as NodeListOf<HTMLDivElement>
-    for (const task of tasks) {
-      if (task.hidden) continue
-      const info = task.querySelectorAll(".todo-footer > .todo-info").item(1)
-      const date = convertTextDateToDate(info.querySelector(".info-value")?.textContent!)
-      if (differenceInBusinessDays(new Date(), date) === 1) dueTodayCount++
-      else if (isSameWeek(lastDay, date)) weekCount++
-      activeCount++
+    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto") {
+      document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
+      document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
+      document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
+    } else {
+      document.querySelector("#redLabel1")!.innerHTML = "Abrindo hoje"
+      document.querySelector("#yellowLabel1")!.innerHTML = "Abrindo esta semana"
+      document.querySelector("#blueLabel1")!.innerHTML = "Processos pendentes de abertura"
+    }
 
+
+  }
+
+  else {
+    activeCount = tasksData.length
+    for (const task of filteredTasks) {
+      const dueDate = new Date(task.dueDate + "T03:00:00.000Z")
+      const dates = getDeadline(new Date(), dueDate)
+      if (isoToday.toISOString().split("T")[0] === task.dueDate || dates.days === 0) dueTodayCount++
+      else if (monday >= dueDate || dueDate <= lastWeekWorkingDay) weekCount++
     }
   }
 
@@ -1084,50 +1100,58 @@ function updateCards() {
 }
 
 function updateChipText() {
-  if (activeFilters.mainPage.circuit) {
+  if (activeFilters.mainPage.circuit)
     updateChips("circuit", "Vara: " + activeFilters.mainPage.circuit)
-
-  }
-  if (activeFilters.mainPage.status !== "") {
+  else updateChips("circuit", "Vara: ")
+  if (activeFilters.mainPage.status !== "")
     updateChips("status", "Status: " + activeFilters.mainPage.status)
+  else updateChips("status", "Status: ")
 
 
-  }
-
-
-  if (activeFilters.mainPage.side) {
+  if (activeFilters.mainPage.side)
     updateChips("side", "Polo: " + activeFilters.mainPage.side)
-  }
+  else updateChips("side", "Polo: ")
 
-  if (activeFilters.mainPage.assignedTo) {
+  if (activeFilters.mainPage.assignedTo)
     updateChips("assignedTo", "Atribuído a: " + activeFilters.mainPage.assignedTo)
-  }
+  else updateChips("assignedTo", "Atribuído a: ")
 
-  if (activeFilters.mainPage.dueToday) {
+  if (activeFilters.mainPage.dueToday)
+    updateChips("dueToday", "Vence hoje: Sim")
+  else updateChips("dueToday", "Vence hoje: Não")
 
-    updateChips("dueToday", "Vence hoje: sim")
-  }
+  if (activeFilters.mainPage.dueThisWeek)
+    updateChips("dueThisWeek", "Vence essa semana: Sim")
+  else updateChips("dueThisWeek", "Vence essa semana: Não")
 
-  if (activeFilters.mainPage.dueThisWeek) {
 
-    updateChips("dueThisWeek", "Vence essa semana: sim")
-  }
-
-  if (activeFilters.mainPage.class) {
+  if (activeFilters.mainPage.class)
     updateChips("class", "Classe: " + activeFilters.mainPage.class)
-
-  }
+  else updateChips("class", "Classe: ")
+  if (activeFilters.mainPage.search)
+    updateChips("searchLawsuit", "Pesquisa: " + activeFilters.mainPage.search)
+  else updateChips("searchLawsuit", "Pesquisa: ")
 
   if (activeFilters.todoPage.dueToday)
-    updateChips("dueToday", "Vence hoje: sim")
+    updateChips("dueToday2", "Vence hoje: Sim")
+  else updateChips("dueToday2", "Vence hoje: Não")
+
+  if (activeFilters.todoPage.dueThisWeek)
+    updateChips("dueThisWeek2", "Vence essa semana: Sim")
+  else updateChips("dueThisWeek2", "Vence essa semana: Não")
   if (activeFilters.todoPage.assignedTo)
-    updateChips("assignedTo", "Atribuído a: " + activeFilters.todoPage.assignedTo)
+    updateChips("assignedTo2", "Atribuído a: " + activeFilters.todoPage.assignedTo)
+  else updateChips("assignedTo2", "Atribuído a: ")
   if (activeFilters.todoPage.status)
-    updateChips("status", "Status: " + activeFilters.todoPage.status)
+    updateChips("status2", "Status: " + activeFilters.todoPage.status)
+  else updateChips("status2", "Status: ")
   if (activeFilters.todoPage.circuit)
-    updateChips("circuit", "Vara: " + activeFilters.todoPage.circuit)
+    updateChips("circuit2", "Vara: " + activeFilters.todoPage.circuit)
+  else updateChips("circuit2", "Vara: ")
   if (activeFilters.todoPage.search)
-    updateChips("number", "Pesquisa: " + activeFilters.todoPage.search)
+    updateChips("searchTask", "Pesquisa: " + activeFilters.todoPage.search)
+  else updateChips("searchTask", "Pesquisa: ")
+
 
   filterItems()
   updateCards()
@@ -1244,8 +1268,8 @@ async function saveTask(workers: Worker[], edit: boolean) {
       status = "Vencida"
       break
   }
-
-  if (new Date(formFields["dueDate"] as string + "T03:00:00.000Z") < new Date() || !formFields["dueDate"].toString()) {
+  const today = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
+  if (new Date(formFields["dueDate"] as string + "T03:00:00.000Z") < today || !formFields["dueDate"].toString()) {
     const dueDateInput = document.querySelector("#dueDateInput") as HTMLInputElement
     dueDateInput.focus()
     showToast("Data inválida.")
@@ -1337,9 +1361,11 @@ async function renderTasks(tasks: Tasks[]) {
   ).join("")
 
   for await (const task of tasksData) {
-    document.querySelector(`[data-task-id="${task.id}"]`)?.addEventListener("click", async () => {
-      await openEditModal(task)
-    })
+    const currentTask = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLDivElement
+    if (currentTask)
+      currentTask.onclick = async () => {
+        await openEditModal(task)
+      }
   }
 
   document.querySelector("#closeIframeModal")?.addEventListener("click", closeIframeModal);
@@ -1417,7 +1443,7 @@ function renderActiveFilters() {
       value: activeFilters.mainPage.dueThisWeek ? "Sim" : "Não"
     },
     {
-      key: "search",
+      key: "searchLawsuit",
       label: "Pesquisa",
       value: (document.querySelector("#searchLawsuitInput") as HTMLInputElement).value
     },
@@ -1436,23 +1462,33 @@ function renderActiveFilters() {
       value: activeFilters.todoPage.number
     },
     {
-      key: "circuit",
+      key: "circuit2",
       label: "Vara",
       value: activeFilters.todoPage.circuit
     },
     {
-      key: "status",
+      key: "assignedTo2",
+      label: "Responsável",
+      value: activeFilters.todoPage.assignedTo
+    },
+    {
+      key: "status2",
       label: "Status",
       value: activeFilters.todoPage.status
     },
 
     {
-      key: "dueToday",
+      key: "dueToday2",
       label: "Vencendo hoje",
       value: activeFilters.todoPage.dueToday ? "Sim" : ""
     },
     {
-      key: "search",
+      key: "dueThisWeek2",
+      label: "Vencendo esta semana",
+      value: activeFilters.todoPage.dueThisWeek ? "Sim" : "Não"
+    },
+    {
+      key: "searchTask",
       label: "Pesquisa",
       value: activeFilters.todoPage.search
     }
@@ -1518,7 +1554,7 @@ document.addEventListener("click", (e) => {
 
       case "status":
         activeFilters.mainPage.status = "Aberto";
-        (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 1;
+        (document.querySelector("#filterStatus") as HTMLSelectElement).selectedIndex = 0;
         break;
 
       case "side":
@@ -1552,26 +1588,30 @@ document.addEventListener("click", (e) => {
       case "number":
         activeFilters.todoPage.number = "";
         break;
-      case "circuit":
+      case "circuit2":
         activeFilters.todoPage.circuit = "";
         (document.querySelectorAll("section")[1].querySelector("#filterCircuit2") as HTMLSelectElement).selectedIndex = 0;
         break;
 
-      case "status":
+      case "status2":
         activeFilters.todoPage.status = "";
         (document.querySelectorAll("section")[1].querySelector("#filterStatus2") as HTMLSelectElement).selectedIndex = 0;
         break;
 
-      case "assignedTo":
+      case "assignedTo2":
         activeFilters.todoPage.assignedTo = "";
         (document.querySelectorAll("section")[1].querySelector("#filterAssignedTo2") as HTMLSelectElement).selectedIndex = 0;
         break;
-      case "dueToday":
+      case "dueToday2":
         activeFilters.todoPage.dueToday = false;
         break;
-      case "search":
+      case "dueThisWeek2":
+        activeFilters.todoPage.dueThisWeek = false;
+        break;
+      case "searchTask":
         activeFilters.todoPage.search = "";
         break;
+
 
     }
   }

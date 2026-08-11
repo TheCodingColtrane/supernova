@@ -70,6 +70,7 @@ export async function getWeekLawsuitsData() {
                 status: lawsuit.status
             })
         }
+
         // const filteredLawsuits = lawsuits.map(({ number, assisted, initialDeadline, deadline, status }) => ({ number, assisted, initialDeadline, deadline, status }))
         const sortedLawsuits = [...filteredLawsuits].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
         console.log("!dsda", sortedLawsuits)
