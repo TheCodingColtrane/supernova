@@ -1,3 +1,5 @@
+import type {  PromptResult } from "../types/basePrompts";
+
 let baseTimeout: number;
 
 export function showToast(message: string, duration = 3000): void {
@@ -349,6 +351,29 @@ export function generateModalStructure() {
       transform: translateY(0);
     }
 
+     .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+      
+
     .modal-header {
       padding: 1.25rem 1.5rem;
       border-bottom: 1px solid var(--border);
@@ -383,6 +408,7 @@ export function generateModalStructure() {
       padding: 1.5rem;
       max-height: 70vh;
       overflow-y: auto;
+      background: #f8fafc;
     }
 
     .modal-footer {
@@ -426,4 +452,51 @@ export function generateModalStructure() {
   );
   document.body.appendChild(pageStyle)
 
+}
+
+export function jsonToPrompt(prompt: PromptResult) {
+    const partes = [];
+    const json = prompt
+    if (json.nome) {
+        partes.push(`# ${json.nome.toUpperCase()}`);
+    }
+
+    if (json.contexto) {
+        partes.push(`## Contexto\n${json.contexto}`);
+    }
+
+    if (json.objetivo) {
+        partes.push(`## Objetivo\n${json.objetivo}`);
+    }
+
+    if (json.instrucoes?.length) {
+        const texto = json.instrucoes.map((grupo, index) => {
+            const itens = grupo.itens
+                .map(item => `- ${item}`)
+                .join("\n");
+
+            return `### ${index + 1}. ${grupo.titulo}\n${itens}`;
+        }).join("\n\n");
+
+        partes.push(`## Instruções\n${texto}`);
+    }
+
+    if (json.regras_obrigatorias?.length) {
+        const regras = json.regras_obrigatorias
+            .map((regra, index) => `${index + 1}. ${regra}`)
+            .join("\n");
+
+        partes.push(`## Regras obrigatórias\n${regras}`);
+    }
+
+    if (json.formato_saida?.length) {
+        const formato = json.formato_saida
+            .map((item, index) => `${index + 1}. ${item}`)
+            .join("\n");
+
+        partes.push(`## Formato da resposta\n${formato}`);
+    }
+
+    return partes.join("\n\n");
+  
 }

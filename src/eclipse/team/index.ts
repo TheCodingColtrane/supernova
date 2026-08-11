@@ -153,8 +153,8 @@ function updateList(idList: string[]) {
           <span class="subordinate-end">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
         </div>
        <div>
-        <button class="edit-sub-btn" style="color: #f59e0b; font-size: 0.7rem; font-weight: 700;">Selecionar</button>
-        <button class="delete-sub-btn" style="color: #ef4444; font-size: 0.7rem; font-weight: 700;">Deletar</button>
+        <button class="edit-sub-btn" style="background: transparent; color: #f59e0b; border: 1px solid #f59e0b; padding: 10px; border-radius: 8px; cursor: pointer;">Selecionar</button>
+        <button class="delete-sub-btn" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; cursor: pointer;">Deletar</button>
        </div>
       </div>
     `).join('');
@@ -174,7 +174,7 @@ function updateList(idList: string[]) {
                 }
             } else {
                 const wid = Number(currentWorker?.dataset.wid)
-                if (!isNaN(wid)) {
+                if (!isNaN(wid) && confirm("Tem certeza que deseja deletar ?")) {
                     const result = await sendMessage("DELETE_WORKER", { id: wid })
                     if (result.data) {
                         currentWorker?.remove()

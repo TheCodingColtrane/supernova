@@ -1322,15 +1322,15 @@
         <div class="container">
           <div class="cards">
             <div class="card red">
-              <span class="label">Vencendo hoje</span>
+              <span class="label" id="redLabel1">Vencendo hoje</span>
               <span class="value" id="todayCount-p1">0</span>
             </div>
             <div class="card yellow">
-              <span class="label">Vencendo esta semana</span>
+              <span class="label" id="yellowLabel1">Vencendo esta semana</span>
               <span class="value" id="weekCount-p1">0</span>
             </div>
             <div class="card blue">
-              <span class="label">Processos Ativos</span>
+              <span class="label" id="blueLabel1">Processos Ativos</span>
               <span class="value" id="activeCount-p1">0</span>
             </div>
             <div class="card green">
@@ -1449,11 +1449,11 @@
       <section class="page">
         <div class="container">
           <div class="cards">
-            <div class="card red">
+            <div class="card red" id="redCard">
               <span class="label">Vencendo hoje</span>
               <span class="value" id="todayCount-p2">0</span>
             </div>
-            <div class="card yellow">
+            <div class="card yellow" id="yellowCard">
               <span class="label">Vencendo esta semana</span>
               <span class="value" id="weekCount-p2">0</span>
             </div>
@@ -1502,7 +1502,6 @@
                 <label  for="filterAssignedTo2" class="filter-label">Responsável</label>
                 <select class="filter-select" id="filterAssignedTo2">
                   <option value="">Todos</option>
-                  <option value="me">Atribuídas a mim</option>
                 </select>
               </div>
               <div class="filter-group">

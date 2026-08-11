@@ -3,8 +3,8 @@ import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
 import { getLawsuit, renderModal, sendMessage } from "../../utils";
 import { getDeadline } from "../../utils/date";
-import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
-
+import { hideLoadingSpinner, jsonToPrompt, showLoadingSpinner, showToast } from "../../utils/ui";
+import prompt from '../../../promtps.json'
 const utilities = [
     {
         id: "Processo",
@@ -218,6 +218,7 @@ function openGeminiPromptsModal() {
           <div class="form-group">
             <label for="promptType">Formato do arquivo</label>
              <select name="prompt" id="promptType">
+              <option value="-1">Selecione o seu prompt</option>
               <option value="0">Resumir Processo</option>
               <option value="1">Manifestar sobre a última intimação</option>
               <option value="2">Criar quesitos</option>
@@ -246,6 +247,16 @@ function openGeminiPromptsModal() {
             }
         ]
     })
+
+
+    const promptSelect = document.querySelector("#promptType") as HTMLSelectElement
+    promptSelect.onchange = () => {
+        const i = promptSelect.options.item(promptSelect.options.selectedIndex)?.value!
+        if (Number(i) > -1) {
+            const results = jsonToPrompt(prompt.results[Number(i)])
+            document.querySelector("#promptText")!.innerHTML = results
+        }
+    }
 }
 
 async function openLawsuit() {
