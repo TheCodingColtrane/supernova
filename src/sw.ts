@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
       switch (request.type) {
         case "RENDER_HTML":
-          result = await handleHtmlProcessing(request.payload);
+          result = await handleHtmlProcessing(request.payload.html, request.payload.isEproc);
           break;
         case "GET_LAWSUIT":
           result = await getLawsuit(request.payload.number);
@@ -127,7 +127,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 let isCreatingOffscreen: Promise<void> | null = null;
 
-async function handleHtmlProcessing(htmlString: string): Promise<number[]> {
+async function handleHtmlProcessing(htmlString: string, isEproc: boolean): Promise<number[]> {
   try {
 
     // 1. Gerencia a criação do Offscreen de forma segura
@@ -161,7 +161,7 @@ async function handleHtmlProcessing(htmlString: string): Promise<number[]> {
     // 2. Repassa o HTML para dentro do documento Offscreen que criamos
     const response = await chrome.runtime.sendMessage({
       action: 'offscreen',
-      payload: htmlString
+      payload: {html: htmlString, isEproc}
     });
 
     if (!response || !response.success) {

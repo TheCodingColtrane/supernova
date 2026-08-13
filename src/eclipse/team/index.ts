@@ -1,9 +1,8 @@
 import type { DefendersAPIResponse } from "../types/office"
 import type { Worker } from "../types/workers"
-import { convertTextDateToDate, formatDate, getUserCredentials, isSmallerDateValid, isValidDate, sendMessage } from "../utils";
+import { formatDate, getUserCredentials, sendMessage } from "../utils";
 import { showToast } from "../utils/ui";
 import cities from "../utils/municipios.json"
-import { formatISO } from "date-fns";
 import { localDateToIsoDate } from "../utils/date";
 const defendersSelect = document.querySelector("#defenderSelect") as HTMLSelectElement
 const defenderSelect = document.getElementById('defenderSelect') as HTMLSelectElement;
@@ -26,6 +25,8 @@ const minasGeraisCities = cities.filter(c => c.codigo_uf === 31)
 // const internContractInfoDiv = document.querySelector("#internContractInfo") as HTMLDivElement
 const subordinateStartDate = document.querySelector("#subordinateStartDate") as HTMLInputElement
 const subordinateEndDate = document.querySelector("#subordinateEndDate") as HTMLInputElement
+const isActive = document.querySelector("#isActive") as HTMLInputElement
+
 const date = new Date()
 let districtCourt = ""
 const workers: Worker[] = []
@@ -122,7 +123,7 @@ btnNextStep.addEventListener('click', async () => {
                 role: "Defensor(a)",
                 id: 1,
                 isActive: true,
-                isCriminal: isCriminal.value === "on"
+                isCriminal: isCriminal.checked
             })
             ids.push(val)
             updateList(ids)
@@ -132,6 +133,7 @@ btnNextStep.addEventListener('click', async () => {
             subNameInput.value = ""
             subordinateStartDate.value = ""
             subordinateEndDate.value = ""
+            isActive.checked = true
             saveBtn!.dataset.action = "0"
             saveBtn!.dataset.wid = "0"
 
@@ -149,8 +151,9 @@ function updateList(idList: string[]) {
           <span class="subordinate-name" data-id='${idList[i]}'>${sub.name}</span>
           <span class="subordinate-role">${sub.role}</span>
           <span class="subordinate-email">${sub.email}</span>
-           <span class="subordinate-start">${sub.startDate ? localDateToIsoDate(String(sub.startDate), false) : ""}</span>
+          <span class="subordinate-start">${sub.startDate ? localDateToIsoDate(String(sub.startDate), false) : ""}</span>
           <span class="subordinate-end">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
+          <span class="subordinate-end">${sub.isActive ? "Ativo" : "Inativo"}</span>
         </div>
        <div>
         <button class="edit-sub-btn" style="background: transparent; color: #f59e0b; border: 1px solid #f59e0b; padding: 10px; border-radius: 8px; cursor: pointer;">Selecionar</button>
@@ -251,10 +254,17 @@ function updateList(idList: string[]) {
                 return
 
             }
+            const subStartDate = elements?.item(3).innerHTML.split("/")
+            const subEndDate = elements?.item(4).innerHTML.split("/")
             subEmailInput.value = elements?.item(2).innerHTML ?? ""
             subNameInput.value = elements?.item(0).innerHTML ?? ""
-            subordinateStartDate.value = elements?.item(3).innerHTML ?? ""
-            subordinateEndDate.value = elements?.item(4).innerHTML ?? ""
+            if (subStartDate && subStartDate.length > 0)
+                subordinateStartDate.value = subStartDate[2] + "-" + subStartDate[1] + "-" + subStartDate[0]
+            else subordinateStartDate.value = ""
+            if (subEndDate && subEndDate.length > 0)
+                subordinateEndDate.value = subEndDate[2] + "-" + subEndDate[1] + "-" + subEndDate[0]
+            else subordinateEndDate.value = ""
+            isActive.checked = elements?.item(4).innerHTML === "Inativo" ? false : true
             saveBtn!.dataset.action = "1"
             saveBtn!.dataset.wid = subItems.parentElement?.parentElement?.dataset.wid
             saveBtn!.textContent = "Alterar membro."
@@ -287,25 +297,21 @@ saveBtn?.addEventListener('click', async () => {
     const defenderId = Number(defenderSelect.value);
     let startDate = "", endDate = ""
 
-    if (subordinateStartDate.value) {
-        if (!isValidDate(subordinateStartDate.value)) {
-            showToast("Campo data de inicio inválido.")
-            subordinateStartDate.focus()
-            return
-        }
-        startDate = formatISO(convertTextDateToDate(subordinateStartDate.value), { representation: "date" })
+    if (!subordinateStartDate.value) {
+        showToast("Campo data de inicio inválido.")
+        subordinateStartDate.focus()
+        return
+        // startDate = formatISO(convertTextDateToDate(subordinateStartDate.value), { representation: "date" })
 
     }
-    if (subordinateEndDate.value) {
-        if (!isValidDate(subordinateEndDate.value)) {
-            showToast("Campo data fim inválido.")
-            subordinateEndDate.focus()
-            return
-        }
-        endDate = formatISO(convertTextDateToDate(subordinateEndDate.value), { representation: "date" })
+    if (!subordinateEndDate.value) {
+        showToast("Campo data fim inválido.")
+        subordinateEndDate.focus()
+        return
+        // endDate = formatISO(convertTextDateToDate(subordinateEndDate.value), { representation: "date" })
     }
 
-    if (!isSmallerDateValid(subordinateStartDate.value, subordinateEndDate.value)) {
+    if (new Date(subordinateStartDate.value) > new Date(subordinateEndDate.value)) {
         showToast("Campo data de inicio maior que data fim.")
         subordinateStartDate.focus()
         return
@@ -329,7 +335,7 @@ saveBtn?.addEventListener('click', async () => {
                     role === "Servidor(a)" ? "Servidor(a)" : "Defensor(a)"
                 currentWorker.startDate = startDate
                 currentWorker.endDate = endDate
-                currentWorker.isCriminal = isCriminal.value === "on"
+                currentWorker.isCriminal = isCriminal.checked
                 const result = await sendMessage("UPDATE_WORKER", { workers: currentWorker })
                 if (result.data) {
                     workers[currentWorkerIndex] = currentWorker
@@ -379,6 +385,7 @@ saveBtn?.addEventListener('click', async () => {
     subRoleInput.selectedIndex = 0
     subordinateStartDate.value = ""
     subordinateEndDate.value = ""
+    isActive.checked = true
     updateList(ids);
 })
 

@@ -6,7 +6,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     return;
   }
 
-  convertHtmlToPdf(message.payload)
+  convertHtmlToPdf(message.payload.html, message.payload.isEproc)
     .then((content) => {
       sendResponse({
         success: true,
@@ -24,19 +24,20 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
   return true;
 });
-export async function convertHtmlToPdf(htmlString: string): Promise<{buffer: ArrayBuffer, pages: number}> {
+export async function convertHtmlToPdf(htmlString: string, isEproc: boolean): Promise<{buffer: ArrayBuffer, pages: number}> {
   return new Promise((resolve, reject) => {
     try {
       const container = document.createElement("div");
       container.innerHTML = htmlString;
-      container.style.margin = "20px"
+      console.log(isEproc)
+      container.style.margin = isEproc ? "20px" : "10px"
       document.body.appendChild(container);
       const doc = new jsPDF({ orientation: 'p', unit: 'px', format: [800, 1080], hotfixes: ["px_scaling"] });
       doc.html(container, {
         x: 0,
         y: 0,
-        width: 800,
-        windowWidth: 800,
+        width: 1200,
+        windowWidth: 1200,
         callback: function (newDoc) {
           try {
           const data = {buffer: newDoc.output('arraybuffer'), pages: newDoc.getNumberOfPages()}
