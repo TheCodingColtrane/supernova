@@ -161,6 +161,8 @@
             border: 1px solid #dbe2ea;
             background: #ef4444;
             cursor: pointer;
+            color: white;
+
         }
 
         .btn-primary {
@@ -372,6 +374,13 @@
         [hidden] {
             display: none !important;
         }
+
+        .holiday-list-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 18px;
+        }
     </style>
 
 </head>
@@ -415,6 +424,10 @@
 
                 <!-- Filtros -->
 
+                <div class="holiday-list-header">
+                    <span id="holiday-count">4 feriados encontrados</span>
+                </div>
+
                 <div class="holiday-filters">
 
                     <button class="filter-chip active">
@@ -432,6 +445,10 @@
                     <button class="filter-chip">
                         Municipal
                     </button>
+
+
+                    <select id="yearFilter" class="year-filter">
+                    </select>
 
                 </div>
 

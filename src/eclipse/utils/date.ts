@@ -35,12 +35,15 @@ export function getNextBusinessDay(date: Date) {
 
 
 export function getDeadline(startDate: Date, endDate: Date, holidays?: Holidays[], isElapsedDays = false) {
-    if (!isBusinessDay(startDate))
-        startDate = new Date(getNextBusinessDay(startDate))
-    if (!isBusinessDay(endDate))
-        endDate = new Date(getNextBusinessDay(endDate))
-    if(startDate.getTime() > endDate.getTime())     
-        return { days: 0 , deadline: endDate, isDueDate: true }
+    if (!isElapsedDays) {
+        if (!isBusinessDay(startDate))
+            startDate = new Date(getNextBusinessDay(startDate))
+        if (!isBusinessDay(endDate))
+            endDate = new Date(getNextBusinessDay(endDate))
+    }
+
+    if (startDate.getTime() > endDate.getTime())
+        return { days: 0, deadline: endDate, isDueDate: true }
 
     let days = !isElapsedDays ? differenceInBusinessDays(endDate, startDate) : differenceInDays(endDate, startDate)
     let datesToIgnore = Array<string>()
@@ -55,10 +58,10 @@ export function getDeadline(startDate: Date, endDate: Date, holidays?: Holidays[
             if (isEndDateHoliday && !isElapsedDays) endDate = new Date(getNextBusinessDay(endDate))
             for (const holiday of pendingHolidays) {
                 let days = differenceInDays(new Date(holiday.endDate), new Date(holiday.startDate))
-                if(!days){
+                if (!days) {
                     datesToIgnore.push(holiday.startDate as string)
                     continue
-                }  
+                }
                 for (let i = 1; i < days; i++) {
                     let currentDate = addDays(new Date(holiday.startDate), i)
                     datesToIgnore.push(formatISO(currentDate, { representation: 'date' }));
@@ -68,11 +71,11 @@ export function getDeadline(startDate: Date, endDate: Date, holidays?: Holidays[
         }
 
 
-        days += !isElapsedDays ? 
-        differenceInBusinessDays(addBusinessDays(startDate, datesToIgnore.length), startDate) :
-        differenceInDays(addDays(startDate, datesToIgnore.length), startDate)
+        days += !isElapsedDays ?
+            differenceInBusinessDays(addBusinessDays(startDate, datesToIgnore.length), startDate) :
+            differenceInDays(addDays(startDate, datesToIgnore.length), startDate)
         endDate = !isElapsedDays ? addBusinessDays(startDate, days) : addDays(startDate, days)
-        
+
     }
 
 

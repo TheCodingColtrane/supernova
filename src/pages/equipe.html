@@ -309,13 +309,21 @@
                 <div id="internContractInfo">
                     <div class="form-group">
                         <label for="subordinateStartDate">Data de início</label>
-                        <input type="text" id="subordinateStartDate" maxlength="10">
+                        <input id="subordinateStartDate" name="startDate" type="date" max="2099-11-31">
+                        <!-- <input type="text" id="subordinateStartDate" maxlength="10"> -->
                     </div>
                     <div class="form-group">
                         <label for="subordinateEndDate">Data fim </label>
-                        <input type="text" id="subordinateEndDate" maxlength="10">
+                        <input id="subordinateEndDate" name="endDate" type="date" max="2099-11-31">
+                        <!-- <input type="text" id="subordinateEndDate" maxlength="10"> -->
                     </div>
                 </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" name="active" id="isActive">
+                    <label for="isActive">Está ativo ?</label>
+                </div>
+
 
                 <div class="actions">
                     <button class="btn-add" id="saveBtn">Vincular</button>

@@ -638,7 +638,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
         isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
         number: formData["number"] as string,
         source: currentLawsuit.source,
-        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
+        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : formData["status"]?.toString() === "1" ? "Aberto" : "Finalizado",
         id: currentLawsuit.id,
         class: currentLawsuit.class,
         daysLeft: currentLawsuit.daysLeft,
@@ -761,7 +761,6 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     if (p.initialDeadline && p.deadline) {
       const deadlineDateComponents = p.deadline.toString().split("-")
       const iDeadlineDateComponents = p.initialDeadline.toString().split("-")
-
       dates = getDeadline(new Date(today.getFullYear(), today.getMonth(), today.getDate()), new Date(Number(deadlineDateComponents[0]), Number(deadlineDateComponents[1]) - 1, Number(deadlineDateComponents[2])), holidays, isElapsedDays)
       initialDeadline = `<span>Inicial: ${iDeadlineDateComponents[2] + "/" + iDeadlineDateComponents[1] + "/" + iDeadlineDateComponents[0]}</span>`
       deadline = `<span>Final: ${deadlineDateComponents[2] + "/" + deadlineDateComponents[1] + "/" + deadlineDateComponents[0]}</span>`
@@ -773,12 +772,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     tr.dataset.id = p.id?.toString()
     tr.dataset.status = p.status
     const timeLeft = 23 - new Date().getHours() + " hora(s) e " + (60 - today.getMinutes()) + " minuto(s) restante(s)"
-    // let deadline = ""
-    // if (p.status === "Aberto") deadline = p.awarenessDate.toString()
-    // else deadline = p.deadline.toString()
     const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
-    //<td class="actions-cell">
-
     tr.innerHTML = `
   
   <td>
@@ -812,11 +806,13 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         </td>
         <td id="task-assigned-to">
         <label for="selectedWorker"class="filter-label">Responsável</label>
-            <select name="selectedWorker" class="filter-select">
+            <select name="selectedWorker" class="filter-select" id="assignedWorker">
               ${availableWorkers}
               </select>
         </td>
       `;
+
+
 
     const curDate = new Date()
     let lastWeekWorkingDay = new Date(curDate.setDate(curDate.getDate() - curDate.getDay() + 5));
@@ -908,6 +904,22 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
     table!.appendChild(tr);
     renderPagination()
+    for (const task of tasksData) {
+      if (p.number === task.lawsuit?.number) {
+        const select = tr.querySelector("#assignedWorker") as HTMLSelectElement
+        let isSelected = false
+        for (const option of select.options) {
+          if (option.label === task.assignedTo.name) {
+            option.selected = true
+            isSelected = true
+            tr.dataset.task = String(task.id)
+            break
+          }
+
+        }
+        if (isSelected) break
+      }
+    }
   })
 
 

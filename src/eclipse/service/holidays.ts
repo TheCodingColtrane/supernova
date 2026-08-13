@@ -60,21 +60,12 @@ export async function getHolidays(year: Date) {
                         const holiday = cHoliday as HolidaysAPIResponse
                         holidaysSchema.push({
                             startDate: holiday.date,
-                            endDate: holiday.date,
+                            endDate: holiday.name === "Recesso Forense" ?
+                            holiday.date.split("-")[0] +"-01-20" : holiday.date,
                             type: "national",
                             name: holiday.name
                         })
                     }
-
-                    //   for (const holiday of holidays[1]) {
-                    //     holidaysSchema.push({
-                    //         startDate: holiday.data,
-                    //         endDate: holiday.data,
-                    //         type: holiday.tipo === "MUNICIPAL"  ? "city" : "state",
-                    //         name: holiday.nome
-                    //     })
-                    // }
-
 
                     await saveHolidays(holidaysSchema)
                     return holidaysSchema

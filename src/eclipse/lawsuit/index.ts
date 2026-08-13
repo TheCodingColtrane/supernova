@@ -481,7 +481,7 @@ async function renderLawsuitViewer() {
                 timelineContent.appendChild(timelineMetaData)
                 timelineContent.className = "timeline-content"
                 let isRootDoc = true
-                if (event.documentos.length === 0)
+                // if (event.documentos.length === 0)
                     timelineMetaData.textContent = new Date(event.data_protocolo).toLocaleString()
 
                 for (const doc of event.documentos) {
@@ -770,7 +770,7 @@ async function donwloadLawsuit(download = true) {
                     const isUTF8 = headers.get("Content-Type") === "text/html; charset=utf-8"
                     const buffer = await res.arrayBuffer();
                     const htmlText = new TextDecoder(isUTF8 ? "utf-8" : "iso-8859-1").decode(buffer);
-                    const result = await sendToOffscreenProcessor(htmlText)
+                    const result = await sendToOffscreenProcessor(htmlText, lawsuit.sistema_webservice.includes("EPROC"))
                     rawDocuments[i] = result.content
 
                 } else if (headers.get("Content-Type") === "application/pdf")

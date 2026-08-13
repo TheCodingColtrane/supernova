@@ -1257,6 +1257,7 @@
           <select name="status" id="editStatus">
             <option value="0">Aguardando Abertura</option>
             <option value="1">Aberto</option>
+            <option value="2">Finalizado</option>
           </select>
         </div>
         <div class="form-group">
@@ -1363,7 +1364,7 @@
             <div id="activeFiltersBar" class="active-filters"></div>
             <div class="filters-row-main">
               <div class="filter-group">
-                <label for="filterCircuit" class="filter-label" >Vara</label>
+                <label for="filterCircuit" class="filter-label">Vara</label>
                 <select class="filter-select" id="filterCircuit">
                   <option value="">Todas</option>
                 </select>
@@ -1499,7 +1500,7 @@
                 </select>
               </div>
               <div class="filter-group">
-                <label  for="filterAssignedTo2" class="filter-label">Responsável</label>
+                <label for="filterAssignedTo2" class="filter-label">Responsável</label>
                 <select class="filter-select" id="filterAssignedTo2">
                   <option value="">Todos</option>
                 </select>
@@ -1520,64 +1521,64 @@
           <button id="new-task" class="fab">+</button>
 
         </div>
-    <!-- </div> -->
-    </section>
-    <section class="page">
-      <div class="container">
-        <div class="search-box">
-          <i class="bi bi-search"></i>
-          <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
+        <!-- </div> -->
+      </section>
+      <section class="page">
+        <div class="container">
+          <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Pesquisar utilidade..." id="utilitySearch">
+          </div>
+
+          <section id="favoriteSection">
+
+            <h3 class="utility-section-title">
+              <i class="bi bi-star"></i>
+              Favoritas
+            </h3>
+
+            <div class="utilities-grid" id="favoriteGrid"></div>
+
+          </section>
+
+          <section>
+
+            <h3 class="utility-section-title">
+              Todas as ferramentas
+            </h3>
+
+            <div class="utilities-grid" id="utilitiesGrid"></div>
+
+          </section>
         </div>
-
-        <section id="favoriteSection">
-
-          <h3 class="utility-section-title">
-            <i class="bi bi-star"></i>
-            Favoritas
-          </h3>
-
-          <div class="utilities-grid" id="favoriteGrid"></div>
-
-        </section>
-
-        <section>
-
-          <h3 class="utility-section-title">
-            Todas as ferramentas
-          </h3>
-
-          <div class="utilities-grid" id="utilitiesGrid"></div>
-
-        </section>
-      </div>
-    </section>
-  </div>
-  <button id="toggleable-actions" class="fab">+</button>
-  <!-- Modal para Visualização de Iframe -->
-  <div id="iframeModal" class="iframe-modal">
-    <div class="iframe-modal-content">
-
-      <div class="iframe-modal-header">
-        <h3 id="iframeTitle">Visualização</h3>
-
-        <div class="iframe-actions">
-          <button id="openNewTab" class="iframe-btn" title="Abrir em nova aba">
-            <i class="bi bi-box-arrow-up-right"></i>
-          </button>
-
-          <button id="closeIframeModal" class="iframe-btn danger">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="iframe-modal-body">
-        <iframe id="iframeViewer" src="" frameborder="0" loading="lazy">
-        </iframe>
-      </div>
-
+      </section>
     </div>
-  </div>
+    <button id="toggleable-actions" class="fab">+</button>
+    <!-- Modal para Visualização de Iframe -->
+    <div id="iframeModal" class="iframe-modal">
+      <div class="iframe-modal-content">
+
+        <div class="iframe-modal-header">
+          <h3 id="iframeTitle">Visualização</h3>
+
+          <div class="iframe-actions">
+            <button id="openNewTab" class="iframe-btn" title="Abrir em nova aba">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </button>
+
+            <button id="closeIframeModal" class="iframe-btn danger">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="iframe-modal-body">
+          <iframe id="iframeViewer" src="" frameborder="0" loading="lazy">
+          </iframe>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   </div>

@@ -42,18 +42,29 @@ export async function getNationalHolidaysAPI(oldestYear: number) {
         if (curYear - oldestYear > 0) {
             for (let year = oldestYear; year <= curYear; year++) {
                 let holiday = fetch("https://brasilapi.com.br/api/feriados/v1/" + year.toString())
+
                 holidays.push(holiday)
             }
             const allHolidays = await Promise.all(holidays)
             holidays = []
             for (const holiday of allHolidays) {
-                if (holiday.status === 200) holidays.push(await holiday.json())
+                if (holiday.status === 200) {
+                    const holidaysData = await holiday.json()
+                    const newYear = holidaysData[0].date.split("-")[0]
+                    holidaysData.push({ date: newYear + "-12-20", name: "Recesso Forense", type: "national" })
+                    holidays.push(holidaysData)
+                }
             }
             return holidays.flatMap(c => c) as unknown as HolidaysAPIResponse[]
         }
 
         const holidaysResponse = await fetch("https://brasilapi.com.br/api/feriados/v1/" + curYear.toString())
-        if (holidaysResponse.status === 200) return await holidaysResponse.json() as Holidays[]
+        if (holidaysResponse.status === 200) {
+            const holidaysData = await holidaysResponse.json() as Holidays[]
+            const newYear = String(holidaysData[0].startDate).split("-")[0]
+            holidaysData.push({ startDate: newYear + "-12-20", endDate: newYear + "-01-20", name: "Recesso Forense", type: "national" })
+            return holidaysData
+        }
 
     } catch (error) {
         console.log(error)
@@ -84,7 +95,7 @@ export async function getLocalHolidays() {
             year -= failureCount
         }
 
-        if(failureCount === 5)
+        if (failureCount === 5)
             return
     }
 
@@ -233,7 +244,7 @@ export function formatDate(input: HTMLInputElement) {
     input.value = value;
 }
 
-export function     convertTextDateToDate(date: string) {
+export function convertTextDateToDate(date: string) {
     const dateParts = date.split("/").map(c => parseInt(c))
     return new Date(dateParts[2], dateParts[1] - 1, dateParts[0])
 }
