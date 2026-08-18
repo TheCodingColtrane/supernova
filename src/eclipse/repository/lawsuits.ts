@@ -161,7 +161,9 @@ export async function getPendingLawsuitsData() {
     const today = new Date()
     const endDate = new Date(today.setDate(new Date().getDate() + 90)).toISOString().split("T")[0]
     const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", today], ["Aguardando Abertura", endDate]).toArray()
-    console.log(lawsuits)
+    const todayISO = today.toISOString().split("T")[0]
+    const finishedLawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Finalizado", "2000-01-01"], ["Finalizado", todayISO]).reverse().toArray()
+    lawsuits.push(...finishedLawsuits)
     return await getExistingLawsuits(lawsuits, false)
 
 }

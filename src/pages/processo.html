@@ -184,7 +184,7 @@
 
         }
 
-        .document-info {
+        /* .document-info {
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -201,6 +201,17 @@
         .document-protocol i {
             font-size: .75rem;
             color: #94a3b8;
+        } */
+
+        .document-info>span,
+        .document-protocol {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            gap: 6px;
+            font-size: .78rem;
+            color: #64748b;
         }
 
         .separator {
@@ -478,11 +489,21 @@
 ========================================================== */
 
         .document-toolbar {
-            position: relative;
+            /* position: relative;
             height: 60px;
             border-bottom: 1px solid #edf2f7;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            padding: 0 18px;
+            background: white; */
+
+            position: relative;
+            height: 60px;
+            min-height: 60px;
+            border-bottom: 1px solid #edf2f7;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
             align-items: center;
             padding: 0 18px;
             background: white;
@@ -490,14 +511,20 @@
         }
 
         .document-title {
+            /* display: flex;
+            gap: 10px;
+            align-items: center; */
+            font-weight: 600;
+            min-width: 0;
             display: flex;
             gap: 10px;
             align-items: center;
-            font-weight: 600;
         }
 
         .toolbar-actions {
             display: flex;
+            justify-self: end;
+
             gap: 8px;
         }
 
@@ -611,11 +638,27 @@
             overflow: auto;
         }
 
-        .document-selector {
+        /* .document-selector {
             position: absolute;
             top: 12%;
             left: 50%;
             transform: translateX(-50%);
+
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 6px;
+
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+        } */
+
+        .document-selector {
+            position: static;
+            transform: none;
 
             display: flex;
             align-items: center;
@@ -663,8 +706,10 @@
             border-collapse: collapse;
             font-size: 0.9rem;
         }
+
         thead {
-            border: 3px solid black;;
+            border: 3px solid black;
+            ;
         }
 
         th {

@@ -1,6 +1,6 @@
 import type { DefendersAPIResponse } from "../types/office"
 import type { Worker } from "../types/workers"
-import { formatDate, getUserCredentials, sendMessage } from "../utils";
+import { getUserCredentials, sendMessage } from "../utils";
 import { showToast } from "../utils/ui";
 import cities from "../utils/municipios.json"
 import { localDateToIsoDate } from "../utils/date";
@@ -27,7 +27,6 @@ const subordinateStartDate = document.querySelector("#subordinateStartDate") as 
 const subordinateEndDate = document.querySelector("#subordinateEndDate") as HTMLInputElement
 const isActive = document.querySelector("#isActive") as HTMLInputElement
 
-const date = new Date()
 let districtCourt = ""
 const workers: Worker[] = []
 const ids: string[] = []
@@ -87,17 +86,17 @@ if (data && user) {
 })()
 
 
-subordinateStartDate.addEventListener("keyup", (e) => {
-    const startDate = e.target as HTMLInputElement
-    startDate.placeholder = date.getDate() + "/" + date.getMonth() + 1 + "/" + date.getFullYear()
-    formatDate(startDate)
-})
+// subordinateStartDate.addEventListener("keyup", (e) => {
+//     const startDate = e.target as HTMLInputElement
+//     startDate.placeholder = date.getDate() + "/" + date.getMonth() + 1 + "/" + date.getFullYear()
+//     formatDate(startDate)
+// })
 
-subordinateEndDate.addEventListener("keyup", (e) => {
-    const endDate = e.target as HTMLInputElement
-    endDate.placeholder = date.getDate() + "/" + date.getMonth() + 1 + "/" + date.getFullYear() + 2
-    formatDate(endDate)
-})
+// subordinateEndDate.addEventListener("keyup", (e) => {
+//     const endDate = e.target as HTMLInputElement
+//     endDate.placeholder = date.getDate() + "/" + date.getMonth() + 1 + "/" + date.getFullYear() + 2
+//     formatDate(endDate)
+// })
 
 
 btnNextStep.addEventListener('click', async () => {
@@ -151,8 +150,8 @@ function updateList(idList: string[]) {
           <span class="subordinate-name" data-id='${idList[i]}'>${sub.name}</span>
           <span class="subordinate-role">${sub.role}</span>
           <span class="subordinate-email">${sub.email}</span>
-          <span class="subordinate-start">${sub.startDate ? localDateToIsoDate(String(sub.startDate), false) : ""}</span>
-          <span class="subordinate-end">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
+          <span class="subordinate-start" id="startDate-${i}">${sub.startDate ? localDateToIsoDate(String(sub.startDate), false) : ""}</span>
+          <span class="subordinate-end"  id="endDate-${i}">${sub.endDate ? localDateToIsoDate(String(sub.endDate), false) : ""}</span>
           <span class="subordinate-end">${sub.isActive ? "Ativo" : "Inativo"}</span>
         </div>
        <div>
@@ -256,15 +255,16 @@ function updateList(idList: string[]) {
             }
             const subStartDate = elements?.item(3).innerHTML.split("/")
             const subEndDate = elements?.item(4).innerHTML.split("/")
+            
             subEmailInput.value = elements?.item(2).innerHTML ?? ""
             subNameInput.value = elements?.item(0).innerHTML ?? ""
-            if (subStartDate && subStartDate.length > 0)
+            if (subStartDate && subStartDate.length > 1)
                 subordinateStartDate.value = subStartDate[2] + "-" + subStartDate[1] + "-" + subStartDate[0]
             else subordinateStartDate.value = ""
-            if (subEndDate && subEndDate.length > 0)
+            if (subEndDate && subEndDate.length > 1)
                 subordinateEndDate.value = subEndDate[2] + "-" + subEndDate[1] + "-" + subEndDate[0]
             else subordinateEndDate.value = ""
-            isActive.checked = elements?.item(4).innerHTML === "Inativo" ? false : true
+            isActive.checked = elements?.item(5).innerHTML === "Inativo" ? false : true
             saveBtn!.dataset.action = "1"
             saveBtn!.dataset.wid = subItems.parentElement?.parentElement?.dataset.wid
             saveBtn!.textContent = "Alterar membro."
@@ -319,7 +319,8 @@ saveBtn?.addEventListener('click', async () => {
 
 
 
-
+    startDate = subordinateStartDate.value
+    endDate = subordinateEndDate.value
     if (!name) return alert("Digite o nome do funcionário.");
     if (user) {
         const action = Number(saveBtn.dataset.action)

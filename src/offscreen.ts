@@ -36,8 +36,8 @@ export async function convertHtmlToPdf(htmlString: string, isEproc: boolean): Pr
       doc.html(container, {
         x: 0,
         y: 0,
-        width: 1200,
-        windowWidth: 1200,
+        width: 800,
+        windowWidth: 800,
         callback: function (newDoc) {
           try {
           const data = {buffer: newDoc.output('arraybuffer'), pages: newDoc.getNumberOfPages()}

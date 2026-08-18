@@ -102,6 +102,16 @@ export async function getLocalHolidays() {
 
 }
 
+export async function createDefenders(defenders: Defenders[]) {
+    const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
+    await chrome.storage.local.set({
+        defenders: defenders,
+        cacheVersion: "1.0",
+        nextUpdate: Date.now() + THIRTY_DAYS
+    })
+    return
+}
+
 export async function getDefendersAPI() {
     try {
         const response = await fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
