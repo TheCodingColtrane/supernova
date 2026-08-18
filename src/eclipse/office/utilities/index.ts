@@ -286,7 +286,7 @@ async function openLawsuit() {
                             const lawsuit = await getLawsuit(lawsuitNumber)
                             if (lawsuit?.sucesso) {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = ""
-                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber + "&reu=false" });
+                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber});
                                 hideLoadingSpinner()
                             } else {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = "Não foi encontrado nenhum processo. Cadastre-o no solar ou pesquise por outro."

@@ -1,12 +1,13 @@
 import { PDFDocument, rgb } from "pdf-lib"
 import { sendToOffscreenProcessor } from "../../solar/atendimento/eproc"
-import type { Processo, ProcessoQueryResult, Vinculado } from "../../solar/types/lawsuit"
+import type { Parte, Processo, ProcessoQueryResult, Vinculado } from "../../solar/types/lawsuit"
 import { concurrentDownload, downloadPDF } from "../../util"
 import { createDownloadToast, finishDownloadToast, generateModalStructure, hideLoadingSpinner, jsonToPrompt, showLoadingSpinner, showToast, updateDownloadProgress } from "../utils/ui"
 import { getGeminiLawsuitOutput } from "../gemini"
-import { getLawsuit, renderModal, sendMessage } from "../utils"
+import { getDefenders, getLawsuit, renderModal, sendMessage } from "../utils"
 import type { Lawsuits } from "../types/lawsuits"
 import prompt from '../../promtps.json'
+import type { Defenders } from "../types/office"
 const params = new URLSearchParams(window.location.search)
 let lawsuitQueryResult: ProcessoQueryResult | undefined
 let lawsuit: Processo
@@ -31,6 +32,8 @@ const favoriteDocumentBtn = document.querySelector("#favoriteDocumentBtn") as HT
 const lawsuitDocuments = new Array<{ url: string, date: string, createdBy: string, event: string, docCount: number, isEPROC: boolean }>()
 const aiutton = document.querySelector("#aiOptionsButton") as HTMLButtonElement
 let savedLawsuit: Partial<Lawsuits> = {}
+let defenders: Partial<Defenders[]> = []
+
 let maxDocumentCount = 0
 let selectedEvent = ""
 const viewFavoriteDocumentsButton = document.querySelector("#favoriteDocumentsButton") as HTMLButtonElement
@@ -40,7 +43,7 @@ const viewFavoriteDocumentsButton = document.querySelector("#favoriteDocumentsBu
 
 document.addEventListener("DOMContentLoaded", async () => {
     const lawsuitNumber = params.get("numero")
-    const isDefendant = params.get("reu")
+    // const isDefendant = params.get("reu")
     if (lawsuitNumber) {
         showLoadingSpinner()
         const caseNumber = `${lawsuitNumber.substring(0, 7)}-${lawsuitNumber.substring(7, 9)}.${lawsuitNumber.substring(9, 13)}.${lawsuitNumber[13]}.${lawsuitNumber.substring(14, 16)}.${lawsuitNumber.substring(16)}`
@@ -48,20 +51,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         // lawsuitQueryResult = await getLawsuit(lawsuitNumber)
         const lawsuitAPIResult = getLawsuit(lawsuitNumber)
         const dbLawsuit = sendMessage("GET_LAWSUIT", { number: lawsuitNumber })
-        const results = await Promise.all([lawsuitAPIResult, dbLawsuit])
-        if (results[0] && results[1]) {
+        const savedDefenders = getDefenders()
+        const results = await Promise.all([lawsuitAPIResult, dbLawsuit, savedDefenders])
+        if (results[0]) {
             lawsuitQueryResult = results[0]
             savedLawsuit = results[1].data as Lawsuits
-            if (lawsuitQueryResult && lawsuitQueryResult?.sucesso && isDefendant) {
+            if (lawsuitQueryResult && lawsuitQueryResult?.sucesso) {
                 lawsuit = lawsuitQueryResult.processo
+                defenders = results[2] as Defenders[]
+                    
                 document.querySelector("#case-circuit")!.textContent = lawsuit.orgao_julgador.nome
                 document.querySelector(".case-number")!.textContent = caseNumber
                 document.querySelector(".case-class")!.textContent = lawsuit.classe.nome
-                document.querySelector("#case-side")!.textContent = isDefendant === "true" ? "Polo ativo" : "Polo passivo"
+                getSide(lawsuit.partes)
                 const plaintiffs = lawsuit.partes.filter(c => c.tipo === "AT")
                 const defendents = lawsuit.partes.filter(c => c.tipo === "PA")
-                document.querySelector("#case-plantiffs")!.textContent = plaintiffs.length > 1 ? plaintiffs[0].pessoa.nome + " e outros " + plaintiffs.length : plaintiffs[0].pessoa.nome
-                document.querySelector("#case-defendents")!.textContent = defendents.length > 1 ? defendents[0].pessoa.nome + " e outros " + defendents.length : defendents[0].pessoa.nome
+                document.querySelector("#case-plantiffs")!.textContent = plaintiffs.length > 1 ? plaintiffs[0].pessoa.nome + " e outros " + (plaintiffs.length - 1) : plaintiffs[0].pessoa.nome
+                document.querySelector("#case-defendents")!.textContent = defendents.length > 1 ? defendents[0].pessoa.nome + " e outros " + (defendents.length - 1) : defendents[0].pessoa.nome
                 await renderLawsuitViewer()
                 const span = document.querySelector(".timeline-list span") as HTMLSpanElement
                 const documents = document.querySelectorAll(".timeline-list span")
@@ -183,6 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 })
 
                 favoriteDocumentBtn.addEventListener("click", async () => {
+                    if(!savedLawsuit) return
                     const icon = favoriteDocumentBtn.children.item(0) as HTMLDivElement
                     if (savedLawsuit.favoriteEvents?.includes(selectedEvent)) return
                     if (icon.className === "bi bi-star-fill") {
@@ -306,7 +313,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                             <tbody>
                             ${lawsuit.partes.map(c => {
                             return `<tr>
-                              <td>${c.pessoa.nome} (${c.tipo === "AT" ? "Autor(a)" : "Ré"})</td>
+                              <td>
+                              ${c.pessoa.nome} (${c.tipo === "AT" ? "Autor(a)" : "Ré"})
+                              ${c.advogados.map( x => {
+                               return `
+                               <span>
+                               Procurador(a): ${getAttorney(x.nome)}
+                               </span>
+                               `
+                            })}
+                              </td>
                               <td>${c.pessoa.sexo === "M" ? "Masculino" : c.pessoa.sexo === "F" ? "Feminino" : c.pessoa.sexo === "D" ? "Pessoa Jurídica" : "Informação não fornecida"}</td>
                               <td>${c.pessoa.data_nascimento ? new Date(c.pessoa.data_nascimento).toLocaleString() : ""}</td>
                               <td>${c.pessoa.cidade_natural ? c.pessoa.cidade_natural : ""}</td>
@@ -361,6 +377,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 })
 
+function getAttorney(name: string){
+    if (!defenders) return
+    if(name === "DPMG Defensoria Pública") return "DPMG Defensoria Pública"
+    else if (defenders.find(l => l?.nome === name)) return "DPMG Defensoria Pública"
+    else return name
+
+}
+
+function getSide(beligents: Parte[]) {
+    if (!defenders) return
+    const assisted = new Array<{ assisted: string, isDefendent: boolean }>()
+    let isActive = false, isPassive = false
+
+    beligents.map(c =>
+        c.advogados.map(x => {
+            if (x.nome === "DPMG Defensoria Pública") {
+                assisted.push({ assisted: c.pessoa.nome, isDefendent: c.tipo === "PA" ? true : false })
+                if (c.tipo === "PA") isPassive = true
+                else isActive = true
+            }
+
+            else if (defenders.find(l => l?.nome === x.nome)) {
+                assisted.push({ assisted: c.pessoa.nome, isDefendent: c.tipo === "PA" ? true : false })
+                if (c.tipo === "PA") isPassive = true
+                else isActive = true
+
+            }
+        }))
+
+        if(isActive && isPassive) document.querySelector("#case-side")!.textContent = "CONFLITO"
+        else if(isActive) document.querySelector("#case-side")!.textContent = "POLO ATIVO"
+        else document.querySelector("#case-side")!.textContent = "POLO PASSIVO"
+
+
+}
+
 function openGeminiPromptsModal() {
     generateModalStructure()
     renderModal().open({
@@ -399,7 +451,7 @@ function openGeminiPromptsModal() {
                 }
             }
         ]
-    })  
+    })
 
 
     const promptSelect = document.querySelector("#promptType") as HTMLSelectElement
@@ -423,6 +475,7 @@ function openGeminiPromptsModal() {
 
 function renderFavoriteList() {
     const favoriteList = document.querySelector(".favorites-list") as HTMLDivElement
+    if (!savedLawsuit) return
     favoriteList.innerHTML = savedLawsuit.favoriteEvents?.map(c => {
         const event = document.querySelector(`[data-event-id='${c}']`) as HTMLDivElement
         const title = event.querySelector(".timeline-content > .documents-container > .documents-tree > .tree-wrapper > .tree-node > span") as HTMLSpanElement
@@ -454,6 +507,8 @@ function renderFavoriteList() {
 
 
 function favoriteDocument(eventId: string) {
+    if (!savedLawsuit) return
+
     savedLawsuit.favoriteEvents?.forEach((evt) => {
         const icon = favoriteDocumentBtn.children.item(0) as HTMLDivElement
         if (evt === eventId) {
@@ -482,7 +537,7 @@ async function renderLawsuitViewer() {
                 timelineContent.className = "timeline-content"
                 let isRootDoc = true
                 // if (event.documentos.length === 0)
-                    timelineMetaData.textContent = new Date(event.data_protocolo).toLocaleString()
+                timelineMetaData.textContent = new Date(event.data_protocolo).toLocaleString()
 
                 for (const doc of event.documentos) {
                     const url = `https://solar.defensoria.mg.def.br/procapi/processo/${lawsuit.numero}/documento/${doc.documento}/`

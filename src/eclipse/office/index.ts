@@ -232,6 +232,9 @@ function getFilteredItems() {
       )
         return false;
 
+      if (activeFilters.todoPage.finalized && task.status !== "Concluida")
+        return false
+
       if (activeFilters.todoPage.dueToday) {
 
         if (isoDeadline.toISOString() !== isoToday.toISOString())
@@ -278,8 +281,8 @@ function filterItems() {
 }
 
 const activeFilters = {
-  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "" },
-  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, dueThisWeek: false, caseNumber: "", search: "" }
+  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "", finalized: false },
+  todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, dueThisWeek: false, caseNumber: "", search: "", finalized: false }
 };
 let lawsuitsData = Array<Lawsuits>();
 let holidaysData = Array<Holidays>();
@@ -618,10 +621,10 @@ function openPanel(currentLawsuit?: Lawsuits) {
       let initialDeadline = formData["initialDeadline"] as string
       let deadline = formData["deadline"] as string
 
-      if (new Date(awarenessDate) > new Date(initialDeadline)) {
-        showToast("Data de ciência maior do que prazo inicial.")
-        return
-      }
+      // if (new Date(awarenessDate) > new Date(initialDeadline)) {
+      //   showToast("Data de ciência maior do que prazo inicial.")
+      //   return
+      // }
       if (new Date(initialDeadline) > new Date(deadline)) {
         showToast("Prazo inicial maior do que prazo final.")
         return
@@ -651,7 +654,10 @@ function openPanel(currentLawsuit?: Lawsuits) {
       await updateLawsuit(lawsuit)
       showAlert("Processo atualizado com sucesso.", "success")
       const i = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
-      lawsuitsData[i] = { ...lawsuit }
+      if (lawsuit.status != "Finalizado")
+        lawsuitsData[i] = { ...lawsuit }
+      else
+      lawsuitsData.splice(i, 1)
       closePanel()
       paginateLawsuitTable(lawsuitsData)
       // renderTableWithOptions()
@@ -793,6 +799,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <i class="bi bi-check2-square"></i>
     </button>
 </td>
+        <td>${p.status}</td>
         <td>${lawsuitNumber}</td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
@@ -835,7 +842,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     const viewTasksButton = tr.querySelector("td > .icon-btn.view-tasks") as HTMLButtonElement
 
     viewLawsuitButton.onclick = async () => {
-      await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number + "&reu=" + p.isDefendant })
+      await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number})
     }
     viewSummonButton.onclick = (e) => {
       const summonBtn = e.target as HTMLButtonElement
@@ -857,7 +864,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       await openEditModal({
         assignedTo: workersData.find(c => c.id === Number(workerId)) ?? workersData[0],
         title: p.summon ? `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
-        dueDate: formatISO(addBusinessDays(new Date(), 2)),
+        dueDate: addBusinessDays(new Date(), 2).toISOString().split("T")[0],
         status: "Não Iniciada",
         description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${p.deadline}`,
         createdAt: new Date(),
@@ -1030,6 +1037,15 @@ document.querySelector(".card.yellow")?.addEventListener("click", () => {
   updateChipText()
 })
 
+
+document.querySelector(".card.green")?.addEventListener("click", () => {
+  activeFilters.mainPage.finalized = true
+  activeFilters.mainPage.status = "Finalizado"
+  const filterStatusSelect = document.querySelector("#filterStatus") as HTMLSelectElement
+  filterStatusSelect.selectedIndex = 2
+  updateChipText()
+})
+
 document.querySelector("#redCard")?.addEventListener("click", () => {
   activeFilters.todoPage.dueToday = true
   updateChipText()
@@ -1069,19 +1085,21 @@ function updateCards() {
   if (navItems.item(1).className === "nav-item active") activePage = 1
   if (!activePage) {
     const selectedStatus = document.querySelector("#filterStatus") as HTMLSelectElement
+    const doneCount = document.querySelector("#doneCount-p1")
+    doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Finalizado").length)
 
     activeCount = lawsuitsData.filter(c => c.status === selectedStatus[selectedStatus.selectedIndex].label).length
     for (const lawsuit of filteredLawsuits) {
-      if (lawsuit.deadline) {
+      if (lawsuit.deadline && lawsuit.status != "Finalizado") {
         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
         const midnightMonday = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
         if (isoToday.toISOString().split("T")[0] === lawsuit.deadline || lawsuit.daysLeft === 0) dueTodayCount++
-        else if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
+        if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
       }
 
     }
 
-    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto") {
+    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado" ) {
       document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
       document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
       document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
@@ -1096,11 +1114,14 @@ function updateCards() {
 
   else {
     activeCount = tasksData.length
+    const doneCount = document.querySelector("#doneCount-p2")
+    doneCount!.innerHTML = String(tasksData.filter(c => c.status === "Concluida").length)
+
     for (const task of filteredTasks) {
       const dueDate = new Date(task.dueDate + "T03:00:00.000Z")
       const dates = getDeadline(new Date(), dueDate)
       if (isoToday.toISOString().split("T")[0] === task.dueDate || dates.days === 0) dueTodayCount++
-      else if (monday >= dueDate || dueDate <= lastWeekWorkingDay) weekCount++
+      if (monday >= dueDate || dueDate <= lastWeekWorkingDay) weekCount++
     }
   }
 
@@ -1128,6 +1149,9 @@ function updateChipText() {
     updateChips("assignedTo", "Atribuído a: " + activeFilters.mainPage.assignedTo)
   else updateChips("assignedTo", "Atribuído a: ")
 
+  if (activeFilters.mainPage.finalized)
+    updateChips("finalized", "Finalizado: Sim")
+  else updateChips("finalized", "Finalizado: Não")
   if (activeFilters.mainPage.dueToday)
     updateChips("dueToday", "Vence hoje: Sim")
   else updateChips("dueToday", "Vence hoje: Não")
@@ -1147,7 +1171,9 @@ function updateChipText() {
   if (activeFilters.todoPage.dueToday)
     updateChips("dueToday2", "Vence hoje: Sim")
   else updateChips("dueToday2", "Vence hoje: Não")
-
+  if (activeFilters.todoPage.finalized)
+    updateChips("finalized2", "Finalizado: Sim")
+  else updateChips("finalized2", "Finalizado: Não")
   if (activeFilters.todoPage.dueThisWeek)
     updateChips("dueThisWeek2", "Vence essa semana: Sim")
   else updateChips("dueThisWeek2", "Vence essa semana: Não")
@@ -1240,7 +1266,7 @@ async function openEditModal(task?: Tasks) {
       }
          <div class="form-group">
           <label for="dueDateInput">Prazo</label>
-          <input id="dueDateInput" name="dueDate" type="date" max="2099-11-31" value="${task?.dueDate ? task?.dueDate : ""}">
+          <input id="dueDateInput" name="dueDate" type="date" max="2099-11-31" value="${task?.dueDate ? String(task?.dueDate) : ""}">
         </div>
         <div class="form-group">
           <label for="assignedTo">Responsável</label>
@@ -1445,6 +1471,11 @@ function renderActiveFilters() {
       value: activeFilters.mainPage.assignedTo
     },
     {
+      key: "finalized",
+      label: "Finalizado",
+      value: activeFilters.mainPage.finalized ? "Sim" : "Não"
+    },
+    {
       key: "dueToday",
       label: "Vencendo hoje",
       value: activeFilters.mainPage.dueToday ? "Sim" : "Não"
@@ -1482,6 +1513,11 @@ function renderActiveFilters() {
       key: "assignedTo2",
       label: "Responsável",
       value: activeFilters.todoPage.assignedTo
+    },
+    {
+      key: "finalized2",
+      label: "Finalizado",
+      value: activeFilters.todoPage.finalized ? "Sim" : "Não"
     },
     {
       key: "status2",
@@ -1528,7 +1564,7 @@ function renderActiveFilters() {
     const clear = document.createElement("button");
     clear.className = "clear-filters";
     clear.textContent = "Limpar todos";
-    clear.onclick = clearAllFilters;
+    clear.onclick = () => clearAllFilters(0);
     mainPageFilterBar.appendChild(clear);
 
   }
@@ -1537,7 +1573,7 @@ function renderActiveFilters() {
     const clear = document.createElement("button");
     clear.className = "clear-filters";
     clear.textContent = "Limpar todos";
-    clear.onclick = clearAllFilters;
+    clear.onclick = () => clearAllFilters(1);
     todoPageFilterBar.appendChild(clear);
 
   }
@@ -1578,6 +1614,9 @@ document.addEventListener("click", (e) => {
         activeFilters.mainPage.assignedTo = "";
         (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
         break;
+      case "finalizad":
+        activeFilters.mainPage.finalized = false;
+        break;
 
       case "class":
         activeFilters.mainPage.class = "";
@@ -1609,6 +1648,9 @@ document.addEventListener("click", (e) => {
         activeFilters.todoPage.status = "";
         (document.querySelectorAll("section")[1].querySelector("#filterStatus2") as HTMLSelectElement).selectedIndex = 0;
         break;
+      case "finalizad2":
+        activeFilters.todoPage.finalized = false;
+        break;
 
       case "assignedTo2":
         activeFilters.todoPage.assignedTo = "";
@@ -1633,20 +1675,39 @@ document.addEventListener("click", (e) => {
 
 });
 
-function clearAllFilters() {
+function clearAllFilters(page: number) {
 
-  activeFilters.mainPage.circuit = "";
-  activeFilters.mainPage.status = "Aberto";
-  activeFilters.mainPage.side = "";
-  activeFilters.mainPage.assignedTo = "";
-  activeFilters.mainPage.dueToday = false;
-  activeFilters.mainPage.dueThisWeek = false;
-  activeFilters.mainPage.class = "";
+  if (!page) {
+    activeFilters.mainPage.circuit = "";
+    activeFilters.mainPage.status = "Aberto";
+    activeFilters.mainPage.side = "";
+    activeFilters.mainPage.assignedTo = "";
+    activeFilters.mainPage.dueToday = false;
+    activeFilters.mainPage.dueThisWeek = false;
+    activeFilters.mainPage.class = "";
+    activeFilters.mainPage.finalized = false;
 
-  document.querySelectorAll("select").forEach(s => s.selectedIndex = 0);
-
+    document.querySelectorAll("select").forEach(s => {
+      if (s.id === "filterStatus")
+        s.selectedIndex = 1
+      else
+        s.selectedIndex = 0
+    });
+  }
+  else {
+    activeFilters.todoPage.number = "";
+    activeFilters.todoPage.circuit = "";
+    activeFilters.todoPage.status = "";
+    activeFilters.todoPage.finalized = false;
+    activeFilters.todoPage.assignedTo = "";
+    activeFilters.todoPage.dueToday = false;
+    activeFilters.todoPage.dueThisWeek = false;
+    activeFilters.todoPage.search = "";
+  }
   updateChipText();
 
   renderActiveFilters();
+
+
 
 }
