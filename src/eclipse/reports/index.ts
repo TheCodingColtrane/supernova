@@ -24,6 +24,12 @@ export async function writeDOCX(lawsuits: Lawsuits[]) {
         })
     );
 
+    paragraphs.unshift(new Paragraph({
+        alignment: "center",
+        text: "Os prazos do dia. Relatório emitido" + new Date().toLocaleString() + "\n \n",
+        
+    }))
+
     const doc = new Document({
         sections: [
             {
@@ -47,7 +53,7 @@ export async function writeDOCX(lawsuits: Lawsuits[]) {
 
 function convertDate(date: string) {
     const dateParts = date.split("-")
-    return dateParts[0] + "/" + dateParts[1] + "/" + dateParts[2]
+    return dateParts[2] + "/" + dateParts[1] + "/" + dateParts[0]
 }
 
 function getDays(earlierDate: string, endDate: string){

@@ -570,10 +570,11 @@ async function parseSolaRSCAPIResult(urls: string[]) {
       const end = lawsuit.rawHTML.indexOf('"avisosEmAnalise":')
       const rawResult = lawsuit.rawHTML.substring(start, end -1) + "}"  
       const result = JSON.parse(rawResult) as SolarAPIResponse
-      const defenders  = result.defensores
+      console.log(result)
+      const defenders  = result.defensores as Defenders[]
       createDefenders(defenders as Defenders[])
       if (result)
-        lawsuitsData.push(...parseSolarAPIResult(result.avisos.results))
+        lawsuitsData.push(...parseSolarAPIResult(result.avisos.results, defenders))
     }
 
   }
@@ -615,54 +616,6 @@ export async function getSolarRawLawsuitsPages(urls: string[]) {
   return allResults
 }
 
-export function parseRSCResult(rsc: string) {
-
-  const key = '"avisos":';
-  const start = rsc.indexOf(key);
-
-  if (start === -1) {
-    return null;
-  }
-
-  // Encontra o início do objeto avisos
-  const objStart = rsc.indexOf('{', start);
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = objStart; i < rsc.length; i++) {
-    const c = rsc[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (c === "\\") {
-      escaped = true;
-      continue;
-    }
-
-    if (c === '"') {
-      inString = !inString;
-      continue;
-    }
-
-    if (inString) continue;
-
-    if (c === "{") depth++;
-    if (c === "}") depth--;
-
-    if (depth === 0) {
-      const avisos = JSON.parse(rsc.slice(objStart, i + 1));
-      return avisos.results;
-    }
-  }
-
-  return null;
-}
-
 
 
 
@@ -672,7 +625,7 @@ export async function getDefensories() {
     const parser = new DOMParser()
     const pageData = parser.parseFromString(await response.text(), "text/html")
     const data = parseRSC(pageData)
-    const userCreds = await getUserCredentials()
+    const userCreds = getUserCredentials()
     if (data?.lawsuits) {
       const defenderJson = JSON.parse(data?.lawsuits[1].substring(1, data?.lawsuits[1].length - 1).replaceAll('"\"', "").split(",\"total\"")[0]) as Defenders[]
       const defensories = new Set<{ id: number, name: string }>()
@@ -737,7 +690,7 @@ export async function fetchPJEMenus() {
 
   const doc = page?.document
   if (doc) {
-    const user = await getUserCredentials()
+    const user =  getUserCredentials()
     if (user) {
       const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
       dispatch.click()
@@ -772,7 +725,7 @@ export async function fetchPJEData(pickedCircuit: string) {
 
   const doc = page?.document
   if (doc) {
-    const user = await getUserCredentials()
+    const user =  getUserCredentials()
     if (user) {
       const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
       dispatch.click()
@@ -873,8 +826,9 @@ export async function isLoggedIn() {
  
 
 
-function parseSolarAPIResult(results: SolarResponse[]){
+function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]){
   const filedLawsuits: Lawsuits[] = []
+  const user =  getUserCredentials()!
    for (let result of results) {
       let summonURL = "", summon = ""
       if (result.comunicacao && result.comunicacao.documentos.length > 0) {
@@ -882,7 +836,7 @@ function parseSolarAPIResult(results: SolarResponse[]){
         summon = result.comunicacao.numero
 
       }
-
+      
       let initialDeadline = "", deadline = ""
       if (result.situacao === "Aguardando Abertura") {
         initialDeadline = result.data_disponibilizacao ? result.data_disponibilizacao.split("T")[0] : ""
@@ -906,7 +860,7 @@ function parseSolarAPIResult(results: SolarResponse[]){
         initialDeadline,
         deadline,
         givenDeadLine: result.prazo ? result.prazo : 0,
-        defender: [],
+        defender: defenders.find(c => c.nome === user?.nome) ?? [],
         createdAt: new Date(),
         favoriteEvents: []
 

@@ -15,7 +15,8 @@
       --text-main: #1e293b;
       --text-muted: #64748b;
       --danger: #ef4444;
-      --warning: #f59e0b;
+      --semi-danger: #f59e0b;
+      --warning: #fecf00;
       --success: #10b981;
       --info: #3b82f6;
       --white: #ffffff;
@@ -729,8 +730,20 @@
       font-weight: bolder;
     }
 
+    .deadline-semi-danger {
+      color: var(--semi-danger);
+      font-weight: bolder;
+    }
+
     .deadline-warning {
       color: var(--warning);
+      font-weight: 500;
+    }
+
+     .deadline-semi-ok {
+      color: var(--info);
+      font-weight: 200;
+
     }
 
     .deadline-ok {
@@ -1416,10 +1429,10 @@
                 <input type="checkbox" id="checkCalendarDays">
                 Considerar Dias Corridos
               </label>
-              <label for="groupLawsuits" class="checkbox-container">
-                <input type="checkbox" id="groupLawsuits">
-                Agrupar processos
-              </label>
+              <!-- <label for="assignedToMe" class="checkbox-container">
+                <input type="checkbox" id="assignedToMe">
+                Filtrar Atribuídos a mim
+              </label> -->
             </div>
           </div>
 

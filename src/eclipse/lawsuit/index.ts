@@ -856,7 +856,7 @@ async function mergePDF(pdfs: ArrayBuffer[], events: Array<{ event: string, docC
     const { isEPROC } = events[0]
     let i = 0, curDocCount = 0
     for (const bytes of pdfs) {
-        const pdf = await PDFDocument.load(bytes);
+        const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
         let refText = ""
         const pages = await mergedPdf.copyPages(
             pdf,
