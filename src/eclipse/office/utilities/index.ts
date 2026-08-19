@@ -3,8 +3,8 @@ import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
 import { getLawsuit, renderModal, sendMessage } from "../../utils";
 import { getDeadline } from "../../utils/date";
-import { hideLoadingSpinner, jsonToPrompt, showLoadingSpinner, showToast } from "../../utils/ui";
-import prompt from '../../../promtps.json'
+import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
+
 const utilities = [
     {
         id: "Processo",
@@ -37,14 +37,14 @@ const utilities = [
         execute: openReportsModal
     },
     {
-        id: "prompts",
-        name: "Prompts",
-        description: "Define prompts do Gemini, para realizar ações em processos para aumentar sua produtividade.",
-        icon: "bi-chat",
-        category: "Produtividade",
+        id: "preferências",
+        name: "Preferências",
+        description: "Define as preferências do usuário para a personalização da plataforma.",
+        icon: "bi-gear",
+        category: "Administração",
         page: "",
         favorite: true,
-        execute: openGeminiPromptsModal
+        execute: openPreferencesModal
     },
     {
         id: "feriados",
@@ -176,7 +176,7 @@ function openReportsModal() {
     renderModal().open({
         title: "Exporte relatório",
         content: `
-       <form id="deadlineForm">
+       <form id="reportForm">
           <div class="form-group">
             <label>Formato do arquivo</label>
              <select name="file" id="fileExtension">
@@ -191,7 +191,7 @@ function openReportsModal() {
         actions: [
             {
                 label: 'Gerar Arquivo', className: 'btn-primary', preventClose: true, callback: async () => {
-                    const form = document.querySelector("#deadlineForm") as HTMLFormElement
+                    const form = document.querySelector("#reportForm") as HTMLFormElement
                     const formData = new FormData(form)
                     const fileType = formData.get("file")
                     const lawsuitsData = await sendMessage("GET_PENDING_LAWSUITS", {}) as any
@@ -210,53 +210,57 @@ function openReportsModal() {
 
 }
 
-function openGeminiPromptsModal() {
+function openPreferencesModal() {
     renderModal().open({
-        title: "Seus Prompts",
+        title: "Gestão dos seus prazos",
         content: `
-       <form id="deadlineForm">
+       <form id="customDeadlinePreferencesForm">
           <div class="form-group">
-            <label for="promptType">Formato do arquivo</label>
-             <select name="prompt" id="promptType">
-              <option value="-1">Selecione o seu prompt</option>
-              <option value="0">Resumir Processo</option>
-              <option value="1">Manifestar sobre a última intimação</option>
-              <option value="2">Criar quesitos</option>
-              <option value="3">Verificar nulidade de citação.</option>
-             </select>
-             <div class="form-group">
-             <label for="prompText">Escreva seu prompt</label>
-                <textarea rows="12" id="promptText" name="promptTextDesc"></textarea>
-             </div>
-             </div>
+            <label for="highest">Maior prioridade</label>
+             <input type="number" name="highest" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de vermelho"/>
+          </div>
+          <div class="form-group">
+             <label for="highest">Alta prioridade</label>
+             <input type="number" name="high" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de laranja"/>
+          </div>
+          <div class="form-group">
+             <label for="medium">Média prioridade</label>
+             <input type="number" name="medium" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de amarelo"/>
+          </div>
+          <div class="form-group">
+             <label for="low">Baixa prioridade</label>
+             <input type="number" name="low" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de azul"/>
+          </div>
+          <div class="form-group">
+             <label for="lowest">Menor prioridade</label>
+             <input type="number" name="lowest" required placeholder="Tudo que for superior ou igual ao valor fornecido será pintado de verde"/>
+          </div>
         </form>
       
       `,
         actions: [
             {
-                label: 'Salvar Prompt', className: 'btn-primary', preventClose: true, callback: async () => {
-                    const form = document.querySelector("#deadlineForm") as HTMLFormElement
+                label: 'Salvar preferência', className: 'btn-primary', preventClose: false, callback: async () => {
+                    const form = document.querySelector("#customDeadlinePreferencesForm") as HTMLFormElement
                     const formData = new FormData(form)
-                    const prompts = {
-                        id: formData.get("prompt") as string,
-                        text: formData.get("promptTextDesc") as string
+                    const preferences = {
+                        office: {
+                            deadlinesPriorities: {
+                                highest: Number(formData.get("highest") as string),
+                                high: Number(formData.get("high") as string),
+                                medium: Number(formData.get("medium") as string),
+                                low: Number(formData.get("low") as string),
+                                lowest: Number(formData.get("lowest") as string),
+                            }
+                        }
                     }
-
-                    console.log(prompts)
+                    localStorage.setItem("preferences", JSON.stringify(preferences))
+                    showToast("Preferência salva com sucesso!")
                 }
             }
         ]
     })
 
-
-    const promptSelect = document.querySelector("#promptType") as HTMLSelectElement
-    promptSelect.onchange = () => {
-        const i = promptSelect.options.item(promptSelect.options.selectedIndex)?.value!
-        if (Number(i) > -1) {
-            const results = jsonToPrompt(prompt.results[Number(i)])
-            document.querySelector("#promptText")!.innerHTML = results
-        }
-    }
 }
 
 async function openLawsuit() {
@@ -286,7 +290,7 @@ async function openLawsuit() {
                             const lawsuit = await getLawsuit(lawsuitNumber)
                             if (lawsuit?.sucesso) {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = ""
-                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber});
+                                await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + lawsuitNumber });
                                 hideLoadingSpinner()
                             } else {
                                 document.querySelector("#lawsuitForm > #result")!.textContent = "Não foi encontrado nenhum processo. Cadastre-o no solar ou pesquise por outro."

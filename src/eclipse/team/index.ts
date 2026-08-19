@@ -33,7 +33,7 @@ const ids: string[] = []
 const firstPageUserData = { id: 0, nome: "", roles: Array<any>(), email: "", districtCourt: "", isCriminal: false, locality: { id: 0, name: "" } }
 let defendersData: DefendersAPIResponse
 let selectedId = ""
-const user = await getUserCredentials()
+const user = getUserCredentials()
 const { data } = await sendMessage("GET_WORKERS", {})
 if (data && user) {
     console.log(data)

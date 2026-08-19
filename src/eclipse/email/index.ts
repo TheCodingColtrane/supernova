@@ -22,7 +22,7 @@ export function sendClientSideEmail() {
 
 
 export async function sendEmail(lawsuits: Lawsuits[]) {
-  const user = await getUserCredentials()
+  const user = getUserCredentials()
   if (user) {
     const hour = new Date().getHours()
     const dayPeriod = hour < 12 ? "Bom dia" : hour >= 12 && hour < 18 ? "Boa tarde" : "Boa noite"

@@ -10,7 +10,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     .then((content) => {
       sendResponse({
         success: true,
-        data: {content: Array.from(new Uint8Array(content.buffer)), pages: content.pages},
+        data: { content: Array.from(new Uint8Array(content.buffer)), pages: content.pages },
       });
     })
     .catch((error) => {
@@ -24,13 +24,24 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
   return true;
 });
-export async function convertHtmlToPdf(htmlString: string, isEproc: boolean): Promise<{buffer: ArrayBuffer, pages: number}> {
+export async function convertHtmlToPdf(htmlString: string, isEproc: boolean): Promise<{ buffer: ArrayBuffer, pages: number }> {
   return new Promise((resolve, reject) => {
     try {
       const container = document.createElement("div");
-      container.innerHTML = htmlString;
-      console.log(isEproc)
+      container.innerHTML = htmlString
+        .replaceAll("font-size: large;", "font-size: 20px;")
+        .replaceAll("font-size: medium;", "font-size: 14px;");
+      container.style.fontFamily = "Arial, sans-serif";
+      container.style.fontSize = "14px";
+      container.style.lineHeight = "1.4";
       container.style.margin = isEproc ? "20px" : "10px"
+      container.querySelectorAll("p").forEach((p) => {
+        const el = p as HTMLElement;
+
+        el.style.lineHeight = "1.4";
+        el.style.marginTop = "0";
+        el.style.marginBottom = "8px";
+      });
       document.body.appendChild(container);
       const doc = new jsPDF({ orientation: 'p', unit: 'px', format: [800, 1080], hotfixes: ["px_scaling"] });
       doc.html(container, {
@@ -40,10 +51,10 @@ export async function convertHtmlToPdf(htmlString: string, isEproc: boolean): Pr
         windowWidth: 800,
         callback: function (newDoc) {
           try {
-          const data = {buffer: newDoc.output('arraybuffer'), pages: newDoc.getNumberOfPages()}
-          document.body.removeChild(container)
+            const data = { buffer: newDoc.output('arraybuffer'), pages: newDoc.getNumberOfPages() }
+            document.body.removeChild(container)
 
-          resolve(data);
+            resolve(data);
           } catch (err) {
             console.log(err)
             document.body.removeChild(container)

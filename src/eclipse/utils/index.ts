@@ -144,14 +144,14 @@ export async function getDefenders() {
 
 }
 
-export async function getUserCredentials() {
+export function getUserCredentials() {
     const creds = JSON.parse(localStorage.getItem("user") ?? "{}")
     if (Object.hasOwn(creds, "id")) return creds as User
     else return
 }
 
-export async function getWorkers() {
-    const crendentials = await getUserCredentials()
+export function getWorkers() {
+    const crendentials = getUserCredentials()
     if (crendentials) {
         const defenders = JSON.parse(localStorage.getItem("defenders") ?? "{}") as Defenders[]
         if (defenders) {

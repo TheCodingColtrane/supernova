@@ -10,6 +10,7 @@ import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/f
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
 import { addBusinessDays, addDays } from "date-fns";
 import { renderUtilities } from "./utilities";
+import type { UserPreferences } from "../types/user";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
@@ -53,6 +54,16 @@ function removeToast(toast: HTMLElement) {
 }
 
 function getDeadlineClass(days: number) {
+  const rawPreferences = localStorage.getItem("preferences")
+  if (rawPreferences) {
+    const { office } = JSON.parse(rawPreferences) as UserPreferences
+    const deadlinesPriorities = office.deadlinesPriorities
+    if (days <= deadlinesPriorities.highest) return "deadline-danger";
+    else if (days <= deadlinesPriorities.high) return "deadline-semi-danger";
+    else if (days <= deadlinesPriorities.medium) return "deadline-warning";
+    else if (days <= deadlinesPriorities.low) return "deadline-semi-ok";
+    else return "deadline-ok";
+  }
   if (days <= 0) return "deadline-danger";
   if (days <= 3) return "deadline-warning";
   return "deadline-ok";
@@ -414,6 +425,7 @@ let workersData = Array<Worker>();
     paginateTasks(tasksData)
     try {
       if (lawsuitsData.length) {
+
         const rawLastUpdate = localStorage.getItem("lastUpdate")
         if (rawLastUpdate) {
           const rawDateText = rawLastUpdate.substring(0, 10).split("/")
@@ -495,12 +507,12 @@ let workersData = Array<Worker>();
           }
         })
 
-        document.querySelector("#groupLawsuits")?.addEventListener("click", (e) => {
-          const ground = e.target as HTMLInputElement
-          if (ground.value === "on") {
+        // document.querySelector("#groupLawsuits")?.addEventListener("click", (e) => {
+        //   const ground = e.target as HTMLInputElement
+        //   if (ground.value === "on") {
 
-          }
-        })
+        //   }
+        // })
 
 
       } else {
@@ -657,7 +669,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       if (lawsuit.status != "Finalizado")
         lawsuitsData[i] = { ...lawsuit }
       else
-      lawsuitsData.splice(i, 1)
+        lawsuitsData.splice(i, 1)
       closePanel()
       paginateLawsuitTable(lawsuitsData)
       // renderTableWithOptions()
@@ -842,7 +854,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     const viewTasksButton = tr.querySelector("td > .icon-btn.view-tasks") as HTMLButtonElement
 
     viewLawsuitButton.onclick = async () => {
-      await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number})
+      await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number })
     }
     viewSummonButton.onclick = (e) => {
       const summonBtn = e.target as HTMLButtonElement
@@ -940,17 +952,6 @@ taskSearchInput.addEventListener("keyup", (e) => {
 
 })
 
-
-// document.querySelector("#filterCircuit2")?.addEventListener("change", (e) => {
-//   const select = e.target as HTMLSelectElement
-//   if (select.selectedOptions.item(0)?.textContent === "Todas") {
-//     activeFilters.todoPage.circuit = ""
-//     updateChipText()
-//   } else {
-//     activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
-//     updateChipText()
-//   }
-// })
 
 document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
@@ -1093,13 +1094,15 @@ function updateCards() {
       if (lawsuit.deadline && lawsuit.status != "Finalizado") {
         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
         const midnightMonday = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
-        if (isoToday.toISOString().split("T")[0] === lawsuit.deadline || lawsuit.daysLeft === 0) dueTodayCount++
+        if (isoToday.toISOString().split("T")[0] === lawsuit.deadline ||
+          isoToday > new Date(lawsuit.deadline + "T03:00:00.000Z") ||
+          lawsuit.daysLeft === 0) dueTodayCount++
         if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
       }
 
     }
 
-    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado" ) {
+    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado") {
       document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
       document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
       document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
@@ -1708,6 +1711,5 @@ function clearAllFilters(page: number) {
 
   renderActiveFilters();
 
-
-
 }
+
