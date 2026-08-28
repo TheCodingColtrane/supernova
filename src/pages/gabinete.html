@@ -112,20 +112,44 @@
       cursor: pointer;
     }
 
+    .card.red.active {
+      background: var(--danger);
+      color: white
+    }
+
     .card.yellow {
       border-left-color: var(--warning);
       cursor: pointer;
     }
+
+    
+    .card.yellow.active {
+      background: var(--warning) ;
+      color: white
+    }
+
 
     .card.blue {
       border-left-color: var(--info);
       cursor: pointer;
     }
 
+    .card.blue.active {
+      background: var(--info);
+      color: white;
+    }
+
     .card.green {
       border-left-color: var(--success);
       cursor: pointer;
     }
+
+    
+    .card.green.active {
+      border-left-color: var(--success);
+      color: white;
+    }
+
 
     .card.grey {
       border-left-color: var(--text-muted);
@@ -1448,7 +1472,7 @@
                   <th data-nm="class" data-sort="">Classe</th>
                   <th data-nm="circuit" data-sort="">Vara</th>
                   <th data-nm="assisted" data-sort="">Assistido(a)</th>
-                  <!-- <th data-nm="side" data-sort="">Polo</th> -->
+                  <th data-nm="side" data-sort="">Data de disponibilização</th>
                   <th data-nm="deadline" data-sort="">Prazo</th>
                   <th data-nm="daysLeft" data-sort="">Tempo restante</th>
                   <th data-nm="">Responsável</th>

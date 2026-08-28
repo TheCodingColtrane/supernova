@@ -1,7 +1,7 @@
 import type { Holidays } from "../db/schemas/holidays"
 import type { Lawsuits } from "../db/schemas/lawsuits"
 import { getHolidaysData } from "../repository/holidays"
-import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData} from "../repository/lawsuits"
+import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData } from "../repository/lawsuits"
 import { getDeadline } from '../utils/date'
 
 type WeekLawsuits = { number: string; assisted: string; initialDeadline: string | Date; deadline: string | Date; status: string }
@@ -35,11 +35,12 @@ export async function getWeekLawsuits(considerHoliday = false) {
         for (const lawsuit of data) {
             let dates = getDeadline(new Date(), new Date(lawsuit.deadline), holidays)
             lawsuit.deadline = dates.deadline.toLocaleDateString()
-            const businessDaysLeft = dates.days
+            const initialDeadline = String(lawsuit.initialDeadline).split("-")
+            // const businessDaysLeft = dates.days
             lawsuits.push({
                 number: lawsuit.number,
                 assisted: lawsuit.assisted,
-                deadline: lawsuit.deadline + " (" + businessDaysLeft + " dias )",
+                deadline: `<span>Prazo inicial: ${initialDeadline[2] + "/" + initialDeadline[1] + "/" + initialDeadline[0]}</span>\n<span style="color:red;">Prazo Final: ${lawsuit.deadline}</span>`,
                 status: lawsuit.status
             })
         }

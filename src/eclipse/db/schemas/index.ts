@@ -33,6 +33,7 @@ tasks: `
   searchText,
   createdAt,
   updatedAt,
+  releaseDate,
   favoriteEvents,
   [status+circuit], 
   [status+assisted],

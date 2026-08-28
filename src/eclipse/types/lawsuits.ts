@@ -18,6 +18,7 @@ export type Lawsuits = {
     summonURL?: string // url da intimação
     class?: string // tipo de ação
     favoriteEvents?: string[] // eventos favoritados.
+    releaseDate?: string | Date // data de disponibilização
     summons?: [{
         number: string
         url: string

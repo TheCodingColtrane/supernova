@@ -14,7 +14,8 @@ export default defineConfig({
         office: resolve(__dirname, "src/pages/gabinete.html"),
         team: resolve(__dirname, "src/pages/equipe.html"),
         lawsuit: resolve(__dirname, "src/pages/processo.html"),
-        holiday: resolve(__dirname, "src/pages/feriados.html")
+        holiday: resolve(__dirname, "src/pages/feriados.html"),
+        spreadsheet: resolve(__dirname, "src/pages/planilha.html")
       },
       output: {
         // Remove a subpasta 'assets/' do padrão de nomes

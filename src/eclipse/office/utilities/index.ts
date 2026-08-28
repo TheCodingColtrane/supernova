@@ -65,7 +65,17 @@ const utilities = [
         page: "equipe.html",
         favorite: false,
         execute: null
-    }
+    },
+     {
+        id: "planilha",
+        name: "Gerador planilhas",
+        description: "Cria planilhas para os mais diversos segmentos.",
+        icon: "bi bi-file-earmark-spreadsheet",
+        category: "Produtividade",
+        page: "planilha.html",
+        favorite: false,
+        execute: null
+    },
 ];
 
 
