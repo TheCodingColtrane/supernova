@@ -10,7 +10,8 @@ import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/f
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
 import { addBusinessDays, addDays } from "date-fns";
 import { renderUtilities } from "./utilities";
-import type { UserPreferences } from "../types/user";
+import type { User, UserPreferences } from "../types/user";
+import { sendEmail } from "../email";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
@@ -25,6 +26,7 @@ let lawsuitPageSize = 30;
 let taskPageSize = 12
 let filteredLawsuits: Lawsuits[] = [];
 let filteredTasks: Tasks[] = []
+let user: User | undefined = undefined
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
 
@@ -308,7 +310,7 @@ let workersData = Array<Worker>();
     const holidays = sendMessage("GET_HOLIDAYS", {}) as any
     const tasks = sendMessage("GET_TASKS", {}) as any
     const workers = sendMessage("GET_WORKERS", {}) as any
-    const user = await getUserCredentials()
+    user = getUserCredentials()
     if (!user) {
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         var tab = tabs[0];
@@ -816,6 +818,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.class}</td>
         <td>${p.circuit}</td>
         <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
+        <td>${p.releaseDate ? new Date(p.releaseDate).toLocaleString() : "Data não disponível"}</td>
         <td>
         ${!initialDeadline ? "Não definido" : initialDeadline}
         ${!deadline ? "Não definido" : deadline}
@@ -867,18 +870,19 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
     viewTasksButton.onclick = () => {
       goToPage(1)
-      activeFilters.todoPage.number = p.number
+      activeFilters.todoPage.search = p.number
       updateChipText()
     }
 
     createTaskButton.onclick = async () => {
       const workerId = Number(assignedToSelect.options.item(assignedToSelect.options.selectedIndex)?.value)
+      const curDeadline = String(p.deadline).split("-")
       await openEditModal({
         assignedTo: workersData.find(c => c.id === Number(workerId)) ?? workersData[0],
         title: p.summon ? `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
         dueDate: addBusinessDays(new Date(), 2).toISOString().split("T")[0],
         status: "Não Iniciada",
-        description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${p.deadline}`,
+        description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${curDeadline[2] + "/" + curDeadline[1] + "/" + curDeadline[0]}`,
         createdAt: new Date(),
         lawsuit: p
       })
@@ -896,22 +900,30 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
             if (worker) {
               task.assignedTo = worker
               await sendMessage("UPDATE_TASK", { task })
+              sendEmail("E-MAIL AUTOMÁTICO - NOVA TAREFA "
+                + task.lawsuit?.circuit + " -  "
+                + task.lawsuit?.number + " - "
+                + task.lawsuit?.assisted,
+                task.assignedTo.email, user?.email ?? "", task.description, false)
               showToast("Tarefa atualizada com sucesso.")
             }
 
           }
         }
       } else {
-        if (workerId)
+        if (workerId) {
+          const curDeadline = String(p.deadline).split("-")
           await openEditModal({
             assignedTo: workersData.find(c => c.id === Number(workerId)) ?? workersData[0],
             title: p.summon ? `Manifestar sobre a intimação ${p.summon}` : "Manifestar sobre a intimação oculta",
-            dueDate: addBusinessDays(new Date(), 2).toLocaleString(),
+            dueDate: addBusinessDays(new Date(), 2).toISOString().split("T")[0],
             status: "Não Iniciada",
-            description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${p.deadline}`,
+            description: `${p.circuit}\n${p.number}\n${p.assisted}\nPrazo em dias ${p.givenDeadLine}\nPrazo final ${curDeadline[2] + "/" + curDeadline[1] + "/" + curDeadline[0]}`,
             createdAt: new Date(),
             lawsuit: p
           })
+        }
+
       }
     }
 
@@ -943,6 +955,27 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
 
 }
+
+// function activeCards(element: HTMLDivElement, color: string) {
+
+//     const cards = document.querySelector(".cards")?.children
+//     for (const card of cards!) {
+//       if(card.className.includes("active")){
+//         card.className = card.className.replace("active", "")
+//         const label = card.children.item(0) as HTMLDivElement
+//         const value = card.children.item(1) as HTMLDivElement
+//         label.style.color = "var(--text-muted)"
+//         value.style.color = "black"
+        
+//       } else if(card.className === element.className){
+//         const activeCardLabel = element.children.item(0) as HTMLDivElement
+//         const activeCardValue = element.children.item(1) as HTMLDivElement
+//         activeCardLabel.style.color = "white"
+//         activeCardValue.style.color = "white"
+//         element.style.background = color 
+//       }
+//     }
+// }
 
 
 taskSearchInput.addEventListener("keyup", (e) => {
@@ -1029,12 +1062,30 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.mainPage.dueToday = true
+  // const currentCard = e.target as HTMLDivElement
+    // const cards = document.querySelector(".cards")?.children
+    // for (const card of cards!) {
+    //   if(card.className.includes("active")){
+    //     card.className = card.className.replace("active", "")
+    //     const label = card.children.item(0) as HTMLDivElement
+    //     const value = card.children.item(1) as HTMLDivElement
+    //     label.style.color = "var(--text-muted)"
+    //     value.style.color = "black"
+    //   } else if(card.className === currentCard.className){
+    //     const activeCardLabel = currentCard.children.item(0) as HTMLDivElement
+    //     const activeCardValue = currentCard.children.item(1) as HTMLDivElement
+    //     activeCardLabel.style.color = "white"
+    //     activeCardValue.style.color = "white"
+    //   }
+      // activeCards(currentCard, "var(--danger)")
   updateChipText()
 })
 
 
 document.querySelector(".card.yellow")?.addEventListener("click", () => {
   activeFilters.mainPage.dueThisWeek = true
+  // const element = document.querySelector(".card.yellow") as HTMLDivElement;
+  // activeCards(element)
   updateChipText()
 })
 
@@ -1042,6 +1093,12 @@ document.querySelector(".card.yellow")?.addEventListener("click", () => {
 document.querySelector(".card.green")?.addEventListener("click", () => {
   activeFilters.mainPage.finalized = true
   activeFilters.mainPage.status = "Finalizado"
+  document.querySelectorAll(".cards").forEach(c => {
+    if (c.className.includes("active"))
+      c.className = c.className.replaceAll("active", "")
+  })
+  const element = document.querySelector(".card.green") as HTMLDivElement
+  element.className += " active"
   const filterStatusSelect = document.querySelector("#filterStatus") as HTMLSelectElement
   filterStatusSelect.selectedIndex = 2
   updateChipText()
@@ -1336,6 +1393,11 @@ async function saveTask(workers: Worker[], edit: boolean) {
     if (edit) {
       await sendMessage("UPDATE_TASK", { task })
       showAlert("Tarefa atualizada com sucesso.", "success")
+      sendEmail("E-MAIL AUTOMÁTICO - NOVA TAREFA "
+        + task.lawsuit?.circuit + " -  "
+        + task.lawsuit?.number + " - "
+        + task.lawsuit?.assisted,
+        task.assignedTo.email, user?.email ?? "", task.description, false)
       const i = tasksData.findIndex(c => c.id === task.id)
       if (i > -1) {
         tasksData[i] = task;
@@ -1347,7 +1409,11 @@ async function saveTask(workers: Worker[], edit: boolean) {
       showAlert("Tarefa criada com sucesso.", "success")
       tasksData.push(task);
       (document.querySelector(".modal-close") as HTMLButtonElement).click()
-
+      sendEmail("E-MAIL AUTOMÁTICO - NOVA TAREFA "
+        + task.lawsuit?.circuit + " - "
+        + task.lawsuit?.number + " - "
+        + task.lawsuit?.assisted,
+        task.assignedTo.email, user?.email ?? "", task.description, false)
     }
 
     await paginateTasks(tasksData)

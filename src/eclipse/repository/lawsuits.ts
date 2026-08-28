@@ -44,9 +44,11 @@ export async function getWeekLawsuitsData() {
         type WeekLawsuits = {
             number: string;
             assisted: string;
+            isDefendent: boolean
             initialDeadline: string | Date;
             deadline: string | Date;
             status: string;
+            circuit: string
         }
         if (day > 1) {
             dates.startingDate = new Date(weekStartDate.setDate(curDate.getDate() - day)).toISOString().split("T")[0] ?? ""
@@ -61,10 +63,11 @@ export async function getWeekLawsuitsData() {
         const lawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Aberto", dates.startingDate], ["Aberto", dates.endingDate]).limit(30).toArray()
         const filteredLawsuits = Array<WeekLawsuits>()
         for (const lawsuit of lawsuits) {
-            console.log(lawsuit)
             filteredLawsuits.push({
                 number: lawsuit.number,
+                circuit: lawsuit.circuit,
                 assisted: lawsuit.assisted,
+                isDefendent: lawsuit.isDefendant,
                 initialDeadline: lawsuit.initialDeadline,
                 deadline: lawsuit.deadline,
                 status: lawsuit.status
@@ -73,7 +76,6 @@ export async function getWeekLawsuitsData() {
 
         // const filteredLawsuits = lawsuits.map(({ number, assisted, initialDeadline, deadline, status }) => ({ number, assisted, initialDeadline, deadline, status }))
         const sortedLawsuits = [...filteredLawsuits].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-        console.log("!dsda", sortedLawsuits)
         return sortedLawsuits
 
     } catch (error) {

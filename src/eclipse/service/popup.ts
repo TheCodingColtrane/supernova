@@ -2,39 +2,29 @@ import { sendMessage } from "../utils"
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-    //const userCreds = await getUserCredentials()
-    const cards = Array.from(document.querySelectorAll(".status-card"))
-    for (const card of cards) {
-        //const status =  card.className.split(" ")[1]
-        card.addEventListener("click", () => {
-          chrome.tabs.create({url: "./src/pages/gabinete.html"})
-        })
-    }
+  //const userCreds = await getUserCredentials()
+  const cards = Array.from(document.querySelectorAll(".status-card"))
+  for (const card of cards) {
+    //const status =  card.className.split(" ")[1]
+    card.addEventListener("click", () => {
+      chrome.tabs.create({ url: "./src/pages/gabinete.html" })
+    })
+  }
+})
+
+
+
+function renderTableBody(data: Array<{ number: string, assisted: string, deadline: string, status: string }>) {
+  const table = document.querySelector("#weekLawsuitTable") as HTMLTableElement
+  data.forEach(c => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${c.number}</td>
+                     <td>${c.assisted}</td>
+                     <td>${c.deadline}</td>
+                     <td>${c.status}</td>`
+    table!.appendChild(tr);
   })
 
-
-
-function renderTable<T>(headers: string[], data: T[]) {
-  const table = document.createElement("table");
-  const thead = table.createTHead();
-  const headerRow = thead.insertRow();
-  
-  for (let header of headers) {
-    let th = document.createElement("th");
-    th.innerHTML = header;
-    headerRow.appendChild(th);
-  }
-
-  const tbody = table.createTBody();
-  for (let row of data) {
-    let currentRow = tbody.insertRow();
-    const rowValues = Object.values(row as object); 
-    for (let i = 0; i < headers.length; i++) {
-      let cell = currentRow.insertCell();
-      cell.innerHTML = rowValues[i] !== undefined ? String(rowValues[i]) : "";
-    }
-  }
-  document.body.appendChild(table);
 }
 
 
@@ -49,8 +39,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelector("#pending-status")!.innerHTML = queries[0].data["Aguardando Abertura"]
 
     }
-    if(queries[1].data)
-    renderTable(["Processo", "Assistido(a)", "Prazo Final", "Status"], queries[1].data)
+    if (queries[1].data)
+      renderTableBody(queries[1].data)
   } catch (error) {
     console.log(error)
   }
@@ -60,12 +50,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 document.getElementById("coletar")?.addEventListener("click", () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if(!tabs[0]?.id) return
-    chrome.tabs.sendMessage(tabs[0].id, { action: "startExtraction" });
-    console.log('Mensagem enviada para content.js');
+      chrome.tabs.create({ url: "./src/pages/gabinete.html" })
+
   });
-});
 
 
 

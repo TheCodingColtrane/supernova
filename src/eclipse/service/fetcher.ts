@@ -531,7 +531,7 @@ export async function updateLawsuitDashboard() {
     if (lawsuitsData) {
       const total = JSON.parse(lawsuitsData.total ?? "{}") as Array<{ situacao: number, count: number }>
       console.log(total)
-      const pageLawsuitCount = new Array<{situacao: number, count: number}>(2)
+      const pageLawsuitCount = new Array<{ situacao: number, count: number }>(2)
       pageLawsuitCount[0] = total.find(c => c.situacao === 10)!
       pageLawsuitCount[1] = total.find(c => c.situacao === 20)!
       const queriesCount = pageLawsuitCount.map(c => {
@@ -549,11 +549,11 @@ export async function updateLawsuitDashboard() {
     }
     const data = await parseSolaRSCAPIResult(solarURLs)
     console.log(data)
-      const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
-      if (result.data) {
-        localStorage.setItem("lastUpdate", new Date().toLocaleString())
-        return result.data as Lawsuits[]
-      }
+    const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+    if (result.data) {
+      localStorage.setItem("lastUpdate", new Date().toLocaleString())
+      return result.data as Lawsuits[]
+    }
 
     // }
   }
@@ -565,13 +565,17 @@ async function parseSolaRSCAPIResult(urls: string[]) {
   let lawsuitsData: Array<Lawsuits> = []
   for (let lawsuit of rawLawsuits) {
     if (lawsuit.ok) {
-      const key = '{"avisos":';
+      const key = '"avisos":';
       const start = lawsuit.rawHTML.indexOf(key);
-      const end = lawsuit.rawHTML.indexOf('"avisosEmAnalise":')
-      const rawResult = lawsuit.rawHTML.substring(start, end -1) + "}"  
-      const result = JSON.parse(rawResult) as SolarAPIResponse
+      const end = lawsuit.rawHTML.indexOf('"total":')
+      const rawResult = "{" + lawsuit.rawHTML.substring(start, end - 1) + "}"
+      const result = JSON.parse(rawResult) as SolarAPIResponse  
+      const defensores = lawsuit.rawHTML.split("defensores")[1]
+      const options = defensores.split("options")[1]
+      result.defensores = JSON.parse(defensores.substring(2, defensores.indexOf("options") - 2))
+      result.options = JSON.parse(options.substring(2, options.length - 2) + "}")
       console.log(result)
-      const defenders  = result.defensores as Defenders[]
+      const defenders = result.defensores as Defenders[]
       createDefenders(defenders as Defenders[])
       if (result)
         lawsuitsData.push(...parseSolarAPIResult(result.avisos.results, defenders))
@@ -658,7 +662,7 @@ function parseRSC(page: Document, includeResultCount = true) {
       //o passo abaixo é necessário porque o JSON quando extraído do rsc é malformatado
       queryResults = rsc.innerHTML
         .replaceAll("\\", "")
-        .split("results")[1]!
+        .split("results")[2]!
         .substring(2)
         .replaceAll('"\"', "")
         .replaceAll('\"comunicacao_tipo_prazo\":,', '\"comunicacao_tipo_prazo\": null,')
@@ -690,7 +694,7 @@ export async function fetchPJEMenus() {
 
   const doc = page?.document
   if (doc) {
-    const user =  getUserCredentials()
+    const user = getUserCredentials()
     if (user) {
       const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
       dispatch.click()
@@ -725,7 +729,7 @@ export async function fetchPJEData(pickedCircuit: string) {
 
   const doc = page?.document
   if (doc) {
-    const user =  getUserCredentials()
+    const user = getUserCredentials()
     if (user) {
       const dispatch = doc.querySelector("#tabExpedientes_cell") as HTMLTableCellElement
       dispatch.click()
@@ -823,50 +827,122 @@ export async function isLoggedIn() {
 
 }
 
- 
 
 
-function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]){
+
+function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]) {
   const filedLawsuits: Lawsuits[] = []
-  const user =  getUserCredentials()!
-   for (let result of results) {
-      let summonURL = "", summon = ""
-      if (result.comunicacao && result.comunicacao.documentos.length > 0) {
-        summonURL = "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento
-        summon = result.comunicacao.numero
+  const user = getUserCredentials()!
+  for (let result of results) {
+    let summonURL = "", summon = ""
+    if (result.comunicacao && result.comunicacao.documentos.length > 0) {
+      summonURL = "https://solar.defensoria.mg.def.br/procapi/processo/" + result.processo.numero + "/documento/" + result.comunicacao.documentos[0].documento
+      summon = result.comunicacao.numero
 
-      }
-      
-      let initialDeadline = "", deadline = ""
-      if (result.situacao === "Aguardando Abertura") {
-        initialDeadline = result.data_disponibilizacao ? result.data_disponibilizacao.split("T")[0] : ""
-        deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : ""
-      }
-      else {
-        initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
-        deadline = result.prazo_final ? result.prazo_final.split("T")[0] : ""
-      }
-      filedLawsuits.push({
-        number: result.processo.numero,
-        circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", "").replaceAll("Juizo da ", ""),
-        status: result.situacao,
-        assisted: result.destinatario.pessoa.nome,
-        isDefendant: result.polo_destinatario === "PA" ? true : false,
-        source: result.sistema_webservice,
-        awarenessDate: result.prazo_ciencia.split("T")[0],
-        summonURL,
-        summon,
-        class: result.processo.classe.nome,
-        initialDeadline,
-        deadline,
-        givenDeadLine: result.prazo ? result.prazo : 0,
-        defender: defenders.find(c => c.nome === user?.nome) ?? [],
-        createdAt: new Date(),
-        favoriteEvents: []
-
-      })
     }
 
-    return filedLawsuits
+    let initialDeadline = "", deadline = ""
+    if (result.situacao === "Aguardando Abertura") {
+      initialDeadline = result.data_disponibilizacao ? result.data_disponibilizacao.split("T")[0] : ""
+      deadline = result.prazo_ciencia ? result.prazo_ciencia.split("T")[0] : ""
+    }
+    else {
+      initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
+      deadline = result.prazo_final ? result.prazo_final.split("T")[0] : ""
+    }
+    filedLawsuits.push({
+      number: result.processo.numero,
+      circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", "").replaceAll("Juizo da ", ""),
+      status: result.situacao,
+      assisted: result.destinatario.pessoa.nome,
+      isDefendant: result.polo_destinatario === "PA" ? true : false,
+      source: result.sistema_webservice,
+      awarenessDate: result.prazo_ciencia.split("T")[0],
+      summonURL,
+      summon,
+      class: result.processo.classe.nome,
+      initialDeadline,
+      deadline,
+      givenDeadLine: result.prazo ? result.prazo : 0,
+      defender: defenders.find(c => c.nome === user?.nome) ?? [],
+      createdAt: new Date(),
+      favoriteEvents: [],
+      releaseDate: result.data_disponibilizacao ?? ""
 
+    })
   }
+
+  return filedLawsuits
+
+}
+
+// function waitPageLoad(tabId: number): Promise<void> {
+//   return new Promise((resolve) => {
+//     const listener = (updatedTabId: number, changeInfo: any) => {
+//       if (updatedTabId === tabId && changeInfo.status === 'complete') {
+//         chrome.tabs.onUpdated.removeListener(listener);
+//         resolve();
+//       }
+//     };
+//     chrome.tabs.onUpdated.addListener(listener);
+//   });
+// }
+
+
+// export async function getEconomicIndicators(startingYear: number) {
+//   try {
+//     const tab = await chrome.tabs.create({
+//       url: "https://www8.tjmg.jus.br/cadej/pages/web/consulta-indice/indicadoresEconomicos.xhtml",
+//       active: true,
+//     });
+
+//     if (!tab.id) {
+//       throw new Error("Aba não encontrada.");
+//     }
+
+//     await waitPageLoad(tab.id);
+
+//     await chrome.scripting.executeScript({
+//       target: { tabId: tab.id },
+//       args: [startingYear],
+
+//       func: async (startingYear: number) => {
+//         const cap = new Date().getFullYear() - startingYear
+//         let year = new Date().getFullYear()
+//         for (let i = 0; i <= cap; i++) {
+//           const curYear = year - i;
+//           const table = await fetch("https://www8.tjmg.jus.br/cadej/pages/web/consulta-indice/indicadoresEconomicos.xhtml?cid=1", {
+//           "headers": {
+//             "accept": "application/xml, text/xml, */*; q=0.01",
+//             "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+//             "cache-control": "no-cache",
+//             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+//             "faces-request": "partial/ajax",
+//             "pragma": "no-cache",
+//             "sec-ch-ua": "\"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"",
+//             "sec-ch-ua-mobile": "?0",
+//             "sec-ch-ua-platform": "\"Windows\"",
+//             "sec-fetch-dest": "empty",
+//             "sec-fetch-mode": "cors",
+//             "sec-fetch-site": "same-origin",
+//             "x-kl-kes-ajax-request": "Ajax_Request",
+//             "x-requested-with": "XMLHttpRequest"
+//           },
+//           "body": "javax.faces.partial.ajax=true&javax.faces.source=btnPesquisar&javax.faces.partial.execute=%40all&javax.faces.partial.render=formEdicao+tableIndice+tableIndice2&btnPesquisar=btnPesquisar&validate=true&formEdicao=formEdicao&j_idt56=&formAno_focus=&formAno_input=" + curYear + "&formIndice_focus=&formIndice_input=Todos+Indicadores&javax.faces.ViewState=-4191989879063770787%3A6062134627570445395",
+//           "method": "POST",
+//           "mode": "cors",
+//           "credentials": "include"
+//         });
+//         const textResponse = table.text()
+//         }
+       
+//       },
+//     });
+//   } catch (error) {
+//     console.log(error)
+//   }
+
+// }
+
+
+
