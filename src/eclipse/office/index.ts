@@ -180,6 +180,8 @@ function getFilteredItems() {
   if (navItems.item(1).className === "nav-item active") activePage = 1
   const curDate = new Date()
   const friday = new Date(curDate);
+  const monday = new Date()
+  monday.setDate(curDate.getDate() - curDate.getDay())
   friday.setDate(curDate.getDate() - curDate.getDay() + 5);
   // const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")[0]
   const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
@@ -206,11 +208,15 @@ function getFilteredItems() {
         return false
 
       if (activeFilters.mainPage.dueToday)
-        if (item.daysLeft !== 0)
+        if (isoDeadline.toISOString() !== isoToday.toISOString())
+
+          // if (item.daysLeft !== 0)
           return false
 
       if (activeFilters.mainPage.dueThisWeek)
-        if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
+        if (isoDeadline < monday && isoDeadline > lastWeekWorkingDay)
+
+          // if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
           return false
 
       if (activeFilters.mainPage.search) {
@@ -278,7 +284,6 @@ function getFilteredItems() {
 
 }
 
-console.log(getFilteredItems)
 function filterItems() {
   let activePage = 0
   const navItems = document.querySelectorAll(".nav-item")
@@ -585,12 +590,14 @@ async function updateLawsuitTable(initialRender = false) {
   if (lawsuits) {
     showToast("Processos atualizados com sucesso. " + lawsuits?.length + " novos processos", 3000)
     const savedLawsuits = await sendMessage("GET_PENDING_LAWSUITS", {}) as any
-    if (savedLawsuits.data)
+    if (savedLawsuits.data) {
       lawsuitsData = savedLawsuits.data
-    document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
-    hideLoadingSpinner()
-    //renderTableWithOptions()
-    paginateLawsuitTable(lawsuitsData, initialRender)
+      document.querySelector("#last-update")!.innerHTML = "Ultima atualização: " + localStorage.getItem("lastUpdate")
+      hideLoadingSpinner()
+      //renderTableWithOptions()
+      paginateLawsuitTable(lawsuitsData, initialRender)
+    }
+
   }
 }
 // Abre o painel e preenche com os dados da linha
@@ -966,7 +973,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 //         const value = card.children.item(1) as HTMLDivElement
 //         label.style.color = "var(--text-muted)"
 //         value.style.color = "black"
-        
+
 //       } else if(card.className === element.className){
 //         const activeCardLabel = element.children.item(0) as HTMLDivElement
 //         const activeCardValue = element.children.item(1) as HTMLDivElement
@@ -1063,21 +1070,21 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
 document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.mainPage.dueToday = true
   // const currentCard = e.target as HTMLDivElement
-    // const cards = document.querySelector(".cards")?.children
-    // for (const card of cards!) {
-    //   if(card.className.includes("active")){
-    //     card.className = card.className.replace("active", "")
-    //     const label = card.children.item(0) as HTMLDivElement
-    //     const value = card.children.item(1) as HTMLDivElement
-    //     label.style.color = "var(--text-muted)"
-    //     value.style.color = "black"
-    //   } else if(card.className === currentCard.className){
-    //     const activeCardLabel = currentCard.children.item(0) as HTMLDivElement
-    //     const activeCardValue = currentCard.children.item(1) as HTMLDivElement
-    //     activeCardLabel.style.color = "white"
-    //     activeCardValue.style.color = "white"
-    //   }
-      // activeCards(currentCard, "var(--danger)")
+  // const cards = document.querySelector(".cards")?.children
+  // for (const card of cards!) {
+  //   if(card.className.includes("active")){
+  //     card.className = card.className.replace("active", "")
+  //     const label = card.children.item(0) as HTMLDivElement
+  //     const value = card.children.item(1) as HTMLDivElement
+  //     label.style.color = "var(--text-muted)"
+  //     value.style.color = "black"
+  //   } else if(card.className === currentCard.className){
+  //     const activeCardLabel = currentCard.children.item(0) as HTMLDivElement
+  //     const activeCardValue = currentCard.children.item(1) as HTMLDivElement
+  //     activeCardLabel.style.color = "white"
+  //     activeCardValue.style.color = "white"
+  //   }
+  // activeCards(currentCard, "var(--danger)")
   updateChipText()
 })
 

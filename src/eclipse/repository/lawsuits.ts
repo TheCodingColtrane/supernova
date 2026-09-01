@@ -21,7 +21,7 @@ export async function getLawsuitStatusCountData() {
 
 }
 
-export async function getLawsuitData(number: string){
+export async function getLawsuitData(number: string) {
     try {
         const result = await db.lawsuits.where("number").equals(number).first()
         console.log(result)
@@ -88,31 +88,31 @@ export async function getWeekLawsuitsData() {
 export async function saveLawsuitsData(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         if (Array.isArray(lawsuits)) {
-            const existingLawsuits = await getExistingLawsuits(lawsuits)
-            if (!existingLawsuits.length) {
-                await db.lawsuits.bulkAdd(lawsuits);
-                return lawsuits
-            }
-            const uniqueLawsuits = new Set(lawsuits.map(c => c.number))
-            const uniqueExistingLawsuits = new Set(existingLawsuits.map(c => c.number))
-            for (const lawsuit of uniqueExistingLawsuits) {
-                if (uniqueLawsuits.has(lawsuit)) {
-                    uniqueLawsuits.delete(lawsuit)
-                }
-            }
-
-            const filteredLawsuits: Lawsuits[] = []
-            for (const lawsuit of uniqueLawsuits) {
-                for (const cLawsuit of lawsuits) {
-                    if (cLawsuit.number === lawsuit) {
-                        cLawsuit.id = await db.lawsuits.add(cLawsuit)
-                        filteredLawsuits.push(cLawsuit)
-                    }
-                }
-            }
-            existingLawsuits.push(...filteredLawsuits)
-            return existingLawsuits
+            // const existingLawsuits = await getExistingLawsuits(lawsuits)
+            // if (!existingLawsuits.length) {
+            await db.lawsuits.bulkAdd(lawsuits);
+            return lawsuits
         }
+        //     const uniqueLawsuits = new Set(lawsuits.map(c => c.number))
+        //     const uniqueExistingLawsuits = new Set(existingLawsuits.map(c => c.number))
+        //     for (const lawsuit of uniqueExistingLawsuits) {
+        //         if (uniqueLawsuits.has(lawsuit)) {
+        //             uniqueLawsuits.delete(lawsuit)
+        //         }
+        //     }
+
+        //     const filteredLawsuits: Lawsuits[] = []
+        //     for (const lawsuit of uniqueLawsuits) {
+        //         for (const cLawsuit of lawsuits) {
+        //             if (cLawsuit.number === lawsuit) {
+        //                 cLawsuit.id = await db.lawsuits.add(cLawsuit)
+        //                 filteredLawsuits.push(cLawsuit)
+        //             }
+        //         }
+        //     }
+        //     existingLawsuits.push(...filteredLawsuits)
+        //     return existingLawsuits
+        // }
         else {
             await db.lawsuits.add(lawsuits);
             return lawsuits
@@ -166,10 +166,41 @@ export async function getPendingLawsuitsData() {
     const todayISO = today.toISOString().split("T")[0]
     const finishedLawsuits = await db.lawsuits.where(["status", "deadline"]).between(["Finalizado", "2000-01-01"], ["Finalizado", todayISO]).reverse().toArray()
     lawsuits.push(...finishedLawsuits)
-    return await getExistingLawsuits(lawsuits, false)
+    // return await getExistingLawsuits(lawsuits, false)
+    return lawsuits
 
 }
 
+async function getRunningLawsuits() {
+    return await db.lawsuits.where("status").notEqual("Finalizado").toArray()
+}
+
+export async function syncLawsuits(newLawsuits: Lawsuits[]) {
+    const existingLawsuits = await getRunningLawsuits()
+    const lawsuitsToDelete: Lawsuits[] = []
+    const newLawsuitItems = new Set(newLawsuits.map(c => c.number))
+
+    existingLawsuits.map(c => {
+        if (new Date(c.deadline + "T03:00:00.000Z") > new Date() && c.status === "Aguardando Abertura")
+            lawsuitsToDelete.push(c)
+    })
+
+    let i = 0
+    for (const existingLawsuit of existingLawsuits) {
+        if(!newLawsuitItems.has(existingLawsuit.number) && existingLawsuit.status === "Aberto"){
+            existingLawsuits[i].status = "Finalizado"
+        }
+        i++
+
+        }
+    
+    if (lawsuitsToDelete.length > 0)
+        await deleteLawsuitsData(lawsuitsToDelete.map(c => c.id!))
+    await updateLawsuitsData(existingLawsuits)
+    await saveLawsuitsData(newLawsuits)
+    existingLawsuits.push(...newLawsuits)
+    return existingLawsuits
+}
 
 export async function getExistingLawsuits(lawsuits: Lawsuits[], query = true) {
     let existingLawsuits: Lawsuits[] = []

@@ -1,5 +1,5 @@
 import { deleteHolidays, getHolidays, saveHolidays, updateHolidays } from "./eclipse/service/holidays";
-import { deleteLawsuits, getLawsuit, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, updateLawsuits } from "./eclipse/service/lawsuits";
+import { deleteLawsuits, getLawsuit, getLawsuitStatusCount, getPendingLawsuits, getWeekLawsuits, saveLawsuits, syncLawsuit, updateLawsuits } from "./eclipse/service/lawsuits";
 import { deleteTaskData, getTaskData, saveTaskData, updateTaskData } from "./eclipse/service/tasks";
 import { deleteWorkerData, getWorkerData, saveWorkerData, updateWorkerData } from "./eclipse/service/workers";
 const downloadedPages = new Set()
@@ -14,6 +14,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       switch (request.type) {
         case "RENDER_HTML":
           result = await handleHtmlProcessing(request.payload.html, request.payload.isEproc);
+          break;
+        case "SYNC_LAWSUITS":
+          result = await syncLawsuit(request.payload.lawsuits);
           break;
         case "GET_LAWSUIT":
           result = await getLawsuit(request.payload.number);
@@ -161,7 +164,7 @@ async function handleHtmlProcessing(htmlString: string, isEproc: boolean): Promi
     // 2. Repassa o HTML para dentro do documento Offscreen que criamos
     const response = await chrome.runtime.sendMessage({
       action: 'offscreen',
-      payload: {html: htmlString, isEproc}
+      payload: { html: htmlString, isEproc }
     });
 
     if (!response || !response.success) {
