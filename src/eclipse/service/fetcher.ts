@@ -549,7 +549,7 @@ export async function updateLawsuitDashboard() {
     }
     const data = await parseSolaRSCAPIResult(solarURLs)
     console.log(data)
-    const result = await sendMessage("SAVE_LAWSUITS", { lawsuits: data })
+    const result = await sendMessage("SYNC_LAWSUITS", { lawsuits: data })
     if (result.data) {
       localStorage.setItem("lastUpdate", new Date().toLocaleString())
       return result.data as Lawsuits[]

@@ -1,7 +1,7 @@
 import type { Holidays } from "../db/schemas/holidays"
 import type { Lawsuits } from "../db/schemas/lawsuits"
 import { getHolidaysData } from "../repository/holidays"
-import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData } from "../repository/lawsuits"
+import { deleteLawsuitsData, getLawsuitStatusCountData, getPendingLawsuitsData, getWeekLawsuitsData, saveLawsuitsData, updateLawsuitsData, getLawsuitData, syncLawsuits } from "../repository/lawsuits"
 import { getDeadline } from '../utils/date'
 
 type WeekLawsuits = { number: string; assisted: string; initialDeadline: string | Date; deadline: string | Date; status: string }
@@ -101,6 +101,17 @@ export async function saveLawsuits(lawsuits: Lawsuits[] | Lawsuits) {
 
 }
 
+
+export async function syncLawsuit(lawsuits: Lawsuits[]) {
+    try {
+        await syncLawsuits(lawsuits)
+        return lawsuits
+    } catch (error) {
+        console.log(error)
+        return
+    }
+
+}
 export async function updateLawsuits(lawsuits: Lawsuits[] | Lawsuits) {
     try {
         if (!Array.isArray(lawsuits)) {
