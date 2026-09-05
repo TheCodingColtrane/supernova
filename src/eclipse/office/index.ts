@@ -430,6 +430,8 @@ let workersData = Array<Worker>();
       if (defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
     }
     paginateTasks(tasksData)
+    const blueCard = document.querySelector(".card.blue") as HTMLDivElement
+
     try {
       if (lawsuitsData.length) {
 
@@ -441,13 +443,14 @@ let workersData = Array<Worker>();
           // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable(true)
+            
           } else {
             paginateLawsuitTable(lawsuitsData, true)
             // renderTable(lawsuitsData, [], undefined, true)
 
           }
         } else paginateLawsuitTable(lawsuitsData, true) //renderTable(lawsuitsData, [], undefined, true)
-
+        activeCards(blueCard, "var(--info)")
         const ths = Array.from(document.querySelectorAll("thead th"))
         for (const th of ths) {
           th.addEventListener("click", () => {
@@ -513,14 +516,6 @@ let workersData = Array<Worker>();
 
           }
         })
-
-        // document.querySelector("#groupLawsuits")?.addEventListener("click", (e) => {
-        //   const ground = e.target as HTMLInputElement
-        //   if (ground.value === "on") {
-
-        //   }
-        // })
-
 
       } else {
         await updateLawsuitTable()
@@ -963,26 +958,31 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
 
 }
 
-// function activeCards(element: HTMLDivElement, color: string) {
+function activeCards(element: HTMLDivElement, color: string) {
 
-//     const cards = document.querySelector(".cards")?.children
-//     for (const card of cards!) {
-//       if(card.className.includes("active")){
-//         card.className = card.className.replace("active", "")
-//         const label = card.children.item(0) as HTMLDivElement
-//         const value = card.children.item(1) as HTMLDivElement
-//         label.style.color = "var(--text-muted)"
-//         value.style.color = "black"
+  const cards = document.querySelector(".cards")?.children
+  for (const card of cards!) {
+    if (card.className.includes("active")) {
+      const pos = card.className.indexOf(" active")
+      card.className = card.className.substring(0, pos)
+      const label = card.children.item(0) as HTMLDivElement
+      const value = card.children.item(1) as HTMLDivElement
+      label.style.color = "var(--text-muted)"
+      value.style.color = "black"
+      const previousActiveCard = card as HTMLDivElement
+      previousActiveCard.style.background = "var(--white)"
 
-//       } else if(card.className === element.className){
-//         const activeCardLabel = element.children.item(0) as HTMLDivElement
-//         const activeCardValue = element.children.item(1) as HTMLDivElement
-//         activeCardLabel.style.color = "white"
-//         activeCardValue.style.color = "white"
-//         element.style.background = color 
-//       }
-//     }
-// }
+    }
+  }
+
+  const activeCardLabel = element.children.item(0) as HTMLDivElement
+  const activeCardValue = element.children.item(1) as HTMLDivElement
+  activeCardLabel.style.color = "white"
+  activeCardValue.style.color = "white"
+  element.style.background = color
+  element.className += " active"
+
+}
 
 
 taskSearchInput.addEventListener("keyup", (e) => {
@@ -1033,16 +1033,7 @@ document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
   }
 })
 
-document.querySelector("#filterStatus")?.addEventListener("change", (e) => {
-  const select = e.target as HTMLSelectElement
-  if (select.selectedOptions.item(0)?.textContent === "Todos") {
-    activeFilters.mainPage.status = ""
-    updateChipText()
-  } else {
-    activeFilters.mainPage.status = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
-  }
-})
+
 
 document.querySelector("#filterSide")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
@@ -1069,47 +1060,39 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.mainPage.dueToday = true
-  // const currentCard = e.target as HTMLDivElement
-  // const cards = document.querySelector(".cards")?.children
-  // for (const card of cards!) {
-  //   if(card.className.includes("active")){
-  //     card.className = card.className.replace("active", "")
-  //     const label = card.children.item(0) as HTMLDivElement
-  //     const value = card.children.item(1) as HTMLDivElement
-  //     label.style.color = "var(--text-muted)"
-  //     value.style.color = "black"
-  //   } else if(card.className === currentCard.className){
-  //     const activeCardLabel = currentCard.children.item(0) as HTMLDivElement
-  //     const activeCardValue = currentCard.children.item(1) as HTMLDivElement
-  //     activeCardLabel.style.color = "white"
-  //     activeCardValue.style.color = "white"
-  //   }
-  // activeCards(currentCard, "var(--danger)")
+  activeFilters.mainPage.status = "Aberto"
+  const element = document.querySelector(".card.red") as HTMLDivElement
+  activeCards(element, "var(--danger)")
   updateChipText()
 })
 
 
 document.querySelector(".card.yellow")?.addEventListener("click", () => {
   activeFilters.mainPage.dueThisWeek = true
-  // const element = document.querySelector(".card.yellow") as HTMLDivElement;
-  // activeCards(element)
+  activeFilters.mainPage.status = "Aberto"
+  const element = document.querySelector(".card.yellow") as HTMLDivElement
+  activeCards(element, "var(--warning)")
   updateChipText()
 })
 
 
 document.querySelector(".card.green")?.addEventListener("click", () => {
-  activeFilters.mainPage.finalized = true
-  activeFilters.mainPage.status = "Finalizado"
-  document.querySelectorAll(".cards").forEach(c => {
-    if (c.className.includes("active"))
-      c.className = c.className.replaceAll("active", "")
-  })
+  activeFilters.mainPage.status = "Aguardando Abertura"
+  activeFilters.mainPage.dueToday = false
+  activeFilters.mainPage.dueThisWeek = false
   const element = document.querySelector(".card.green") as HTMLDivElement
-  element.className += " active"
-  const filterStatusSelect = document.querySelector("#filterStatus") as HTMLSelectElement
-  filterStatusSelect.selectedIndex = 2
+  activeCards(element, "var(--success)")
   updateChipText()
 })
+
+document.querySelector(".card.blue")?.addEventListener("click", () => {
+  activeFilters.mainPage.status = "Aberto"
+  clearAllFilters(0)
+  const element = document.querySelector(".card.blue") as HTMLDivElement
+  activeCards(element, "var(--info)")
+  updateChipText()
+})
+
 
 document.querySelector("#redCard")?.addEventListener("click", () => {
   activeFilters.todoPage.dueToday = true
@@ -1149,11 +1132,10 @@ function updateCards() {
   const navItems = document.querySelectorAll(".nav-item")
   if (navItems.item(1).className === "nav-item active") activePage = 1
   if (!activePage) {
-    const selectedStatus = document.querySelector("#filterStatus") as HTMLSelectElement
     const doneCount = document.querySelector("#doneCount-p1")
-    doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Finalizado").length)
+    doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Aguardando Abertura").length)
 
-    activeCount = lawsuitsData.filter(c => c.status === selectedStatus[selectedStatus.selectedIndex].label).length
+    activeCount = lawsuitsData.filter(c => c.status === "Aberto").length
     for (const lawsuit of filteredLawsuits) {
       if (lawsuit.deadline && lawsuit.status != "Finalizado") {
         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
@@ -1166,15 +1148,15 @@ function updateCards() {
 
     }
 
-    if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado") {
-      document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
-      document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
-      document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
-    } else {
-      document.querySelector("#redLabel1")!.innerHTML = "Abrindo hoje"
-      document.querySelector("#yellowLabel1")!.innerHTML = "Abrindo esta semana"
-      document.querySelector("#blueLabel1")!.innerHTML = "Processos pendentes de abertura"
-    }
+    // if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado") {
+    document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
+    document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
+    document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
+    // } else {
+    //   document.querySelector("#redLabel1")!.innerHTML = "Abrindo hoje"
+    //   document.querySelector("#yellowLabel1")!.innerHTML = "Abrindo esta semana"
+    //   document.querySelector("#blueLabel1")!.innerHTML = "Processos pendentes de abertura"
+    // }
 
 
   }

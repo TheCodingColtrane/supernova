@@ -187,16 +187,16 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
 
     let i = 0
     for (const existingLawsuit of existingLawsuits) {
-        if(!newLawsuitItems.has(existingLawsuit.number) && existingLawsuit.status === "Aberto"){
-            existingLawsuits[i].status = "Finalizado"
+        if (!newLawsuitItems.has(existingLawsuit.number) && existingLawsuit.status === "Aberto") {
+            lawsuitsToDelete.push(existingLawsuits[i])                                                   
         }
         i++
 
-        }
-    
+    }
+
     if (lawsuitsToDelete.length > 0)
         await deleteLawsuitsData(lawsuitsToDelete.map(c => c.id!))
-    await updateLawsuitsData(existingLawsuits)
+    // await updateLawsuitsData(existingLawsuits)
     await saveLawsuitsData(newLawsuits)
     existingLawsuits.push(...newLawsuits)
     return existingLawsuits
