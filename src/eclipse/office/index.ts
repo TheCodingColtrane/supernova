@@ -443,7 +443,7 @@ let workersData = Array<Worker>();
           // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable(true)
-            
+
           } else {
             paginateLawsuitTable(lawsuitsData, true)
             // renderTable(lawsuitsData, [], undefined, true)
@@ -1059,8 +1059,9 @@ document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
 })
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
-  activeFilters.mainPage.dueToday = true
   activeFilters.mainPage.status = "Aberto"
+  activeFilters.mainPage.dueToday = true
+  activeFilters.mainPage.dueThisWeek = false
   const element = document.querySelector(".card.red") as HTMLDivElement
   activeCards(element, "var(--danger)")
   updateChipText()
@@ -1068,8 +1069,9 @@ document.querySelector(".card.red")?.addEventListener("click", () => {
 
 
 document.querySelector(".card.yellow")?.addEventListener("click", () => {
-  activeFilters.mainPage.dueThisWeek = true
   activeFilters.mainPage.status = "Aberto"
+  activeFilters.mainPage.dueThisWeek = true
+  activeFilters.mainPage.dueToday = false
   const element = document.querySelector(".card.yellow") as HTMLDivElement
   activeCards(element, "var(--warning)")
   updateChipText()
