@@ -178,25 +178,33 @@ async function getRunningLawsuits() {
 export async function syncLawsuits(newLawsuits: Lawsuits[]) {
     const existingLawsuits = await getRunningLawsuits()
     const lawsuitsToDelete: Lawsuits[] = []
-    const newLawsuitItems = new Set(newLawsuits.map(c => c.number))
-
+    const newLawsuitItems = new Set(newLawsuits.map(c => c.summon))
+    const newLawsuitToDelete = new Set("")
     existingLawsuits.map(c => {
         if (new Date(c.deadline + "T03:00:00.000Z") > new Date() && c.status === "Aguardando Abertura")
             lawsuitsToDelete.push(c)
-    })
-
-    let i = 0
-    for (const existingLawsuit of existingLawsuits) {
-        if (!newLawsuitItems.has(existingLawsuit.number) && existingLawsuit.status === "Aberto") {
-            lawsuitsToDelete.push(existingLawsuits[i])                                                   
+        else if (!newLawsuitItems.has(c.summon) && c.status === "Aberto") {
+            lawsuitsToDelete.push(c)
+        } else {
+            if(!newLawsuitToDelete.has(c.summon))
+            newLawsuitToDelete.add(c.summon)
         }
-        i++
-
+    })
+    let i = 0
+    for (const curLawsuit of newLawsuitToDelete) {
+        for (const lawsuit of newLawsuits) {
+            if(lawsuit.summon === curLawsuit){
+                newLawsuits.splice(i)
+            }
+            i++
+        }
+        
     }
+
+
 
     if (lawsuitsToDelete.length > 0)
         await deleteLawsuitsData(lawsuitsToDelete.map(c => c.id!))
-    // await updateLawsuitsData(existingLawsuits)
     await saveLawsuitsData(newLawsuits)
     existingLawsuits.push(...newLawsuits)
     return existingLawsuits
