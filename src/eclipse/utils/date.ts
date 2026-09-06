@@ -83,3 +83,86 @@ export function getDeadline(startDate: Date, endDate: Date, holidays?: Holidays[
     return { days: days < 0 ? 0 : days, deadline: endDate, isDueDate: false }
 
 }
+
+export function getDeadlineDays(startDate: Date, numDays: number, holidays?: Holidays[], isElapsedDays = false) {
+    if (!isElapsedDays) {
+        if (!isBusinessDay(startDate))
+            startDate = new Date(getNextBusinessDay(startDate))
+    }
+
+    let result = new Date()
+    if (isElapsedDays) {
+        result = addDays(startDate, numDays)
+        return result
+    }
+
+    if (!holidays?.length) {
+        result = addBusinessDays(startDate, numDays)
+        return result
+    } else {
+        if (holidays?.length) {
+            const pendingHolidays = holidays.filter(h => new Date(h.startDate + "T03:00:00.000Z") >= startDate)
+            if (pendingHolidays?.length) {
+                let curDate = startDate
+                let offset = 0
+                for (const holiday of pendingHolidays) {
+                    if (!isBusinessDay(new Date(holiday.endDate + "T03:00:00.000Z")))
+                        continue;
+                    for (let i = offset; i < numDays; i++) {
+                        const isoCurDate = new Date(curDate.toISOString().split("T")[0] + "T03:00:00.000Z")
+                        if (isoCurDate >= new Date(holiday.endDate + "T03:00:00.000Z")) {
+                            curDate = new Date(getNextBusinessDay(curDate))
+                            break;
+                        }
+                        if (!isBusinessDay(curDate))
+                            curDate = new Date(getNextBusinessDay(curDate))
+                        else
+                            curDate = addBusinessDays(curDate, 1)
+                        result = curDate
+                        const holidayEndDate = new Date(holiday.endDate + "T03:00:00.000Z")
+                        if (result === holidayEndDate) {
+                            curDate = new Date(getNextBusinessDay(curDate))
+                            break;
+                        }
+                        offset++
+
+
+                    }
+                    if (offset === numDays) break;
+                }
+
+            }
+
+            return result
+        } else {
+            result = addBusinessDays(startDate, numDays)
+            return result
+        }
+
+    }
+
+
+}
+
+
+export function getTextDay(date: Date) {
+    const day = date.getDay()
+    switch (day) {
+        case 0:
+            return "Domingo"
+        case 1:
+            return "Segunda-feira"
+        case 2:
+            return "Terça-feira"
+        case 3:
+            return "Quarta-feira"
+        case 4:
+            return "Quinta-feira"
+        case 5:
+            return "Sexta-feira"
+        case 6:
+            return "Sábado"
+        default:
+            return "Dia desconhecido"
+    }
+}

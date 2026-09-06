@@ -180,26 +180,24 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
     const lawsuitsToDelete: Lawsuits[] = []
     const newLawsuitItems = new Set(newLawsuits.map(c => c.summon))
     const newLawsuitToDelete = new Set("")
-    existingLawsuits.map(c => {
-        if (new Date(c.deadline + "T03:00:00.000Z") > new Date() && c.status === "Aguardando Abertura")
-            lawsuitsToDelete.push(c)
-        else if (!newLawsuitItems.has(c.summon) && c.status === "Aberto") {
-            lawsuitsToDelete.push(c)
-        } else {
-            if(!newLawsuitToDelete.has(c.summon))
-            newLawsuitToDelete.add(c.summon)
+    for (const lawsuit of existingLawsuits) {
+        if (new Date(lawsuit.deadline + "T03:00:00.000Z") < new Date() && lawsuit.status === "Aguardando Abertura") {
+            console.log(lawsuit)
+            lawsuitsToDelete.push(lawsuit)
         }
-    })
-    let i = 0
-    for (const curLawsuit of newLawsuitToDelete) {
-        for (const lawsuit of newLawsuits) {
-            if(lawsuit.summon === curLawsuit){
-                newLawsuits.splice(i)
+        else if (!newLawsuitItems.has(lawsuit.summon) && lawsuit.status === "Aberto") {
+            console.log(lawsuit)
+            lawsuitsToDelete.push(lawsuit)
+        }
+        else {
+            if (!newLawsuitToDelete.has(lawsuit.summon)) {
+                console.log(lawsuit)
+                newLawsuitToDelete.add(lawsuit.summon)
+
             }
-            i++
         }
-        
     }
+    newLawsuits = newLawsuits.filter(lawsuit => !newLawsuitToDelete.has(lawsuit.summon))
 
 
 
