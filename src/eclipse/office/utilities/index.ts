@@ -2,7 +2,7 @@ import { writeJSON, writeDOCX } from "../../reports";
 import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
 import { getLawsuit, renderModal, sendMessage } from "../../utils";
-import { getDeadline } from "../../utils/date";
+import { getDeadlineDays, getTextDay } from "../../utils/date";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
 
 const utilities = [
@@ -66,7 +66,7 @@ const utilities = [
         favorite: false,
         execute: null
     },
-     {
+    {
         id: "planilha",
         name: "Gerador planilhas",
         description: "Cria planilhas para os mais diversos segmentos.",
@@ -139,12 +139,12 @@ async function openDeadlineCalculator() {
         content: `
        <form id="deadlineForm">
           <div class="form-group">
-            <label>Data anterior</label>
-            <input id="earlierDate" name="earlierDate" type="date" max="2099-11-31">
+            <label>Data inicial</label>
+            <input id="earlierDate" name="earlierDate" type="date" max="2099-11-31" required>
           </div>
           <div class="form-group">
-            <label>Data Posterior</label>
-            <input id="endDate" name="endDate" type="date" max="2099-11-31">
+            <label>Prazo concedido</label>
+            <input id="endDate" name="endDate" type="number" required>
           </div>
             <input type="checkbox" id="holidaysChk" name="isHolidays">
             <label for="holidaysChk">Considerar Feriados</label>
@@ -162,19 +162,13 @@ async function openDeadlineCalculator() {
                     const form = document.querySelector("#deadlineForm") as HTMLFormElement
                     const formData = new FormData(form)
                     const rawEarlierDate = formData.get("earlierDate") as string
-                    const rawEndDate = formData.get("endDate") as string
+                    const numDays = formData.get("endDate") as string
                     const holidaysChk = formData.get("isHolidays") as string
                     const isElapsedDays = formData.get("isElapsedDays") as string
                     const earlierDate = new Date(rawEarlierDate + "T03:00:00.000Z")
-                    const endDate = new Date(rawEndDate + "T03:00:00.000Z")
-                    if (earlierDate < endDate) {
-                        let dates = { days: 0, deadline: new Date, isDueDate: false }
-                        dates = getDeadline(earlierDate, endDate, holidaysChk ? holidays : undefined, isElapsedDays ? true : false)
-                        document.querySelector("#result")!.innerHTML = "Resultado " + String(dates.days) + " dias."
-                    } else {
-                        showToast("Uma das datas está inválida.")
-                        return
-                    }
+                    const deadline = getDeadlineDays(earlierDate, Number(numDays), holidaysChk ? holidays : undefined, isElapsedDays ? true : false)
+                    const textDay = getTextDay(deadline)
+                    document.querySelector("#result")!.innerHTML = "Resultado " + deadline.toLocaleDateString() + " " + textDay
                 }
             }
         ]
