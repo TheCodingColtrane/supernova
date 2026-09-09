@@ -183,8 +183,10 @@ function getFilteredItems() {
   const monday = new Date()
   monday.setDate(curDate.getDate() - curDate.getDay())
   friday.setDate(curDate.getDate() - curDate.getDay() + 5);
+  const startWeek = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
   // const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")[0]
   const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
+  console.log(monday, startWeek, lastWeekWorkingDay)
   let isoDeadline = new Date()
   const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
   if (!activePage)
@@ -214,7 +216,7 @@ function getFilteredItems() {
           return false
 
       if (activeFilters.mainPage.dueThisWeek)
-        if (isoDeadline < monday && isoDeadline > lastWeekWorkingDay)
+        if (isoDeadline < startWeek || isoDeadline > lastWeekWorkingDay)
 
           // if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
           return false
