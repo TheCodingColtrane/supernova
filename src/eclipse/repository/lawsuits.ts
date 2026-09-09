@@ -185,7 +185,7 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
             console.log(lawsuit)
             lawsuitsToDelete.push(lawsuit)
         }
-        else if (!newLawsuitItems.has(lawsuit.summon) && lawsuit.status === "Aberto") {
+        else if (!newLawsuitItems.has(lawsuit.summon) && lawsuit.status === "Aberto" || new Date(lawsuit.deadline + "T03:00:00.000Z") < new Date() && lawsuit.status === "Aberto") {
             console.log(lawsuit)
             lawsuitsToDelete.push(lawsuit)
         }
