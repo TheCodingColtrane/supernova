@@ -5,7 +5,7 @@ import { createDefenders, getUserCredentials, sendMessage } from "../utils";
 
 // import { getNextBusinessDay, isBusinessDay, localDateToIsoDate } from "../utils/date";
 import { formatISO } from "date-fns";
-import type { SolarAPIResponse, SolarResponse } from "../types/api";
+import type { SolarAPIResponse, SolarResponse, SolarDefendersAPIResponse } from "../types/api";
 
 // const currentPage = document.location.href
 // let system = 0
@@ -623,32 +623,20 @@ export async function getSolarRawLawsuitsPages(urls: string[]) {
 
 
 
-export async function getDefensories() {
-  const response = await fetch("https://solar.defensoria.mg.def.br/v2/buscar-processos-judiciais?tipo=INT")
-  if (response.ok) {
-    const parser = new DOMParser()
-    const pageData = parser.parseFromString(await response.text(), "text/html")
-    const data = parseRSC(pageData)
-    const userCreds = getUserCredentials()
-    if (data?.lawsuits) {
-      const defenderJson = JSON.parse(data?.lawsuits[1].substring(1, data?.lawsuits[1].length - 1).replaceAll('"\"', "").split(",\"total\"")[0]) as Defenders[]
-      const defensories = new Set<{ id: number, name: string }>()
-      const uniqueDefensories = new Array<{ id: number, name: string }>()
-      for (const defender of defenderJson) {
-        for (const role of defender.atuacoes) {
-          if (!defensories.has({ id: role.defensoria.id, name: role.defensoria.nome }) && role.defensoria.nome.includes(userCreds?.districtCourt.toUpperCase()!)) {
-            defensories.add({ id: role.defensoria.id, name: role.defensoria.nome })
-            uniqueDefensories.push({ id: role.defensoria.id, name: role.defensoria.nome })
-          }
-
-        }
-      }
-
-      localStorage.setItem("defensories", JSON.stringify(uniqueDefensories))
-
-    }
+export async function getPublicDefendentsOffices() {
+  try {
+      const response = await fetch("https://solar.defensoria.mg.def.br/api/v1/defensores.json?ativo=true&incluir_atuacoes=true&limit=1000")
+  if (response.ok)
+    return await response.json() as SolarDefendersAPIResponse
+  } catch (error) {
+    alert("Houve um erro na busca pelas defensorias. Contate o desenvolvedor.")
+    throw error
+    
   }
+
 }
+
+
 
 
 
@@ -850,6 +838,8 @@ function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]) {
       initialDeadline = result.prazo_inicial ? result.prazo_inicial.split("T")[0] : ""
       deadline = result.prazo_final ? result.prazo_final.split("T")[0] : ""
     }
+    const roles = defenders.flatMap(x=> x.atuacoes)
+   
     filedLawsuits.push({
       number: result.processo.numero,
       circuit: result.processo.orgaoJulgador.nomeOrgao.replaceAll("Juízo da ", "").replaceAll("Juizo da ", ""),
@@ -867,7 +857,11 @@ function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]) {
       defender: defenders.find(c => c.nome === user?.nome) ?? [],
       createdAt: new Date(),
       favoriteEvents: [],
-      releaseDate: result.data_disponibilizacao ?? ""
+      releaseDate: result.data_disponibilizacao ?? "",
+      publicDefendersOffice:{
+        id:Number(result.distribuido_defensoria),
+        name: roles.find(c =>c.defensoria.id=== Number(result.distribuido_defensoria))?.defensoria.nome
+      }
 
     })
   }
@@ -876,73 +870,6 @@ function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]) {
 
 }
 
-// function waitPageLoad(tabId: number): Promise<void> {
-//   return new Promise((resolve) => {
-//     const listener = (updatedTabId: number, changeInfo: any) => {
-//       if (updatedTabId === tabId && changeInfo.status === 'complete') {
-//         chrome.tabs.onUpdated.removeListener(listener);
-//         resolve();
-//       }
-//     };
-//     chrome.tabs.onUpdated.addListener(listener);
-//   });
-// }
-
-
-// export async function getEconomicIndicators(startingYear: number) {
-//   try {
-//     const tab = await chrome.tabs.create({
-//       url: "https://www8.tjmg.jus.br/cadej/pages/web/consulta-indice/indicadoresEconomicos.xhtml",
-//       active: true,
-//     });
-
-//     if (!tab.id) {
-//       throw new Error("Aba não encontrada.");
-//     }
-
-//     await waitPageLoad(tab.id);
-
-//     await chrome.scripting.executeScript({
-//       target: { tabId: tab.id },
-//       args: [startingYear],
-
-//       func: async (startingYear: number) => {
-//         const cap = new Date().getFullYear() - startingYear
-//         let year = new Date().getFullYear()
-//         for (let i = 0; i <= cap; i++) {
-//           const curYear = year - i;
-//           const table = await fetch("https://www8.tjmg.jus.br/cadej/pages/web/consulta-indice/indicadoresEconomicos.xhtml?cid=1", {
-//           "headers": {
-//             "accept": "application/xml, text/xml, */*; q=0.01",
-//             "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-//             "cache-control": "no-cache",
-//             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-//             "faces-request": "partial/ajax",
-//             "pragma": "no-cache",
-//             "sec-ch-ua": "\"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"",
-//             "sec-ch-ua-mobile": "?0",
-//             "sec-ch-ua-platform": "\"Windows\"",
-//             "sec-fetch-dest": "empty",
-//             "sec-fetch-mode": "cors",
-//             "sec-fetch-site": "same-origin",
-//             "x-kl-kes-ajax-request": "Ajax_Request",
-//             "x-requested-with": "XMLHttpRequest"
-//           },
-//           "body": "javax.faces.partial.ajax=true&javax.faces.source=btnPesquisar&javax.faces.partial.execute=%40all&javax.faces.partial.render=formEdicao+tableIndice+tableIndice2&btnPesquisar=btnPesquisar&validate=true&formEdicao=formEdicao&j_idt56=&formAno_focus=&formAno_input=" + curYear + "&formIndice_focus=&formIndice_input=Todos+Indicadores&javax.faces.ViewState=-4191989879063770787%3A6062134627570445395",
-//           "method": "POST",
-//           "mode": "cors",
-//           "credentials": "include"
-//         });
-//         const textResponse = table.text()
-//         }
-       
-//       },
-//     });
-//   } catch (error) {
-//     console.log(error)
-//   }
-
-// }
 
 
 

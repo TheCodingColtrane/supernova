@@ -6,12 +6,13 @@ import type { Lawsuits } from "../types/lawsuits"
 import type { Tasks } from "../types/tasks";
 import { getDefenders, getUserCredentials, renderModal, sendMessage } from "../utils"
 import { getDeadline, localDateToIsoDate } from "../utils/date";
-import { getDefensories, isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
+import { isLoggedIn, updateLawsuitDashboard } from "../service/fetcher";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../utils/ui";
 import { addBusinessDays, addDays } from "date-fns";
 import { renderUtilities } from "./utilities";
 import type { User, UserPreferences } from "../types/user";
 import { sendEmail } from "../email";
+import type { Defensores } from "../types/api";
 const updateLawsuitsBtn = document.querySelector("#update-lawsuit-btn") as HTMLButtonElement
 const iframeModal = document.querySelector("#iframeModal") as HTMLDivElement
 const iframeViewer = document.querySelector("#iframeViewer") as HTMLIFrameElement
@@ -26,6 +27,10 @@ let lawsuitPageSize = 30;
 let taskPageSize = 12
 let filteredLawsuits: Lawsuits[] = [];
 let filteredTasks: Tasks[] = []
+let pdos: Defensores[]
+let myRoles = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
+const activeRoles = myRoles?.office?.customRolesDates?.map(c => c.pdoId)
+
 let user: User | undefined = undefined
 function showAlert(message: string, type = 'success', duration = 4000) {
   const container = document.querySelector('#toastContainer');
@@ -59,12 +64,13 @@ function getDeadlineClass(days: number) {
   const rawPreferences = localStorage.getItem("preferences")
   if (rawPreferences) {
     const { office } = JSON.parse(rawPreferences) as UserPreferences
-    const deadlinesPriorities = office.deadlinesPriorities
-    if (days <= deadlinesPriorities.highest) return "deadline-danger";
-    else if (days <= deadlinesPriorities.high) return "deadline-semi-danger";
-    else if (days <= deadlinesPriorities.medium) return "deadline-warning";
-    else if (days <= deadlinesPriorities.low) return "deadline-semi-ok";
-    else return "deadline-ok";
+    const deadlinesPriorities = office?.deadlinesPriorities
+    if (deadlinesPriorities)
+      if (days <= deadlinesPriorities?.highest) return "deadline-danger";
+      else if (days <= deadlinesPriorities?.high) return "deadline-semi-danger";
+      else if (days <= deadlinesPriorities?.medium) return "deadline-warning";
+      else if (days <= deadlinesPriorities?.low) return "deadline-semi-ok";
+      else return "deadline-ok";
   }
   if (days <= 0) return "deadline-danger";
   if (days <= 3) return "deadline-warning";
@@ -107,6 +113,7 @@ async function paginateTasks(data: Tasks[]) {
   renderPagination(1);
 
 }
+
 
 function renderPagination(activePage = 0) {
   // let activePage = 0
@@ -209,6 +216,17 @@ function getFilteredItems() {
       if (activeFilters.mainPage.class && item.class !== activeFilters.mainPage.class)
         return false
 
+      if (activeFilters.mainPage.assignedToMe && !activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
+        const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
+        if (pdo) {
+          if (pdo.isOdd) {
+            if (Number(item.number[6]) % 2 === 0) return false
+          } else
+            if (Number(item.number[6]) % 1 === 0) return false
+        }
+
+      }
+
       if (activeFilters.mainPage.dueToday)
         if (isoDeadline.toISOString() !== isoToday.toISOString())
 
@@ -301,7 +319,7 @@ function filterItems() {
 }
 
 const activeFilters = {
-  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "", finalized: false },
+  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "", assignedToMe: false },
   todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, dueThisWeek: false, caseNumber: "", search: "", finalized: false }
 };
 let lawsuitsData = Array<Lawsuits>();
@@ -426,14 +444,15 @@ let workersData = Array<Worker>();
 
 
 
-    const creds = await getUserCredentials()
+    const creds = getUserCredentials()
     if (creds) {
       const defenders = await getDefenders()
       if (defenders) defender = defenders.find(d => d.id === creds.id) ?? {}
     }
     paginateTasks(tasksData)
-    const blueCard = document.querySelector(".card.blue") as HTMLDivElement
 
+    const blueCard = document.querySelector(".card.blue") as HTMLDivElement
+    const offices = await getDefenders()
     try {
       if (lawsuitsData.length) {
 
@@ -445,14 +464,32 @@ let workersData = Array<Worker>();
           // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable(true)
+            if (offices) {
+              if (user) {
+                pdos = offices as Defensores[]
+                user.roles = pdos.find(c => c.id === user?.id)!.atuacoes
+                localStorage.setItem("user", JSON.stringify({ ...user }))
 
+              }
+            }
           } else {
             paginateLawsuitTable(lawsuitsData, true)
             // renderTable(lawsuitsData, [], undefined, true)
 
           }
-        } else paginateLawsuitTable(lawsuitsData, true) //renderTable(lawsuitsData, [], undefined, true)
+        } else {
+          paginateLawsuitTable(lawsuitsData, true)
+          if (offices) {
+            if (user) {
+              pdos = offices as Defensores[]
+              user.roles = pdos.find(c => c.id === user?.id)!.atuacoes
+              localStorage.setItem("user", JSON.stringify({ ...user }))
+
+            }
+          }
+        }//renderTable(lawsuitsData, [], undefined, true)
         activeCards(blueCard, "var(--info)")
+
         const ths = Array.from(document.querySelectorAll("thead th"))
         for (const th of ths) {
           th.addEventListener("click", () => {
@@ -482,9 +519,6 @@ let workersData = Array<Worker>();
             }
           })
         }
-        const defensories = localStorage.getItem("defensories")
-        if (!defensories) await getDefensories()
-
         const searchField = document.querySelector("#searchLawsuitInput")!
         searchField.addEventListener("keyup", (e) => {
           activeFilters.mainPage.search = (e.target as HTMLInputElement).value
@@ -667,7 +701,8 @@ function openPanel(currentLawsuit?: Lawsuits) {
         summon: currentLawsuit.summon,
         summonURL: currentLawsuit.summonURL,
         favoriteEvents: currentLawsuit.favoriteEvents,
-        createdAt: currentLawsuit.createdAt
+        createdAt: currentLawsuit.createdAt,
+        // pdoId: currentLawsuit.pdoId
       }
       await updateLawsuit(lawsuit)
       showAlert("Processo atualizado com sucesso.", "success")
@@ -719,7 +754,8 @@ function openPanel(currentLawsuit?: Lawsuits) {
         isDefendant: formData["isDefendant"]?.toString() === "0" ? true : false,
         number: formData["number"] as string,
         source: "EPROC-1G-MG",
-        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto"
+        status: formData["status"]?.toString() === "0" ? "Aguardando Abertura" : "Aberto",
+        // pdoId: 0
       }
 
       await saveLawsuit(lawsuit)
@@ -820,7 +856,10 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.status}</td>
         <td>${lawsuitNumber}</td>
         <td>${p.class}</td>
-        <td>${p.circuit}</td>
+        <td>
+        <span>${p.circuit}</span>
+        <span>${p.publicDefendersOffice?.name}</span>
+        </td>
         <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
         <td>${p.releaseDate ? new Date(p.releaseDate).toLocaleString() : "Data não disponível"}</td>
         <td>
@@ -994,6 +1033,13 @@ taskSearchInput.addEventListener("keyup", (e) => {
 
 })
 
+document.querySelector("#assignedToMe")?.addEventListener("change", (e) => {
+  const isAssignedToMe = e.target as HTMLInputElement
+  if (isAssignedToMe.checked) {
+    activeFilters.mainPage.assignedToMe = true
+  } else activeFilters.mainPage.assignedToMe = false
+  updateChipText()
+})
 
 document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
@@ -1202,9 +1248,9 @@ function updateChipText() {
     updateChips("assignedTo", "Atribuído a: " + activeFilters.mainPage.assignedTo)
   else updateChips("assignedTo", "Atribuído a: ")
 
-  if (activeFilters.mainPage.finalized)
-    updateChips("finalized", "Finalizado: Sim")
-  else updateChips("finalized", "Finalizado: Não")
+  if (activeFilters.mainPage.assignedToMe)
+    updateChips("assignedToMe", "Atribuídos a mim: Sim")
+  else updateChips("assignedToMe", "Atribuídos a mim: Não")
   if (activeFilters.mainPage.dueToday)
     updateChips("dueToday", "Vence hoje: Sim")
   else updateChips("dueToday", "Vence hoje: Não")
@@ -1533,9 +1579,9 @@ function renderActiveFilters() {
       value: activeFilters.mainPage.assignedTo
     },
     {
-      key: "finalized",
-      label: "Finalizado",
-      value: activeFilters.mainPage.finalized ? "Sim" : "Não"
+      key: "assignedToMe",
+      label: "Atribuídos a mim",
+      value: activeFilters.mainPage.assignedToMe ? "Sim" : "Não"
     },
     {
       key: "dueToday",
@@ -1676,8 +1722,8 @@ document.addEventListener("click", (e) => {
         activeFilters.mainPage.assignedTo = "";
         (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
         break;
-      case "finalizad":
-        activeFilters.mainPage.finalized = false;
+      case "assignedToMe":
+        activeFilters.mainPage.assignedToMe = false;
         break;
 
       case "class":
@@ -1747,7 +1793,7 @@ function clearAllFilters(page: number) {
     activeFilters.mainPage.dueToday = false;
     activeFilters.mainPage.dueThisWeek = false;
     activeFilters.mainPage.class = "";
-    activeFilters.mainPage.finalized = false;
+    activeFilters.mainPage.assignedToMe = false;
 
     document.querySelectorAll("select").forEach(s => {
       if (s.id === "filterStatus")
