@@ -8,7 +8,16 @@ export interface SolarAPIResponse {
   options: Options;
 }
 
-interface Options {
+
+export interface SolarDefendersAPIResponse {
+    results: Defensores[];
+    next: any
+    previous: any
+    count: number
+
+}
+
+export interface Options {
   defensorias: Defensoria2[];
   defensores: Defensores[];
   sistemas: Defensoria2[];
@@ -31,7 +40,7 @@ interface Defensoria2 {
   nome: string;
 }
 
-interface Defensores {
+export interface Defensores {
   id: number;
   nome: string;
   cpf: string;
@@ -43,7 +52,7 @@ interface Defensores {
   credenciais_expiradas: boolean;
   ativo: boolean;
 }
-interface Atuacoes {
+export interface Atuacoes {
   id: number;
   tipo: number;
   data_inicial: string;
@@ -53,7 +62,7 @@ interface Atuacoes {
   documento?: any;
 }
 
-interface Defensoria {
+export interface Defensoria {
   id: number;
   nome: string;
 }

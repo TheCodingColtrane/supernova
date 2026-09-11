@@ -1,6 +1,7 @@
 import { writeJSON, writeDOCX } from "../../reports";
 import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
+import type { User, UserPreferences } from "../../types/user";
 import { getLawsuit, renderModal, sendMessage } from "../../utils";
 import { getDeadlineDays, getTextDay } from "../../utils/date";
 import { hideLoadingSpinner, showLoadingSpinner, showToast } from "../../utils/ui";
@@ -215,11 +216,96 @@ function openReportsModal() {
 }
 
 function openPreferencesModal() {
+    let savedPreferences = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
+    const user = JSON.parse(localStorage.getItem("user") ?? "") as User
+
     renderModal().open({
         title: "Gestão dos seus prazos",
         content: `
+        <div class="form-group">
+        <label for="pref">Tipo de Preferência</label>
+        <select name="pref">
+            <option value="0">Personalização de prazos</option>
+            <option value="1">Personalização de antedígitos</option>
+        </select>
+        </div>
+        </label>
        <form id="customDeadlinePreferencesForm">
           <div class="form-group">
+            <label for="highest">Maior prioridade</label>
+             <input type="number" name="highest" value="${savedPreferences?.office?.deadlinesPriorities?.highest}" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de vermelho"/>
+          </div>
+          <div class="form-group">
+             <label for="highest">Alta prioridade</label>
+             <input type="number" name="high" value="${savedPreferences?.office?.deadlinesPriorities?.high}"  required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de laranja"/>
+          </div>
+          <div class="form-group">
+             <label for="medium">Média prioridade</label>
+             <input type="number" name="medium" value="${savedPreferences?.office?.deadlinesPriorities?.medium}" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de amarelo"/>
+          </div>
+          <div class="form-group">
+             <label for="low">Baixa prioridade</label>
+             <input type="number" name="low" value="${savedPreferences?.office?.deadlinesPriorities?.low}"  required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de azul"/>
+          </div>
+          <div class="form-group">
+             <label for="lowest">Menor prioridade</label>
+             <input type="number" name="lowest" value="${savedPreferences?.office?.deadlinesPriorities?.lowest}"  required placeholder="Tudo que for superior ou igual ao valor fornecido será pintado de verde"/>
+          </div>
+        </form>
+      
+      `,
+        actions: [
+            {
+                label: 'Salvar preferência', className: 'btn-primary', preventClose: false, callback: async () => {
+                    const form = document.querySelector("#customDeadlinePreferencesForm") as HTMLFormElement
+                    const formData = new FormData(form)
+                    const pref = formData.get("pref") as string
+                    let preferences: UserPreferences = {
+                        office: {
+                            customRolesEnabled: savedPreferences?.office?.customRolesEnabled ?? false,
+                            elapsedDaysEnabled: savedPreferences?.office?.elapsedDaysEnabled ?? false,
+                            holidaysEnabled: savedPreferences?.office?.holidaysEnabled ?? false,
+                            customRolesDates: savedPreferences?.office?.customRolesDates ?? [{endDate: "", isOdd: false, pdoId:0, startDate: "" }],
+                            deadlinesPriorities: savedPreferences?.office?.deadlinesPriorities ?? {highest: 3, high: 5, medium: 10, low: 15, lowest: 30}
+                        }
+                    }
+                    if (pref === "0") {
+                        preferences.office!.deadlinesPriorities = {
+                            highest: Number(formData.get("highest") as string),
+                            high: Number(formData.get("high") as string),
+                            medium: Number(formData.get("medium") as string),
+                            low: Number(formData.get("low") as string),
+                            lowest: Number(formData.get("lowest") as string),
+                        }
+                    } else {
+
+                        user.roles.map((c, i) => {
+                            preferences.office?.customRolesDates!.push({
+                                endDate: formData.get(`endDate-${i}`) as string,
+                                startDate: formData.get(`startDate-${i}`) as string,
+                                isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true : false,
+                                pdoId: c.id
+                            })
+
+                        })
+                    }
+                        
+                        savedPreferences = preferences
+                        localStorage.setItem("preferences", JSON.stringify(preferences))
+                        showToast("Preferência salva com sucesso!")
+                    
+                }
+            }
+        ]
+    })
+
+    const preferencesSelect = document.querySelector("[name='pref']") as HTMLSelectElement
+    preferencesSelect.onchange = () => {
+        const form = document.querySelector("#customDeadlinePreferencesForm") as HTMLFormElement
+
+        if (preferencesSelect.selectedIndex === 0) {
+            form.innerHTML = `
+            <div class="form-group">
             <label for="highest">Maior prioridade</label>
              <input type="number" name="highest" required placeholder="Tudo que for menor ou igual ao valor fornecido será pintado de vermelho"/>
           </div>
@@ -238,34 +324,43 @@ function openPreferencesModal() {
           <div class="form-group">
              <label for="lowest">Menor prioridade</label>
              <input type="number" name="lowest" required placeholder="Tudo que for superior ou igual ao valor fornecido será pintado de verde"/>
-          </div>
-        </form>
-      
-      `,
-        actions: [
-            {
-                label: 'Salvar preferência', className: 'btn-primary', preventClose: false, callback: async () => {
-                    const form = document.querySelector("#customDeadlinePreferencesForm") as HTMLFormElement
-                    const formData = new FormData(form)
-                    const preferences = {
-                        office: {
-                            deadlinesPriorities: {
-                                highest: Number(formData.get("highest") as string),
-                                high: Number(formData.get("high") as string),
-                                medium: Number(formData.get("medium") as string),
-                                low: Number(formData.get("low") as string),
-                                lowest: Number(formData.get("lowest") as string),
-                            }
-                        }
-                    }
-                    localStorage.setItem("preferences", JSON.stringify(preferences))
-                    showToast("Preferência salva com sucesso!")
-                }
-            }
-        ]
-    })
+          </div>`
 
+        } else {
+            if (user) {
+                form.innerHTML = user.roles.map((c, i) => {
+                    const currentPref = savedPreferences?.office?.customRolesDates?.find(c => c.pdoId === c.pdoId)
+                    return `
+                    <div class="form-group">
+                    <span>${c.defensoria.nome}</span>
+                    </div>
+                    <div class="form-group">
+                    <label for="antiDigit-${i}">Tipo de Antedígito</label>
+                    <select name="antiDigit-${i}">
+                        <option value="0" ${currentPref?.isOdd ? "selected" : ""}>Par</option>
+                        <option value="1" ${currentPref?.isOdd ? "selected" : ""}>ímpar</option>
+                        <option value="2">Nenhum</option>
+                    </select>
+                    <div class="field">
+                    <label for="startDate-${i}">De</label>
+                    <input name="startDate-${i}" type="date" value="${currentPref?.startDate ? currentPref.startDate : c.data_inicial?.split("T")[0] }" required style="display: flex; flexDirection: column; gap: 8px">
+                    </div>
+                    <div class="field">
+                    <label for="endDate-${i}">Até</label>
+                    <input name="endDate-${i}" type="date" value="${currentPref?.endDate ? currentPref.endDate : c.data_final?.split("T")[0] }" required style="display: flex; flexDirection: column; gap: 8px">
+                    </div>
+                    </div>
+                `
+                }).join("")
+            }
+
+        }
+
+
+    }
 }
+
+
 
 async function openLawsuit() {
     renderModal().open({

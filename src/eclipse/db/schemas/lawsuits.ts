@@ -15,6 +15,10 @@ export type Lawsuits = {
     class: string // tipo de ação
     favoriteEvents?: string[]
     releaseDate?: string | Date
+     publicDefendersOffice?: {
+        id?: number
+        name?: string
+    }
     defender: {
         ativo: boolean
         atuacoes: [{

@@ -19,6 +19,10 @@ export type Lawsuits = {
     class?: string // tipo de ação
     favoriteEvents?: string[] // eventos favoritados.
     releaseDate?: string | Date // data de disponibilização
+    publicDefendersOffice?: {
+        id?: number
+        name?: string
+    } // id da defensoria
     summons?: [{
         number: string
         url: string
