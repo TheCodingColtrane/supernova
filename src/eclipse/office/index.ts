@@ -26,6 +26,7 @@ let currentPage = 1;
 let lawsuitPageSize = 30;
 let taskPageSize = 12
 let filteredLawsuits: Lawsuits[] = [];
+let assignedToMeLawsuits: Lawsuits[] = [];
 let filteredTasks: Tasks[] = []
 let pdos: Defensores[]
 let myRoles = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
@@ -93,8 +94,9 @@ function paginateLawsuitTable(data: Lawsuits[], initialRender = false) {
   renderTable(
     filteredLawsuits.slice(start, end),
     isHolidays.checked ? holidaysData : [],
-    isElapsedDays.checked ? true : false,
-    initialRender
+    isElapsedDays.checked,
+    initialRender,
+    activeFilters.mainPage.assignedToMe
   );
 
   renderPagination(0);
@@ -190,69 +192,23 @@ function getFilteredItems() {
   const monday = new Date()
   monday.setDate(curDate.getDate() - curDate.getDay())
   friday.setDate(curDate.getDate() - curDate.getDay() + 5);
-  const startWeek = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
   // const isolastWeekWorkingDay = lastWeekWorkingDay.toISOString().split("T")[0]
   const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
-  console.log(monday, startWeek, lastWeekWorkingDay)
   let isoDeadline = new Date()
   const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
-  if (!activePage)
-    return lawsuitsData.filter(item => {
-      if (item.deadline)
-        isoDeadline = new Date(item.deadline + "T03:00:00.000Z")
+  if (!activePage) {
+    const filters = applyFilters(
+      activeFilters.mainPage.assignedToMe && assignedToMeLawsuits.length === 0 ?
+        lawsuitsData :
+        activeFilters.mainPage.assignedToMe && assignedToMeLawsuits.length > 0
+          ? assignedToMeLawsuits : lawsuitsData)
 
-      if (activeFilters.mainPage.circuit &&
-        item.circuit !== activeFilters.mainPage.circuit)
-        return false;
+    return filters
 
-      if (activeFilters.mainPage.status &&
-        item.status !== activeFilters.mainPage.status)
-        return false;
 
-      if (activeFilters.mainPage.side &&
-        (item.isDefendant ? "Passivo" : "Ativo") !== activeFilters.mainPage.side)
-        return false;
 
-      if (activeFilters.mainPage.class && item.class !== activeFilters.mainPage.class)
-        return false
+  }
 
-      if (activeFilters.mainPage.assignedToMe && !activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
-        const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
-        if (pdo) {
-          if (pdo.isOdd) {
-            if (Number(item.number[6]) % 2 === 0) return false
-          } else
-            if (Number(item.number[6]) % 1 === 0) return false
-        }
-
-      }
-
-      if (activeFilters.mainPage.dueToday)
-        if (isoDeadline.toISOString() !== isoToday.toISOString())
-
-          // if (item.daysLeft !== 0)
-          return false
-
-      if (activeFilters.mainPage.dueThisWeek)
-        if (isoDeadline < startWeek || isoDeadline > lastWeekWorkingDay)
-
-          // if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
-          return false
-
-      if (activeFilters.mainPage.search) {
-
-        const txt = activeFilters.mainPage.search.toUpperCase();
-
-        if (
-          !item.assisted.toUpperCase().includes(txt) &&
-          !item.number.includes(txt)
-        )
-          return false;
-
-      }
-
-      return true;
-    });
   else
     return tasksData.filter(task => {
       if (task.dueDate)
@@ -316,6 +272,80 @@ function filterItems() {
   else
     paginateTasks(filtered as Tasks[])
   updateCards();
+}
+
+function applyFilters(lawsuits: Lawsuits[]) {
+  let isoDeadline = new Date()
+  const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
+  const curDate = new Date()
+  const friday = new Date(curDate);
+  const monday = new Date()
+  monday.setDate(curDate.getDate() - curDate.getDay())
+  friday.setDate(curDate.getDate() - curDate.getDay() + 5);
+  const startWeek = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
+  const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
+  return lawsuits.filter(item => {
+    if (item.deadline)
+      isoDeadline = new Date(item.deadline + "T03:00:00.000Z")
+
+    if (activeFilters.mainPage.circuit &&
+      item.circuit !== activeFilters.mainPage.circuit)
+      return false;
+
+    if (activeFilters.mainPage.status &&
+      item.status !== activeFilters.mainPage.status)
+      return false;
+
+    if (activeFilters.mainPage.side &&
+      (item.isDefendant ? "Passivo" : "Ativo") !== activeFilters.mainPage.side)
+      return false;
+
+    if (activeFilters.mainPage.class && item.class !== activeFilters.mainPage.class)
+      return false
+
+    if (activeFilters.mainPage.dueToday)
+      if (isoDeadline.toISOString() !== isoToday.toISOString())
+
+        // if (item.daysLeft !== 0)
+        return false
+
+    if (activeFilters.mainPage.dueThisWeek)
+      if (isoDeadline < startWeek || isoDeadline > lastWeekWorkingDay)
+
+        // if (item.daysLeft && item.daysLeft > 4 || isoDeadline > lastWeekWorkingDay)
+        return false
+
+    if (activeFilters.mainPage.assignedToMe && activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
+      const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
+      if (pdo) {
+        if (new Date(item.releaseDate!) >= new Date(pdo.startDate) && new Date(item.releaseDate!) <= new Date(pdo.endDate)) {
+          if (pdo.isOdd) {
+            if (Number(item.number[6]) % 2 === 0) return false
+          } else if (pdo.isOdd === false)
+            if (Number(item.number[6]) % 1 === 0) return false
+
+        }
+
+      } else {
+        return false
+      }
+
+    }
+
+    if (activeFilters.mainPage.search) {
+
+      const txt = activeFilters.mainPage.search.toUpperCase();
+
+      if (
+        !item.assisted.toUpperCase().includes(txt) &&
+        !item.number.includes(txt)
+      )
+        return false;
+
+    }
+
+    return true;
+  });
 }
 
 const activeFilters = {
@@ -489,36 +519,27 @@ let workersData = Array<Worker>();
           }
         }//renderTable(lawsuitsData, [], undefined, true)
         activeCards(blueCard, "var(--info)")
+        assignedToMeLawsuits = lawsuitsData.filter(item => {
+          if (activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
+            const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
+            if (pdo) {
+              if (new Date(item.releaseDate!) >= new Date(pdo.startDate) && new Date(item.releaseDate!) <= new Date(pdo.endDate)) {
+                if (pdo.isOdd) {
+                  if (Number(item.number[6]) % 2 === 0) return false
+                } else if (pdo.isOdd === false)
+                  if (Number(item.number[6]) % 1 === 0) return false
 
-        const ths = Array.from(document.querySelectorAll("thead th"))
-        for (const th of ths) {
-          th.addEventListener("click", () => {
-            const curTh = th as HTMLElement
-            switch (curTh.dataset.nm) {
-              case "number":
-                changeSortOrder(curTh.dataset.nm!, "number", curTh.dataset.sort!)
-                break
-              case "circuit":
-                changeSortOrder(curTh.dataset.nm!, "circuit", curTh.dataset.sort!)
-                break
-              case "assisted":
-                changeSortOrder(curTh.dataset.nm!, "assisted", curTh.dataset.sort!)
-                break
-              case "status":
-                changeSortOrder(curTh.dataset.nm!, "status", curTh.dataset.sort!)
-                break
-              case "side":
-                changeSortOrder(curTh.dataset.nm!, "isDefendant", curTh.dataset.sort!)
-                break
-              case "deadline":
-                changeSortOrder(curTh.dataset.nm!, "deadline", curTh.dataset.sort!)
-                break
-              case "daysLeft":
-                changeSortOrder(curTh.dataset.nm!, "daysLeft", curTh.dataset.sort!)
-                break
+              }
+
+            } else {
+              return false
             }
-          })
-        }
+
+          }
+
+          return true
+        })
+       
         const searchField = document.querySelector("#searchLawsuitInput")!
         searchField.addEventListener("keyup", (e) => {
           activeFilters.mainPage.search = (e.target as HTMLInputElement).value
@@ -536,7 +557,14 @@ let workersData = Array<Worker>();
         document.querySelector("#activeCount-p1")!.innerHTML = lawsuitsData.length.toString()
 
 
-        document.querySelector("#checkHolidays")?.addEventListener("change", () => {
+        document.querySelector("#checkHolidays")?.addEventListener("change", (e) => {
+          const isHolidays = e.target as HTMLInputElement
+          const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+
+          if (isHolidays.checked)
+            isElapsedDays.disabled = true
+          else
+            isElapsedDays.disabled = false
           if (holidaysData) {
             // const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
             // const input = e.target as HTMLInputElement
@@ -546,7 +574,14 @@ let workersData = Array<Worker>();
 
         })
 
-        document.querySelector("#checkCalendarDays")?.addEventListener("change", () => {
+        document.querySelector("#checkCalendarDays")?.addEventListener("change", (e) => {
+          const isElapsedDays = e.target as HTMLInputElement
+          const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
+
+          if (isElapsedDays.checked)
+            isHolidays.disabled = true
+          else
+            isHolidays.disabled = false
           if (holidaysData) {
             paginateLawsuitTable(lawsuitsData)
 
@@ -775,48 +810,16 @@ function openPanel(currentLawsuit?: Lawsuits) {
 // row.onclick = () => openPanel(processo);
 
 
-function changeSortOrder(propName: string, prop: keyof Lawsuits, sortOrder: string) {
-
-  if (sortOrder === "" || sortOrder === "desc") sortOrder = "asc"
-  else sortOrder = "desc"
-
-  const ths = Array.from(document.querySelectorAll("thead th"))
-  for (const th of ths) {
-    const curTh = th as HTMLElement
-    if (curTh.dataset.nm !== propName) {
-      curTh.dataset.sort = ""
-    } else curTh.dataset.sort = sortOrder
-  }
-
-  const b64Text = btoa(propName + "," + sortOrder)
-  const url = new URLSearchParams(window.location.search)
-  url.set("key", b64Text)
-  window.history.pushState(null, '', url.toString())
-  const data = JSON.parse(sessionStorage.getItem("lawsuits")!) as Lawsuits[]
-
-  const sortedLawsuits = sortTable(data, prop, sortOrder)
-  renderTable(sortedLawsuits)
-  // sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-}
-
-
-function sortTable<Lawsuits>(arr: Lawsuits[], property: keyof Lawsuits, order: string): Lawsuits[] {
-  return [...arr].sort((a, b) => {
-    const valA = a[property];
-    const valB = b[property];
-
-    if (valA < valB) return order === 'asc' ? -1 : 1;
-    if (valA > valB) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
-}
-async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDays = false, initialRender = false) {
+async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDays = false, initialRender = false, isAssignedToMe = false) {
   const table = document.getElementById("lawsuitTable");
   table?.replaceChildren()
   table!.innerHTML = "";
   const today = new Date()
   let initialDeadline = "", deadline = ""
+  let x = 0
+  console.log(isAssignedToMe)
   data.forEach((p: Lawsuits) => {
+
     let dates = { days: 0, deadline: new Date, isDueDate: false }
     if (p.initialDeadline && p.deadline) {
       const deadlineDateComponents = p.deadline.toString().split("-")
@@ -826,12 +829,12 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       deadline = `<span>Final: ${deadlineDateComponents[2] + "/" + deadlineDateComponents[1] + "/" + deadlineDateComponents[0]}</span>`
 
     }
-
+    console.log(x++)
 
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
     tr.dataset.status = p.status
-    const timeLeft = 23 - new Date().getHours() + " hora(s) e " + (60 - today.getMinutes()) + " minuto(s) restante(s)"
+    const timeLeft = 23 - new Date().getHours() + "h e " + (60 - today.getMinutes()) + " min restante(s)"
     const lawsuitNumber = `${p.number.substring(0, 7)}-${p.number.substring(7, 9)}.${p.number.substring(9, 13)}.${p.number[13]}.${p.number.substring(14, 16)}.${p.number.substring(16)}`
     tr.innerHTML = `
   
@@ -1037,7 +1040,10 @@ document.querySelector("#assignedToMe")?.addEventListener("change", (e) => {
   const isAssignedToMe = e.target as HTMLInputElement
   if (isAssignedToMe.checked) {
     activeFilters.mainPage.assignedToMe = true
-  } else activeFilters.mainPage.assignedToMe = false
+  } else {
+    activeFilters.mainPage.assignedToMe = false
+    // assignedToMeLawsuits = []
+  }
   updateChipText()
 })
 
@@ -1170,6 +1176,99 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
 })
 
 
+// function updateCards() {
+//   let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0, awaitingCount = 0
+//   const curDate = new Date()
+//   const friday = new Date(curDate);
+//   const monday = new Date(curDate)
+//   friday.setDate(curDate.getDate() - curDate.getDay() + 5);
+//   monday.setDate(curDate.getDate() - curDate.getDay() + 1);
+//   const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
+//   const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
+//   const navItems = document.querySelectorAll(".nav-item")
+//   if (navItems.item(1).className === "nav-item active") activePage = 1
+//   if (!activePage) {
+//     const doneCount = document.querySelector("#doneCount-p1")
+//     if (!activeFilters.mainPage.assignedToMe) {
+//       doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Aguardando Abertura").length)
+//       activeCount = lawsuitsData.filter(c => c.status === "Aberto").length
+//     }
+
+//     for (const lawsuit of filteredLawsuits) {
+//       if (lawsuit.deadline && lawsuit.status != "Finalizado") {
+//         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
+//         const midnightMonday = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
+//         if (isoToday.toISOString().split("T")[0] === lawsuit.deadline ||
+//           isoToday > new Date(lawsuit.deadline + "T03:00:00.000Z") ||
+//           lawsuit.daysLeft === 0) dueTodayCount++
+//         if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
+//       }
+
+//       if (activeFilters.mainPage.assignedToMe) {
+//         if (activeRoles?.includes(lawsuit.publicDefendersOffice?.id ?? 0)) {
+//           const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === lawsuit.publicDefendersOffice?.id)
+//           if (pdo) {
+//             if (new Date(lawsuit.releaseDate!) >= new Date(pdo.startDate) && new Date(lawsuit.releaseDate!) <= new Date(pdo.endDate)) {
+//               if (pdo.isOdd) {
+//                 if (Number(lawsuit.number[6]) % 1 === 0)
+//                   if (lawsuit.status === "Aguardando Abertura") awaitingCount++
+//                   else activeCount++
+//               } else if (pdo.isOdd === false) {
+//                 if (Number(lawsuit.number[6]) % 2 === 0) {
+//                   if (lawsuit.status === "Aguardando Abertura") awaitingCount++
+//                   else activeCount++
+//                 }
+//               }
+
+//               else {
+//                 if (lawsuit.status === "Aguardando Abertura") awaitingCount++
+//                 else activeCount++
+//               }
+
+//             }
+//           }
+//         }
+//       }
+//     }
+
+//     if (activeFilters.mainPage.assignedToMe) doneCount!.innerHTML = String(awaitingCount)
+
+
+
+//     // if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado") {
+//     document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
+//     document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
+//     document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
+//     // } else {
+//     //   document.querySelector("#redLabel1")!.innerHTML = "Abrindo hoje"
+//     //   document.querySelector("#yellowLabel1")!.innerHTML = "Abrindo esta semana"
+//     //   document.querySelector("#blueLabel1")!.innerHTML = "Processos pendentes de abertura"
+//     // }
+
+
+//   }
+
+//   else {
+//     activeCount = tasksData.length
+//     const doneCount = document.querySelector("#doneCount-p2")
+//     doneCount!.innerHTML = String(tasksData.filter(c => c.status === "Concluida").length)
+
+//     for (const task of filteredTasks) {
+//       const dueDate = new Date(task.dueDate + "T03:00:00.000Z")
+//       const dates = getDeadline(new Date(), dueDate)
+//       if (isoToday.toISOString().split("T")[0] === task.dueDate || dates.days === 0) dueTodayCount++
+//       if (monday >= dueDate || dueDate <= lastWeekWorkingDay) weekCount++
+//     }
+//   }
+
+
+//   document.querySelector(`${activePage ? "#todayCount-p2" : "#todayCount-p1"}`)!.innerHTML = String(dueTodayCount)
+//   document.querySelector(`${activePage ? "#weekCount-p2" : "#weekCount-p1"}`)!.innerHTML = String(weekCount)
+//   document.querySelector(`${activePage ? "#activeCount-p2" : "#activeCount-p1"}`)!.innerHTML = String(activeCount)
+
+
+// }
+
 function updateCards() {
   let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0
   const curDate = new Date()
@@ -1184,8 +1283,16 @@ function updateCards() {
   if (!activePage) {
     const doneCount = document.querySelector("#doneCount-p1")
     doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Aguardando Abertura").length)
+    if (activeFilters.mainPage.assignedToMe) {
+      activeCount = assignedToMeLawsuits.filter(c => c.status === "Aberto").length
+      doneCount!.innerHTML = String(assignedToMeLawsuits.filter(c => c.status === "Aguardando Abertura").length)
 
-    activeCount = lawsuitsData.filter(c => c.status === "Aberto").length
+    }
+    else {
+      activeCount = lawsuitsData.filter(c => c.status === "Aberto").length
+      doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Aguardando Abertura").length)
+
+    }
     for (const lawsuit of filteredLawsuits) {
       if (lawsuit.deadline && lawsuit.status != "Finalizado") {
         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
@@ -1230,6 +1337,7 @@ function updateCards() {
   document.querySelector(`${activePage ? "#activeCount-p2" : "#activeCount-p1"}`)!.innerHTML = String(activeCount)
 
 }
+
 
 function updateChipText() {
   if (activeFilters.mainPage.circuit)

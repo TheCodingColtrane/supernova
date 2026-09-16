@@ -278,13 +278,14 @@ function openPreferencesModal() {
                             lowest: Number(formData.get("lowest") as string),
                         }
                     } else {
-
                         user.roles.map((c, i) => {
+                            if(formData.get(`startDate-${i}`))
                             preferences.office?.customRolesDates!.push({
-                                endDate: formData.get(`endDate-${i}`) as string,
-                                startDate: formData.get(`startDate-${i}`) as string,
-                                isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true : false,
-                                pdoId: c.id
+                                endDate: formData.get(`endDate-${i}`) + "T03:00:00.000Z" as string,
+                                startDate: formData.get(`startDate-${i}`) + "T03:00:00.000Z" as string,
+                                isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true : 
+                                formData.get(`antiDigit-${i}`)!.toString() === "1" ? false : null,
+                                pdoId: c.defensoria.id
                             })
 
                         })
@@ -330,6 +331,8 @@ function openPreferencesModal() {
             if (user) {
                 form.innerHTML = user.roles.map((c, i) => {
                     const currentPref = savedPreferences?.office?.customRolesDates?.find(c => c.pdoId === c.pdoId)
+                    const today = new Date()
+                    if(new Date(c.data_final!) > today) 
                     return `
                     <div class="form-group">
                     <span>${c.defensoria.nome}</span>
@@ -341,13 +344,14 @@ function openPreferencesModal() {
                         <option value="1" ${currentPref?.isOdd ? "selected" : ""}>ímpar</option>
                         <option value="2">Nenhum</option>
                     </select>
-                    <div class="field">
-                    <label for="startDate-${i}">De</label>
-                    <input name="startDate-${i}" type="date" value="${currentPref?.startDate ? currentPref.startDate : c.data_inicial?.split("T")[0] }" required style="display: flex; flexDirection: column; gap: 8px">
                     </div>
-                    <div class="field">
+                    <div class="form-group">
+                    <label for="startDate-${i}">De</label>
+                    <input name="startDate-${i}" type="date" value="${currentPref?.startDate ? currentPref.startDate : c.data_inicial?.split("T")[0] }" required style="display: flex; flex-direction: column; gap: 8px">
+                    </div>
+                    <div class="form-group">
                     <label for="endDate-${i}">Até</label>
-                    <input name="endDate-${i}" type="date" value="${currentPref?.endDate ? currentPref.endDate : c.data_final?.split("T")[0] }" required style="display: flex; flexDirection: column; gap: 8px">
+                    <input name="endDate-${i}" type="date" value="${currentPref?.endDate ? currentPref.endDate : c.data_final?.split("T")[0] }" required style="display: flex; flex-direction: column; gap: 8px">
                     </div>
                     </div>
                 `
