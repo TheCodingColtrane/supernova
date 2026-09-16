@@ -1,6 +1,5 @@
 import { dbInstance } from "../db/index";
 import type { Lawsuits } from "../db/schemas/lawsuits";
-import { updateLawsuits } from "../service/lawsuits";
 
 const db = dbInstance()
 
@@ -184,7 +183,6 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
     for (const lawsuit of existingLawsuits) {
         
         if (!newLawsuitItems.has(lawsuit.summon) && lawsuit.status === "Aberto") {
-            console.log(lawsuit)
             existingLawsuitsToDelete.push(lawsuit)
         }
         
@@ -194,7 +192,6 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
         }
         else {
             if (!newLawsuitToDelete.has(lawsuit.summon)) {
-                console.log(lawsuit)
                 newLawsuitToDelete.add(lawsuit.summon)
 
             }
@@ -206,41 +203,21 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
 
     if (existingLawsuitsToDelete.length > 0)
         await deleteLawsuitsData(existingLawsuitsToDelete.map(c => c.id!))
+//     const awaitingOpeningNewLawsuits = newLawsuits.filter(c => c.status === "Aguardando Abertura")
+// const awaitingOpeningLawsuits = existingLawsuits.filter(c => c.status === "Aguardando Abertura")
+//         let found = false
+// for (const nLawsuit of awaitingOpeningNewLawsuits) {
+//         for (const eLawsuit of awaitingOpeningLawsuits) {
+//             if(nLawsuit.assisted === eLawsuit.assisted && nLawsuit.number === eLawsuit.number){
+//                  found = true
+//                  break
+//             }
+
+//         }    
+//     if(!found) newLawsuits.push(nLawsuit)
+
+//     }
     await saveLawsuitsData(newLawsuits)
     existingLawsuits.push(...newLawsuits)
     return existingLawsuits
-}
-
-export async function getExistingLawsuits(lawsuits: Lawsuits[], query = true) {
-    let existingLawsuits: Lawsuits[] = []
-    if (query) {
-        existingLawsuits = await db.lawsuits.where('number').anyOf(lawsuits.map(c => c.number)).toArray()
-    } else existingLawsuits = lawsuits
-    for (const existingLawsuit of existingLawsuits) {
-        for (const lawsuit of lawsuits) {
-            if (existingLawsuit.number === lawsuit.number) {
-                if (existingLawsuit.status !== "Expirado" && existingLawsuit.status !== "Finalizado") {
-                    if (existingLawsuit.status !== lawsuit.status) {
-                        existingLawsuit.status = lawsuit.status
-                        existingLawsuit.initialDeadline = lawsuit.initialDeadline
-                        existingLawsuit.deadline = lawsuit.deadline
-                        if (lawsuit.deadline) {
-                            if (new Date(lawsuit.deadline + "T03:00:00.000Z") > new Date()) {
-                                existingLawsuit.status = "Expirado"
-                            }
-
-                        }
-                        existingLawsuit.summonURL = lawsuit.summonURL
-                        existingLawsuit.summon = lawsuit.summon
-                        existingLawsuit.class = lawsuit.class
-                        break
-                    }
-                }
-
-            }
-        }
-    }
-    const isUpdated = await updateLawsuits(existingLawsuits)
-    if (isUpdated) return existingLawsuits
-    return []
 }

@@ -23,7 +23,7 @@ export type UserPreferences = {
         },
         customRolesDates?: Array<{
             pdoId: number
-            isOdd: boolean
+            isOdd: boolean | null
             startDate: string | Date
             endDate: string | Date
         }>,
