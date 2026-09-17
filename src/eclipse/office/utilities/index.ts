@@ -265,8 +265,8 @@ function openPreferencesModal() {
                             customRolesEnabled: savedPreferences?.office?.customRolesEnabled ?? false,
                             elapsedDaysEnabled: savedPreferences?.office?.elapsedDaysEnabled ?? false,
                             holidaysEnabled: savedPreferences?.office?.holidaysEnabled ?? false,
-                            customRolesDates: savedPreferences?.office?.customRolesDates ?? [{endDate: "", isOdd: false, pdoId:0, startDate: "" }],
-                            deadlinesPriorities: savedPreferences?.office?.deadlinesPriorities ?? {highest: 3, high: 5, medium: 10, low: 15, lowest: 30}
+                            customRolesDates: savedPreferences?.office?.customRolesDates ?? [{ endDate: "", isOdd: false, pdoId: 0, startDate: "" }],
+                            deadlinesPriorities: savedPreferences?.office?.deadlinesPriorities ?? { highest: 3, high: 5, medium: 10, low: 15, lowest: 30 }
                         }
                     }
                     if (pref === "0") {
@@ -279,22 +279,41 @@ function openPreferencesModal() {
                         }
                     } else {
                         user.roles.map((c, i) => {
-                            if(formData.get(`startDate-${i}`))
-                            preferences.office?.customRolesDates!.push({
-                                endDate: formData.get(`endDate-${i}`) + "T03:00:00.000Z" as string,
-                                startDate: formData.get(`startDate-${i}`) + "T03:00:00.000Z" as string,
-                                isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true : 
-                                formData.get(`antiDigit-${i}`)!.toString() === "1" ? false : null,
-                                pdoId: c.defensoria.id
-                            })
+                            if (formData.get(`startDate-${i}`)) {
+                                let customRole = preferences.office?.customRolesDates?.findIndex(x => x.pdoId === c.defensoria.id)
+                                if (customRole && customRole > -1 && preferences.office?.customRolesDates) {
+                                    preferences.office.customRolesDates[customRole] = {
+                                        endDate: formData.get(`endDate-${i}`) + "T03:00:00.000Z" as string,
+                                        startDate: formData.get(`startDate-${i}`) + "T03:00:00.000Z" as string,
+                                        isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true :
+                                            formData.get(`antiDigit-${i}`)!.toString() === "1" ? false : null,
+                                        pdoId: c.defensoria.id
+                                    }
+                                } else {
+                                    preferences.office?.customRolesDates!.push({
+                                        endDate: formData.get(`endDate-${i}`) + "T03:00:00.000Z" as string,
+                                        startDate: formData.get(`startDate-${i}`) + "T03:00:00.000Z" as string,
+                                        isOdd: formData.get(`antiDigit-${i}`)!.toString() === "0" ? true :
+                                            formData.get(`antiDigit-${i}`)!.toString() === "1" ? false : null,
+                                        pdoId: c.defensoria.id
+                                    })
+                                }
+
+
+
+
+                            }
 
                         })
+
+
                     }
-                        
-                        savedPreferences = preferences
-                        localStorage.setItem("preferences", JSON.stringify(preferences))
-                        showToast("Preferência salva com sucesso!")
-                    
+
+
+                    savedPreferences = preferences
+                    localStorage.setItem("preferences", JSON.stringify(preferences))
+                    showToast("Preferência salva com sucesso!. Recarregando a página.")
+                    window.location.reload()
                 }
             }
         ]
@@ -329,11 +348,12 @@ function openPreferencesModal() {
 
         } else {
             if (user) {
+
                 form.innerHTML = user.roles.map((c, i) => {
-                    const currentPref = savedPreferences?.office?.customRolesDates?.find(c => c.pdoId === c.pdoId)
+                    const currentPref = savedPreferences?.office?.customRolesDates?.find(x => x.pdoId === c.defensoria.id)
                     const today = new Date()
-                    if(new Date(c.data_final!) > today) 
-                    return `
+                    if (new Date(c.data_final!) > today)
+                        return `
                     <div class="form-group">
                     <span>${c.defensoria.nome}</span>
                     </div>
@@ -341,17 +361,17 @@ function openPreferencesModal() {
                     <label for="antiDigit-${i}">Tipo de Antedígito</label>
                     <select name="antiDigit-${i}">
                         <option value="0" ${currentPref?.isOdd ? "selected" : ""}>Par</option>
-                        <option value="1" ${currentPref?.isOdd ? "selected" : ""}>ímpar</option>
+                        <option value="1" ${!currentPref?.isOdd ? "selected" : ""}>ímpar</option>
                         <option value="2">Nenhum</option>
                     </select>
                     </div>
                     <div class="form-group">
                     <label for="startDate-${i}">De</label>
-                    <input name="startDate-${i}" type="date" value="${currentPref?.startDate ? currentPref.startDate : c.data_inicial?.split("T")[0] }" required style="display: flex; flex-direction: column; gap: 8px">
+                    <input name="startDate-${i}" type="date" value="${currentPref?.startDate ? String(currentPref.startDate).split("T")[0] : c.data_inicial?.split("T")[0]}" required style="display: flex; flex-direction: column; gap: 8px">
                     </div>
                     <div class="form-group">
                     <label for="endDate-${i}">Até</label>
-                    <input name="endDate-${i}" type="date" value="${currentPref?.endDate ? currentPref.endDate : c.data_final?.split("T")[0] }" required style="display: flex; flex-direction: column; gap: 8px">
+                    <input name="endDate-${i}" type="date" value="${currentPref?.endDate ? String(currentPref.endDate).split("T")[0] : c.data_final?.split("T")[0]}" required style="display: flex; flex-direction: column; gap: 8px">
                     </div>
                     </div>
                 `

@@ -29,8 +29,8 @@ let filteredLawsuits: Lawsuits[] = [];
 let assignedToMeLawsuits: Lawsuits[] = [];
 let filteredTasks: Tasks[] = []
 let pdos: Defensores[]
-let myRoles = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
-const activeRoles = myRoles?.office?.customRolesDates?.map(c => c.pdoId)
+let userPreferences = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
+const activeRoles = userPreferences?.office?.customRolesDates?.map(c => c.pdoId)
 
 let user: User | undefined = undefined
 function showAlert(message: string, type = 'success', duration = 4000) {
@@ -292,6 +292,11 @@ function applyFilters(lawsuits: Lawsuits[]) {
       item.circuit !== activeFilters.mainPage.circuit)
       return false;
 
+    if (activeFilters.mainPage.pdo &&
+      item.publicDefendersOffice?.name !== activeFilters.mainPage.pdo)
+      return false;
+
+
     if (activeFilters.mainPage.status &&
       item.status !== activeFilters.mainPage.status)
       return false;
@@ -316,7 +321,7 @@ function applyFilters(lawsuits: Lawsuits[]) {
         return false
 
     if (activeFilters.mainPage.assignedToMe && activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
-      const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
+      const pdo = userPreferences?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
       if (pdo) {
         if (new Date(item.releaseDate!) >= new Date(pdo.startDate) && new Date(item.releaseDate!) <= new Date(pdo.endDate)) {
           if (pdo.isOdd) {
@@ -349,7 +354,7 @@ function applyFilters(lawsuits: Lawsuits[]) {
 }
 
 const activeFilters = {
-  mainPage: { circuit: "", status: "", side: "", assignedTo: "", dueToday: false, dueThisWeek: false, search: "", class: "", assignedToMe: false },
+  mainPage: { circuit: "", status: "", side: "", pdo: "", dueToday: false, dueThisWeek: false, search: "", class: "", assignedToMe: false },
   todoPage: { number: "", circuit: "", status: "", assignedTo: "", dueToday: false, dueThisWeek: false, caseNumber: "", search: "", finalized: false }
 };
 let lawsuitsData = Array<Lawsuits>();
@@ -358,6 +363,7 @@ let tasksData = Array<Tasks>()
 let defender: Partial<Defenders> = {}
 let circuits = new Set("");
 let lawsuitClasses = new Set("");
+let defendersOffice = new Set("")
 let workersData = Array<Worker>();
 (async function () {
   try {
@@ -406,6 +412,7 @@ let workersData = Array<Worker>();
     lawsuitsData = lawsuitsData.map(c => {
       if (!circuits.has(c.circuit)) circuits.add(c.circuit)
       if (!lawsuitClasses.has(c.class ?? "")) lawsuitClasses.add(c.class ?? "")
+      if (!defendersOffice.has(c.publicDefendersOffice?.name ?? "")) defendersOffice.add(c.publicDefendersOffice?.name ?? "")
       let dates = { days: 0, deadline: new Date, isDueDate: false }
       if (c.initialDeadline && c.deadline) {
         const dateComponents = c.deadline.toString().split("-")
@@ -418,26 +425,40 @@ let workersData = Array<Worker>();
     const select = document.querySelector("#filterCircuit") as HTMLSelectElement
     const circuitSelect = document.querySelector("#filterCircuit2") as HTMLSelectElement
     const filterClass = document.querySelector("#filterClass") as HTMLSelectElement
+    const filterPDO = document.querySelector("#filterPDO") as HTMLSelectElement
 
 
     circuitSelect.addEventListener("change", (e) => {
       const select = e.target as HTMLSelectElement
       if (select.selectedOptions.item(0)?.textContent === "Todas") {
         activeFilters.todoPage.circuit = ""
-        updateChipText()
+        updateDashboardUI()
       } else {
         activeFilters.todoPage.circuit = select.selectedOptions.item(0)?.textContent!
-        updateChipText()
+        updateDashboardUI()
       }
     })
     filterClass.addEventListener("change", () => {
       const selectedItem = filterClass.options.item(filterClass.selectedIndex)!.label
       if (selectedItem === "Todos") {
         activeFilters.mainPage.class = ""
-        updateChipText()
+        updateDashboardUI()
       } else {
         activeFilters.mainPage.class = selectedItem
-        updateChipText()
+        updateDashboardUI()
+      }
+
+    })
+
+
+    filterPDO.addEventListener("change", () => {
+      const selectedItem = filterPDO.options.item(filterPDO.selectedIndex)!.label
+      if (selectedItem === "Todas") {
+        activeFilters.mainPage.pdo = ""
+        updateDashboardUI()
+      } else {
+        activeFilters.mainPage.pdo = selectedItem
+        updateDashboardUI()
       }
 
     })
@@ -466,9 +487,16 @@ let workersData = Array<Worker>();
       filterClass.options.add(opt)
     })
 
+    defendersOffice.forEach(c => {
+      const opt = document.createElement("option")
+      opt.textContent = c
+      filterPDO.options.add(opt)
+    })
+
+
     filterRowCount.addEventListener("change", () => {
       lawsuitPageSize = Number(filterRowCount[filterRowCount.selectedIndex].label)
-      paginateLawsuitTable(lawsuitsData)
+      updateDashboardUI()
     })
 
 
@@ -491,7 +519,6 @@ let workersData = Array<Worker>();
           const rawDateText = rawLastUpdate.substring(0, 10).split("/")
           const date = new Date(rawDateText[2] + "-" + rawDateText[1] + "-" + rawDateText[0] + "T03:00:00.000Z")
           let nextDate = addDays(date, 1)
-          // nextDate = addHours(nextDate, 3)
           if (new Date() > nextDate) {
             await updateLawsuitTable(true)
             if (offices) {
@@ -521,7 +548,7 @@ let workersData = Array<Worker>();
         activeCards(blueCard, "var(--info)")
         assignedToMeLawsuits = lawsuitsData.filter(item => {
           if (activeRoles?.includes(item.publicDefendersOffice?.id ?? 0)) {
-            const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
+            const pdo = userPreferences?.office?.customRolesDates?.find(c => c.pdoId === item.publicDefendersOffice?.id)
             if (pdo) {
               if (new Date(item.releaseDate!) >= new Date(pdo.startDate) && new Date(item.releaseDate!) <= new Date(pdo.endDate)) {
                 if (pdo.isOdd) {
@@ -539,12 +566,11 @@ let workersData = Array<Worker>();
 
           return true
         })
-       
+
         const searchField = document.querySelector("#searchLawsuitInput")!
         searchField.addEventListener("keyup", (e) => {
           activeFilters.mainPage.search = (e.target as HTMLInputElement).value
-          // paginateLawsuitTable(lawsuitsData)
-          updateChipText()
+          updateDashboardUI()
         })
 
 
@@ -561,14 +587,27 @@ let workersData = Array<Worker>();
           const isHolidays = e.target as HTMLInputElement
           const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
 
-          if (isHolidays.checked)
+          if (isHolidays.checked) {
             isElapsedDays.disabled = true
-          else
+            if (userPreferences?.office) {
+              userPreferences.office.holidaysEnabled = true
+              localStorage.setItem("preferences", JSON.stringify(userPreferences))
+
+            }
+          }
+          else {
             isElapsedDays.disabled = false
+            if (userPreferences?.office) {
+              userPreferences.office.holidaysEnabled = false
+              localStorage.setItem("preferences", JSON.stringify(userPreferences))
+
+            }
+          }
+
           if (holidaysData) {
             // const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
             // const input = e.target as HTMLInputElement
-            paginateLawsuitTable(lawsuitsData)
+             updateDashboardUI()
             // renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
           }
 
@@ -578,12 +617,24 @@ let workersData = Array<Worker>();
           const isElapsedDays = e.target as HTMLInputElement
           const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
 
-          if (isElapsedDays.checked)
+          if (isElapsedDays.checked) {
             isHolidays.disabled = true
-          else
+            if (userPreferences?.office) {
+              userPreferences.office.elapsedDaysEnabled = true
+              localStorage.setItem("preferences", JSON.stringify(userPreferences))
+            }
+          }
+          else {
             isHolidays.disabled = false
+            if (userPreferences?.office) {
+              userPreferences.office.elapsedDaysEnabled = false
+              localStorage.setItem("preferences", JSON.stringify(userPreferences))
+
+            }
+
+          }
           if (holidaysData) {
-            paginateLawsuitTable(lawsuitsData)
+             updateDashboardUI()
 
           }
         })
@@ -620,7 +671,29 @@ let workersData = Array<Worker>();
   updateCards()
   const fab = document.querySelector("#toggleable-actions") as HTMLButtonElement
   fab.hidden = true
+  if (userPreferences?.office) {
+    const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
+    const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
+    const isAssignedToMe = document.querySelector("#assignedToMe") as HTMLInputElement
+    if (userPreferences.office.holidaysEnabled){
+      isHolidays.checked = true
+      isHolidays.dispatchEvent(new Event('change'));
+    }
+    else isHolidays.checked = false
+    if (userPreferences.office.elapsedDaysEnabled){
+      isElapsedDays.checked = true
+      isElapsedDays.dispatchEvent(new Event('change'));
+    }
+    else isElapsedDays.checked = false
+    if (userPreferences.office.customRolesEnabled){
+      isAssignedToMe.checked = true
+      isAssignedToMe.dispatchEvent(new Event('change'));
+    }
+    else
+      isAssignedToMe.checked = false
 
+
+  }
 }())
 
 
@@ -747,7 +820,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       else
         lawsuitsData.splice(i, 1)
       closePanel()
-      paginateLawsuitTable(lawsuitsData)
+       updateDashboardUI()
       // renderTableWithOptions()
     }
 
@@ -757,7 +830,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       const idx = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       lawsuitsData = lawsuitsData.splice(idx, 1)
       closePanel()
-      paginateLawsuitTable(lawsuitsData)
+       updateDashboardUI()
 
       // renderTableWithOptions()
     }
@@ -798,7 +871,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       lawsuitsData.push({ ...lawsuit })
       closePanel()
       //renderTableWithOptions()
-      paginateLawsuitTable(lawsuitsData)
+       updateDashboardUI()
 
     }
 
@@ -859,10 +932,8 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
         <td>${p.status}</td>
         <td>${lawsuitNumber}</td>
         <td>${p.class}</td>
-        <td>
-        <span>${p.circuit}</span>
-        <span>${p.publicDefendersOffice?.name}</span>
-        </td>
+        <td>${p.circuit}</td>
+        <td>${p.publicDefendersOffice?.name}</td>
         <td>${p.assisted.toUpperCase()} (${p.isDefendant ? "Passivo" : "Ativo"})</td>
         <td>${p.releaseDate ? new Date(p.releaseDate).toLocaleString() : "Data não disponível"}</td>
         <td>
@@ -917,7 +988,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     viewTasksButton.onclick = () => {
       goToPage(1)
       activeFilters.todoPage.search = p.number
-      updateChipText()
+      updateDashboardUI()
     }
 
     createTaskButton.onclick = async () => {
@@ -1032,7 +1103,7 @@ function activeCards(element: HTMLDivElement, color: string) {
 taskSearchInput.addEventListener("keyup", (e) => {
   const value = (e.target as HTMLInputElement).value
   activeFilters.todoPage.search = value
-  updateChipText()
+  updateDashboardUI()
 
 })
 
@@ -1040,21 +1111,29 @@ document.querySelector("#assignedToMe")?.addEventListener("change", (e) => {
   const isAssignedToMe = e.target as HTMLInputElement
   if (isAssignedToMe.checked) {
     activeFilters.mainPage.assignedToMe = true
+    if (userPreferences?.office) {
+      userPreferences.office.customRolesEnabled = true
+      localStorage.setItem("preferences", JSON.stringify(userPreferences))
+    }
+
   } else {
     activeFilters.mainPage.assignedToMe = false
-    // assignedToMeLawsuits = []
+    if (userPreferences?.office) {
+      userPreferences.office.customRolesEnabled = false
+      localStorage.setItem("preferences", JSON.stringify(userPreferences))
+    }
   }
-  updateChipText()
+  updateDashboardUI()
 })
 
 document.querySelector("#filterStatus2")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.todoPage.status = ""
-    updateChipText()
+    updateDashboardUI()
   } else {
     activeFilters.todoPage.status = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
+    updateDashboardUI()
   }
 })
 
@@ -1063,10 +1142,10 @@ document.querySelector("#filterAssignedTo2")?.addEventListener("change", (e) => 
   // const search = document.querySelector("#search") as HTMLInputElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.todoPage.assignedTo = ""
-    updateChipText()
+    updateDashboardUI()
   } else {
     activeFilters.todoPage.assignedTo = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
+    updateDashboardUI()
   }
 })
 
@@ -1080,10 +1159,10 @@ document.querySelector("#filterCircuit")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todas") {
     activeFilters.mainPage.circuit = ""
-    updateChipText()
+    updateDashboardUI()
   } else {
     activeFilters.mainPage.circuit = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
+    updateDashboardUI()
   }
 })
 
@@ -1093,24 +1172,24 @@ document.querySelector("#filterSide")?.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement
   if (select.selectedOptions.item(0)?.textContent === "Todos") {
     activeFilters.mainPage.side = ""
-    updateChipText()
+    updateDashboardUI()
   } else {
     activeFilters.mainPage.side = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
+    updateDashboardUI()
   }
 })
 
-document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
-  const select = e.target as HTMLSelectElement
-  // const search = document.querySelector("#search") as HTMLInputElement
-  if (select.selectedOptions.item(0)?.textContent === "Todos") {
-    activeFilters.mainPage.assignedTo = ""
-    updateChipText()
-  } else {
-    activeFilters.mainPage.assignedTo = select.selectedOptions.item(0)?.textContent!
-    updateChipText()
-  }
-})
+// document.querySelector("#filterAssignedTo")?.addEventListener("change", (e) => {
+//   const select = e.target as HTMLSelectElement
+//   // const search = document.querySelector("#search") as HTMLInputElement
+//   if (select.selectedOptions.item(0)?.textContent === "Todos") {
+//     activeFilters.mainPage.assignedTo = ""
+//     updateDashboardUI()
+//   } else {
+//     activeFilters.mainPage.assignedTo = select.selectedOptions.item(0)?.textContent!
+//     updateDashboardUI()
+//   }
+// })
 
 document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.mainPage.status = "Aberto"
@@ -1118,7 +1197,7 @@ document.querySelector(".card.red")?.addEventListener("click", () => {
   activeFilters.mainPage.dueThisWeek = false
   const element = document.querySelector(".card.red") as HTMLDivElement
   activeCards(element, "var(--danger)")
-  updateChipText()
+  updateDashboardUI()
 })
 
 
@@ -1128,7 +1207,7 @@ document.querySelector(".card.yellow")?.addEventListener("click", () => {
   activeFilters.mainPage.dueToday = false
   const element = document.querySelector(".card.yellow") as HTMLDivElement
   activeCards(element, "var(--warning)")
-  updateChipText()
+  updateDashboardUI()
 })
 
 
@@ -1138,7 +1217,7 @@ document.querySelector(".card.green")?.addEventListener("click", () => {
   activeFilters.mainPage.dueThisWeek = false
   const element = document.querySelector(".card.green") as HTMLDivElement
   activeCards(element, "var(--success)")
-  updateChipText()
+  updateDashboardUI()
 })
 
 document.querySelector(".card.blue")?.addEventListener("click", () => {
@@ -1146,18 +1225,18 @@ document.querySelector(".card.blue")?.addEventListener("click", () => {
   clearAllFilters(0)
   const element = document.querySelector(".card.blue") as HTMLDivElement
   activeCards(element, "var(--info)")
-  updateChipText()
+  updateDashboardUI()
 })
 
 
 document.querySelector("#redCard")?.addEventListener("click", () => {
   activeFilters.todoPage.dueToday = true
-  updateChipText()
+  updateDashboardUI()
 })
 
 document.querySelector("#yellowCard")?.addEventListener("click", () => {
   activeFilters.todoPage.dueThisWeek = true
-  updateChipText()
+  updateDashboardUI()
 })
 
 
@@ -1175,99 +1254,6 @@ document.querySelector("#toggleable-actions")?.addEventListener("click", async (
   }
 })
 
-
-// function updateCards() {
-//   let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0, awaitingCount = 0
-//   const curDate = new Date()
-//   const friday = new Date(curDate);
-//   const monday = new Date(curDate)
-//   friday.setDate(curDate.getDate() - curDate.getDay() + 5);
-//   monday.setDate(curDate.getDate() - curDate.getDay() + 1);
-//   const lastWeekWorkingDay = new Date(friday.toISOString().split("T")[0] + "T03:00:00.000Z")
-//   const isoToday = new Date(new Date().toISOString().split("T")[0] + "T03:00:00.000Z")
-//   const navItems = document.querySelectorAll(".nav-item")
-//   if (navItems.item(1).className === "nav-item active") activePage = 1
-//   if (!activePage) {
-//     const doneCount = document.querySelector("#doneCount-p1")
-//     if (!activeFilters.mainPage.assignedToMe) {
-//       doneCount!.innerHTML = String(lawsuitsData.filter(c => c.status === "Aguardando Abertura").length)
-//       activeCount = lawsuitsData.filter(c => c.status === "Aberto").length
-//     }
-
-//     for (const lawsuit of filteredLawsuits) {
-//       if (lawsuit.deadline && lawsuit.status != "Finalizado") {
-//         const deadline = new Date(lawsuit.deadline + "T03:00:00.000Z")
-//         const midnightMonday = new Date(monday.toISOString().split("T")[0] + "T03:00:00.000Z")
-//         if (isoToday.toISOString().split("T")[0] === lawsuit.deadline ||
-//           isoToday > new Date(lawsuit.deadline + "T03:00:00.000Z") ||
-//           lawsuit.daysLeft === 0) dueTodayCount++
-//         if (midnightMonday >= deadline || deadline <= lastWeekWorkingDay) weekCount++
-//       }
-
-//       if (activeFilters.mainPage.assignedToMe) {
-//         if (activeRoles?.includes(lawsuit.publicDefendersOffice?.id ?? 0)) {
-//           const pdo = myRoles?.office?.customRolesDates?.find(c => c.pdoId === lawsuit.publicDefendersOffice?.id)
-//           if (pdo) {
-//             if (new Date(lawsuit.releaseDate!) >= new Date(pdo.startDate) && new Date(lawsuit.releaseDate!) <= new Date(pdo.endDate)) {
-//               if (pdo.isOdd) {
-//                 if (Number(lawsuit.number[6]) % 1 === 0)
-//                   if (lawsuit.status === "Aguardando Abertura") awaitingCount++
-//                   else activeCount++
-//               } else if (pdo.isOdd === false) {
-//                 if (Number(lawsuit.number[6]) % 2 === 0) {
-//                   if (lawsuit.status === "Aguardando Abertura") awaitingCount++
-//                   else activeCount++
-//                 }
-//               }
-
-//               else {
-//                 if (lawsuit.status === "Aguardando Abertura") awaitingCount++
-//                 else activeCount++
-//               }
-
-//             }
-//           }
-//         }
-//       }
-//     }
-
-//     if (activeFilters.mainPage.assignedToMe) doneCount!.innerHTML = String(awaitingCount)
-
-
-
-//     // if (selectedStatus[selectedStatus.selectedIndex].label === "Aberto" || selectedStatus[selectedStatus.selectedIndex].label === "Finalizado") {
-//     document.querySelector("#redLabel1")!.innerHTML = "Vencendo hoje"
-//     document.querySelector("#yellowLabel1")!.innerHTML = "Vencendo esta semana"
-//     document.querySelector("#blueLabel1")!.innerHTML = "Processos ativos"
-//     // } else {
-//     //   document.querySelector("#redLabel1")!.innerHTML = "Abrindo hoje"
-//     //   document.querySelector("#yellowLabel1")!.innerHTML = "Abrindo esta semana"
-//     //   document.querySelector("#blueLabel1")!.innerHTML = "Processos pendentes de abertura"
-//     // }
-
-
-//   }
-
-//   else {
-//     activeCount = tasksData.length
-//     const doneCount = document.querySelector("#doneCount-p2")
-//     doneCount!.innerHTML = String(tasksData.filter(c => c.status === "Concluida").length)
-
-//     for (const task of filteredTasks) {
-//       const dueDate = new Date(task.dueDate + "T03:00:00.000Z")
-//       const dates = getDeadline(new Date(), dueDate)
-//       if (isoToday.toISOString().split("T")[0] === task.dueDate || dates.days === 0) dueTodayCount++
-//       if (monday >= dueDate || dueDate <= lastWeekWorkingDay) weekCount++
-//     }
-//   }
-
-
-//   document.querySelector(`${activePage ? "#todayCount-p2" : "#todayCount-p1"}`)!.innerHTML = String(dueTodayCount)
-//   document.querySelector(`${activePage ? "#weekCount-p2" : "#weekCount-p1"}`)!.innerHTML = String(weekCount)
-//   document.querySelector(`${activePage ? "#activeCount-p2" : "#activeCount-p1"}`)!.innerHTML = String(activeCount)
-
-
-// }
 
 function updateCards() {
   let weekCount = 0, activeCount = 0, dueTodayCount = 0, activePage = 0
@@ -1339,7 +1325,7 @@ function updateCards() {
 }
 
 
-function updateChipText() {
+function updateDashboardUI() {
   if (activeFilters.mainPage.circuit)
     updateChips("circuit", "Vara: " + activeFilters.mainPage.circuit)
   else updateChips("circuit", "Vara: ")
@@ -1352,9 +1338,9 @@ function updateChipText() {
     updateChips("side", "Polo: " + activeFilters.mainPage.side)
   else updateChips("side", "Polo: ")
 
-  if (activeFilters.mainPage.assignedTo)
-    updateChips("assignedTo", "Atribuído a: " + activeFilters.mainPage.assignedTo)
-  else updateChips("assignedTo", "Atribuído a: ")
+  if (activeFilters.mainPage.pdo)
+    updateChips("pdo", "Defensoria: " + activeFilters.mainPage.pdo)
+  else updateChips("pdo", "Defensoria: ")
 
   if (activeFilters.mainPage.assignedToMe)
     updateChips("assignedToMe", "Atribuídos a mim: Sim")
@@ -1682,9 +1668,9 @@ function renderActiveFilters() {
       value: activeFilters.mainPage.side
     },
     {
-      key: "assignedTo",
-      label: "Responsável",
-      value: activeFilters.mainPage.assignedTo
+      key: "pdo",
+      label: "Defensoria",
+      value: activeFilters.mainPage.pdo
     },
     {
       key: "assignedToMe",
@@ -1826,9 +1812,9 @@ document.addEventListener("click", (e) => {
         (document.querySelector("#filterSide") as HTMLSelectElement).selectedIndex = 0;
         break;
 
-      case "assignedTo":
-        activeFilters.mainPage.assignedTo = "";
-        (document.querySelector("#filterAssignedTo") as HTMLSelectElement).selectedIndex = 0;
+      case "pdo":
+        activeFilters.mainPage.pdo = "";
+        (document.querySelector("#filterPDO") as HTMLSelectElement).selectedIndex = 0;
         break;
       case "assignedToMe":
         activeFilters.mainPage.assignedToMe = false;
@@ -1885,7 +1871,7 @@ document.addEventListener("click", (e) => {
 
     }
   }
-  updateChipText();
+  updateDashboardUI();
 
   renderActiveFilters();
 
@@ -1897,7 +1883,7 @@ function clearAllFilters(page: number) {
     activeFilters.mainPage.circuit = "";
     activeFilters.mainPage.status = "Aberto";
     activeFilters.mainPage.side = "";
-    activeFilters.mainPage.assignedTo = "";
+    activeFilters.mainPage.pdo = "";
     activeFilters.mainPage.dueToday = false;
     activeFilters.mainPage.dueThisWeek = false;
     activeFilters.mainPage.class = "";
@@ -1920,7 +1906,7 @@ function clearAllFilters(page: number) {
     activeFilters.todoPage.dueThisWeek = false;
     activeFilters.todoPage.search = "";
   }
-  updateChipText();
+  updateDashboardUI();
 
   renderActiveFilters();
 
