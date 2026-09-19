@@ -1,6 +1,8 @@
 import { Document, Paragraph, Packer, TextRun } from "docx";
 import type { Lawsuits } from "../types/lawsuits";
 import { getDeadline } from "../utils/date";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export async function writeDOCX(lawsuits: Lawsuits[]) {
     const paragraphs = lawsuits.map(c =>
@@ -9,10 +11,12 @@ export async function writeDOCX(lawsuits: Lawsuits[]) {
                 new TextRun({ text: c.number, bold: true, break: 1 }),
                 new TextRun({ text: c.class, break: 1 }),
                 new TextRun({ text: c.circuit, break: 1 }),
+                new TextRun({ text: c.publicDefendersOffice?.name, break: 1 }),
                 new TextRun({ text: `Link da intimação: ${c.summonURL ?? "oculto"}`, break: 1 }),
                 new TextRun({ text: c.assisted, break: 1 }),
                 new TextRun({ text: `Início: ${c.initialDeadline ? convertDate(String(c.initialDeadline)) : "Data inicial não definida"}`, break: 1 }),
                 new TextRun({ text: `Prazo Final: ${c.deadline ? convertDate(String(c.deadline)) : "Data final não definida"}`, break: 1 }),
+                new TextRun({ text: `Data de distribuição: ${c.releaseDate ? convertDate(String(c.releaseDate)) : "Data de distribuição não definida"}`, break: 1 }),
                 new TextRun({ text: `${c.source} ${c.status}`, break: 1 }),
                 new TextRun({ text: `${c.initialDeadline && c.deadline ? getDays(String(c.initialDeadline), String(c.deadline))?.days + " dias concedidos" : ""}`, break: 1 }),
                 new TextRun({ text: `${c.deadline ? getDays(new Date().toISOString().split("T")[0], String(c.deadline))?.days + " dias restantes" : ""}`, break: 1 }),
@@ -27,7 +31,7 @@ export async function writeDOCX(lawsuits: Lawsuits[]) {
     paragraphs.unshift(new Paragraph({
         alignment: "center",
         text: "Os prazos do dia. Relatório emitido" + new Date().toLocaleString() + "\n \n",
-        
+
     }))
 
     const doc = new Document({
@@ -43,7 +47,7 @@ export async function writeDOCX(lawsuits: Lawsuits[]) {
     const a = document.createElement('a');
     a.href = url;
     const today = new Date()
-    a.download = `Relatório-${today.getDate()}.${today.getMonth() - 1 > 9 ? today.getMonth() - 1 : "0" + (today.getMonth() - 1) }.${today.getFullYear()}.${today.getHours() +"h"+today.getMinutes()+"m"+today.getSeconds()+"s"}.docx`;
+    a.download = `Relatório-${today.getDate()}.${today.getMonth() - 1 > 9 ? today.getMonth() - 1 : "0" + (today.getMonth() - 1)}.${today.getFullYear()}.${today.getHours() + "h" + today.getMinutes() + "m" + today.getSeconds() + "s"}.docx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -56,8 +60,9 @@ function convertDate(date: string) {
     return dateParts[2] + "/" + dateParts[1] + "/" + dateParts[0]
 }
 
-function getDays(earlierDate: string, endDate: string){
-    if(earlierDate && endDate){
+
+function getDays(earlierDate: string, endDate: string) {
+    if (earlierDate && endDate) {
         const firstDateComponents = earlierDate.split("-")
         const lastDateComponents = endDate.split("-")
         const firstDate = new Date(Number(firstDateComponents[0]), Number(firstDateComponents[1]) - 1, Number(firstDateComponents[2]))
@@ -65,11 +70,11 @@ function getDays(earlierDate: string, endDate: string){
         return getDeadline(firstDate, lastDate, undefined, false)
 
     }
-    
+
 }
 
 
-export function writeJSON(lawsuits: Lawsuits[]){
+export function writeJSON(lawsuits: Lawsuits[]) {
     const lawsuitJSON = JSON.stringify(lawsuits)
     let utf8Encode = new TextEncoder();
     const bytes = utf8Encode.encode(lawsuitJSON);
@@ -78,7 +83,7 @@ export function writeJSON(lawsuits: Lawsuits[]){
     const a = document.createElement('a');
     a.href = url;
     const today = new Date()
-    a.download = `Relatório-${today.getDate()}.${today.getMonth() - 1 > 9 ? today.getMonth() - 1 : "0" + (today.getMonth() - 1) }.${today.getFullYear()}.${today.getHours() +"h"+today.getMinutes()+"m"+today.getSeconds()+"s"}.json`;
+    a.download = `Relatório-${today.getDate()}.${today.getMonth() - 1 > 9 ? today.getMonth() - 1 : "0" + (today.getMonth() - 1)}.${today.getFullYear()}.${today.getHours() + "h" + today.getMinutes() + "m" + today.getSeconds() + "s"}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -86,6 +91,24 @@ export function writeJSON(lawsuits: Lawsuits[]){
 }
 
 
-export async function writePDF(){
-    
+export async function writePDF(lawsuits: Lawsuits[]) {
+    const pdf = new jsPDF();
+    pdf.text("Relatório de Processos", 14, 15)
+    autoTable(pdf, {
+        startY: 25,
+        head: [["Status", "Processo", "Classe", "Vara", "Defensoria", "Assistido", "Prazo"]],
+        body: lawsuits.map(item => [
+            item.status,
+            item.number,
+            item.class ?? "",
+            item.circuit,
+            item.publicDefendersOffice?.name ?? "",
+            item.assisted + " " + item.isDefendant ? "(passivo)" : "(ativo)",
+            String(item.initialDeadline) + " " + String(item.deadline)
+        ])
+    });
+    const today = new Date()
+    pdf.save(`Relatório-${today.getDate()}.${today.getMonth() - 1 > 9 ? today.getMonth() - 1 : "0" + (today.getMonth() - 1)}.${today.getFullYear()}.${today.getHours() + "h" + today.getMinutes() + "m" + today.getSeconds() + "s"}.pdf`);
+
+
 }

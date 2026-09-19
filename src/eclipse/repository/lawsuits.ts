@@ -181,43 +181,71 @@ export async function syncLawsuits(newLawsuits: Lawsuits[]) {
     //const existingLawsuitItems =  new Set(existingLawsuits.map(c => c.summon))
     const newLawsuitToDelete = new Set<string>()
     for (const lawsuit of existingLawsuits) {
-        
+
         if (!newLawsuitItems.has(lawsuit.summon) && lawsuit.status === "Aberto") {
             existingLawsuitsToDelete.push(lawsuit)
         }
-        
+
         else if (new Date(lawsuit.deadline + "T03:00:00.000Z") < new Date()) {
-            console.log(lawsuit)
             existingLawsuitsToDelete.push(lawsuit)
         }
         else {
             if (!newLawsuitToDelete.has(lawsuit.summon)) {
+
                 newLawsuitToDelete.add(lawsuit.summon)
 
             }
         }
     }
+    const awaitingNewOpeningLawsuits = newLawsuits.filter(c => c.status === "Aguardando Abertura")
     newLawsuits = newLawsuits.filter(lawsuit => !newLawsuitToDelete.has(lawsuit.summon))
-
-
-
     if (existingLawsuitsToDelete.length > 0)
         await deleteLawsuitsData(existingLawsuitsToDelete.map(c => c.id!))
-//     const awaitingOpeningNewLawsuits = newLawsuits.filter(c => c.status === "Aguardando Abertura")
-// const awaitingOpeningLawsuits = existingLawsuits.filter(c => c.status === "Aguardando Abertura")
-//         let found = false
-// for (const nLawsuit of awaitingOpeningNewLawsuits) {
-//         for (const eLawsuit of awaitingOpeningLawsuits) {
-//             if(nLawsuit.assisted === eLawsuit.assisted && nLawsuit.number === eLawsuit.number){
-//                  found = true
-//                  break
-//             }
-
-//         }    
-//     if(!found) newLawsuits.push(nLawsuit)
-
-//     }
+    const awaitingExistingOpeningLawsuits = existingLawsuits.filter(c => c.status === "Aguardando Abertura")
+    const awaitingOpeningLawsuits = getAwaitingLawsuits(awaitingExistingOpeningLawsuits, awaitingNewOpeningLawsuits)
+    newLawsuits.push(...awaitingOpeningLawsuits)
     await saveLawsuitsData(newLawsuits)
     existingLawsuits.push(...newLawsuits)
     return existingLawsuits
+}
+
+
+
+function getAwaitingLawsuits(existingLawsuits: Lawsuits[], newLawsuits: Lawsuits[]) {
+    const existingCount = new Map<string, number>()
+
+    for (const lawsuit of existingLawsuits) {
+        existingCount.set(
+            lawsuit.number,
+            (existingCount.get(lawsuit.number) ?? 0) + 1
+        )
+    }
+
+    const newCount = new Map<string, number>()
+
+    for (const lawsuit of newLawsuits) {
+        newCount.set(
+            lawsuit.number,
+            (newCount.get(lawsuit.number) ?? 0) + 1
+        )
+    }
+
+    const lawsuitsToInsert: Lawsuits[] = []
+
+    for (const [number, count] of newCount) {
+        const existing = existingCount.get(number) ?? 0
+        const missing = count - existing
+
+        if (missing > 0) {
+            const lawsuits = newLawsuits.filter(
+                lawsuit => lawsuit.number === number
+            )
+
+            lawsuitsToInsert.push(...lawsuits.slice(0, missing))
+        }
+    }
+
+    return lawsuitsToInsert
+
+
 }
