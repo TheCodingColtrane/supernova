@@ -59,9 +59,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (lawsuitQueryResult && lawsuitQueryResult?.sucesso) {
                 lawsuit = lawsuitQueryResult.processo
                 defenders = results[2] as Defenders[]
-                    
+
                 document.querySelector("#case-circuit")!.textContent = lawsuit.orgao_julgador.nome
-                document.querySelector(".case-number")!.textContent = caseNumber
+                document.querySelector(".case-number")!.innerHTML = caseNumber + " <i class='bi bi-clipboard' style='cursor: pointer'></i>"
                 document.querySelector(".case-class")!.textContent = lawsuit.classe.nome
                 getSide(lawsuit.partes)
                 const plaintiffs = lawsuit.partes.filter(c => c.tipo === "AT")
@@ -188,8 +188,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                     (document.querySelector(".favorites-panel") as HTMLDivElement).classList.toggle("open")
                 })
 
+                document.querySelector(".bi.bi-clipboard")?.addEventListener("click", async () => {
+                    await navigator.clipboard.writeText(caseNumber)
+                    showToast("Processo copiado para área de transferência.")
+
+                })
+
                 favoriteDocumentBtn.addEventListener("click", async () => {
-                    if(!savedLawsuit) return
+                    if (!savedLawsuit) return
                     const icon = favoriteDocumentBtn.children.item(0) as HTMLDivElement
                     if (savedLawsuit.favoriteEvents?.includes(selectedEvent)) return
                     if (icon.className === "bi bi-star-fill") {
@@ -315,8 +321,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             return `<tr>
                               <td>
                               ${c.pessoa.nome} (${c.tipo === "AT" ? "Autor(a)" : "Ré"})
-                              ${c.advogados.map( x => {
-                               return `
+                              ${c.advogados.map(x => {
+                                return `
                                <span>
                                Procurador(a): ${getAttorney(x.nome)}
                                </span>
@@ -377,9 +383,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 })
 
-function getAttorney(name: string){
+function getAttorney(name: string) {
     if (!defenders) return
-    if(name === "DPMG Defensoria Pública") return "DPMG Defensoria Pública"
+    if (name === "DPMG Defensoria Pública") return "DPMG Defensoria Pública"
     else if (defenders.find(l => l?.nome === name)) return "DPMG Defensoria Pública"
     else return name
 
@@ -406,9 +412,9 @@ function getSide(beligents: Parte[]) {
             }
         }))
 
-        if(isActive && isPassive) document.querySelector("#case-side")!.textContent = "CONFLITO"
-        else if(isActive) document.querySelector("#case-side")!.textContent = "POLO ATIVO"
-        else document.querySelector("#case-side")!.textContent = "POLO PASSIVO"
+    if (isActive && isPassive) document.querySelector("#case-side")!.textContent = "CONFLITO"
+    else if (isActive) document.querySelector("#case-side")!.textContent = "POLO ATIVO"
+    else document.querySelector("#case-side")!.textContent = "POLO PASSIVO"
 
 
 }
@@ -430,11 +436,11 @@ function openGeminiPromptsModal() {
               <option value="4">Personalizado</option>
              </select>
              </div>
-             <input type="checkbox" name="downloadLawsuitFile"/>
+             <input type="checkbox" id="downloadLawsuitFile"/>
             <label for="downloadLawsuitFile">Baixar arquivo</label>
              <div class="form-group">
              <label for="prompText">Escreva seu prompt</label>
-                <textarea rows="12" id="promptText" name="promptTextDesc" disabled0></textarea>
+                <textarea rows="12" id="promptText" name="promptTextDesc" disabled></textarea>
              </div>
         </form>
       
@@ -442,11 +448,9 @@ function openGeminiPromptsModal() {
         actions: [
             {
                 label: 'Enviar Prompt', className: 'btn-primary', preventClose: true, callback: async () => {
-                    const form = document.querySelector("#promptForm") as HTMLFormElement
-                    const formData = new FormData(form)
-                    const selectedPrompt = formData.get("promptTextDesc") as string
-                    const download = formData.get("downloadLawsuitFile") as string
-                    await geminiOutput(download === "on", selectedPrompt)
+                    const selectedPrompt = document.querySelector("#promptText") as HTMLInputElement
+                    const download = document.querySelector("#downloadLawsuitFile") as HTMLInputElement
+                    await geminiOutput(download.checked, selectedPrompt.value)
 
                 }
             }

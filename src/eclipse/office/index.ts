@@ -95,9 +95,7 @@ function paginateLawsuitTable(data: Lawsuits[], initialRender = false) {
     filteredLawsuits.slice(start, end),
     isHolidays.checked ? holidaysData : [],
     isElapsedDays.checked,
-    initialRender,
-    activeFilters.mainPage.assignedToMe
-  );
+    initialRender);
 
   renderPagination(0);
 
@@ -607,7 +605,7 @@ let workersData = Array<Worker>();
           if (holidaysData) {
             // const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
             // const input = e.target as HTMLInputElement
-             updateDashboardUI()
+            updateDashboardUI()
             // renderTable(lawsuits, input.checked ? holidaysData : [], isElapsedDays.checked)
           }
 
@@ -634,7 +632,7 @@ let workersData = Array<Worker>();
 
           }
           if (holidaysData) {
-             updateDashboardUI()
+            updateDashboardUI()
 
           }
         })
@@ -675,17 +673,17 @@ let workersData = Array<Worker>();
     const isHolidays = document.querySelector("#checkHolidays") as HTMLInputElement
     const isElapsedDays = document.querySelector("#checkCalendarDays") as HTMLInputElement
     const isAssignedToMe = document.querySelector("#assignedToMe") as HTMLInputElement
-    if (userPreferences.office.holidaysEnabled){
+    if (userPreferences.office.holidaysEnabled) {
       isHolidays.checked = true
       isHolidays.dispatchEvent(new Event('change'));
     }
     else isHolidays.checked = false
-    if (userPreferences.office.elapsedDaysEnabled){
+    if (userPreferences.office.elapsedDaysEnabled) {
       isElapsedDays.checked = true
       isElapsedDays.dispatchEvent(new Event('change'));
     }
     else isElapsedDays.checked = false
-    if (userPreferences.office.customRolesEnabled){
+    if (userPreferences.office.customRolesEnabled) {
       isAssignedToMe.checked = true
       isAssignedToMe.dispatchEvent(new Event('change'));
     }
@@ -812,25 +810,42 @@ function openPanel(currentLawsuit?: Lawsuits) {
         createdAt: currentLawsuit.createdAt,
         // pdoId: currentLawsuit.pdoId
       }
-      await updateLawsuit(lawsuit)
-      showAlert("Processo atualizado com sucesso.", "success")
-      const i = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
       if (lawsuit.status != "Finalizado")
-        lawsuitsData[i] = { ...lawsuit }
+        await updateLawsuit(lawsuit)
       else
-        lawsuitsData.splice(i, 1)
+        await deleteLawsuit(lawsuit.id ?? 0)
+      showAlert("Processo atualizado com sucesso.", "success")
+      if (!activeFilters.mainPage.assignedToMe) {
+        const i = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
+        if (lawsuit.status != "Finalizado")
+          lawsuitsData[i] = { ...lawsuit }
+        else
+          lawsuitsData.splice(i, 1)
+      } else {
+        const i = assignedToMeLawsuits.findIndex(c => c.id === currentLawsuit.id)
+        if (lawsuit.status != "Finalizado")
+          assignedToMeLawsuits[i] = { ...lawsuit }
+        else
+          assignedToMeLawsuits.splice(i, 1)
+      }
+
       closePanel()
-       updateDashboardUI()
+      updateDashboardUI()
       // renderTableWithOptions()
     }
 
     deleteBtn.onclick = async () => {
       await deleteLawsuit(currentLawsuit.id ?? 0)
       showAlert("Processo deletado com sucesso.", "success")
-      const idx = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
-      lawsuitsData = lawsuitsData.splice(idx, 1)
+      if (!activeFilters.mainPage.assignedToMe) {
+        const idx = lawsuitsData.findIndex(c => c.id === currentLawsuit.id)
+        lawsuitsData = lawsuitsData.splice(idx, 1)
+      } else {
+        const idx = assignedToMeLawsuits.findIndex(c => c.id === currentLawsuit.id)
+        assignedToMeLawsuits = assignedToMeLawsuits.splice(idx, 1)
+      }
       closePanel()
-       updateDashboardUI()
+      updateDashboardUI()
 
       // renderTableWithOptions()
     }
@@ -871,7 +886,7 @@ function openPanel(currentLawsuit?: Lawsuits) {
       lawsuitsData.push({ ...lawsuit })
       closePanel()
       //renderTableWithOptions()
-       updateDashboardUI()
+      updateDashboardUI()
 
     }
 
@@ -883,14 +898,12 @@ function openPanel(currentLawsuit?: Lawsuits) {
 // row.onclick = () => openPanel(processo);
 
 
-async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDays = false, initialRender = false, isAssignedToMe = false) {
+async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDays = false, initialRender = false) {
   const table = document.getElementById("lawsuitTable");
   table?.replaceChildren()
   table!.innerHTML = "";
   const today = new Date()
   let initialDeadline = "", deadline = ""
-  let x = 0
-  console.log(isAssignedToMe)
   data.forEach((p: Lawsuits) => {
 
     let dates = { days: 0, deadline: new Date, isDueDate: false }
@@ -902,7 +915,6 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       deadline = `<span>Final: ${deadlineDateComponents[2] + "/" + deadlineDateComponents[1] + "/" + deadlineDateComponents[0]}</span>`
 
     }
-    console.log(x++)
 
     const tr = document.createElement("tr");
     tr.dataset.id = p.id?.toString()
@@ -930,7 +942,10 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     </button>
 </td>
         <td>${p.status}</td>
-        <td>${lawsuitNumber}</td>
+        <td>
+        <i class="bi bi-clipboard" style="cursor: pointer"></i>
+        ${lawsuitNumber}
+        </td>
         <td>${p.class}</td>
         <td>${p.circuit}</td>
         <td>${p.publicDefendersOffice?.name}</td>
@@ -972,7 +987,7 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
     const editLawsuitButton = tr.querySelector("td > .icon-btn.edit") as HTMLButtonElement
     const createTaskButton = tr.querySelector("td > .icon-btn.create-task") as HTMLButtonElement
     const viewTasksButton = tr.querySelector("td > .icon-btn.view-tasks") as HTMLButtonElement
-
+    const copyIcon = tr.querySelector("td > .bi.bi-clipboard") as HTMLButtonElement
     viewLawsuitButton.onclick = async () => {
       await chrome.tabs.create({ url: "./src/pages/processo.html?numero=" + p.number })
     }
@@ -989,6 +1004,12 @@ async function renderTable(data: Lawsuits[], holidays?: Holidays[], isElapsedDay
       goToPage(1)
       activeFilters.todoPage.search = p.number
       updateDashboardUI()
+    }
+
+    copyIcon.onclick = async () => {
+      await navigator.clipboard.writeText(lawsuitNumber)
+      showToast("Processo copiado para área de transferência.")
+
     }
 
     createTaskButton.onclick = async () => {

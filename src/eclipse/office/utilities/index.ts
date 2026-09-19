@@ -1,4 +1,4 @@
-import { writeJSON, writeDOCX } from "../../reports";
+import { writeJSON, writeDOCX, writePDF } from "../../reports";
 import type { Holidays } from "../../types/holidays";
 import type { Lawsuits } from "../../types/lawsuits";
 import type { User, UserPreferences } from "../../types/user";
@@ -177,7 +177,8 @@ async function openDeadlineCalculator() {
 
 }
 
-function openReportsModal() {
+async function openReportsModal() {
+    const lawsuitsData = await sendMessage("GET_PENDING_LAWSUITS", {}) as any
     renderModal().open({
         title: "Exporte relatório",
         content: `
@@ -185,6 +186,7 @@ function openReportsModal() {
           <div class="form-group">
             <label>Formato do arquivo</label>
              <select name="file" id="fileExtension">
+              <option>Selecione um tipo de arquivo</option>
               <option value="0">Word (docx)</option>
               <option value="1">PDF</option>
               <option value="2">JSON</option>
@@ -199,20 +201,132 @@ function openReportsModal() {
                     const form = document.querySelector("#reportForm") as HTMLFormElement
                     const formData = new FormData(form)
                     const fileType = formData.get("file")
-                    const lawsuitsData = await sendMessage("GET_PENDING_LAWSUITS", {}) as any
-                    const lawsuits = lawsuitsData.data as Lawsuits[]
-                    if (fileType === "0") {
-                        await writeDOCX(lawsuits)
-                    } else if (fileType === "1") {
+                    const foundLawsuits = lawsuitsData.data as Lawsuits[]
+                    if (fileType === "0" || fileType === "1") {
+                        const chkAll = document.querySelector("#pdosContainer > #chkAll") as HTMLInputElement
+                        if (chkAll.checked) {
+                            const values = chkAll.dataset.keys
 
+                            const filteredLawsuits = new Array<Lawsuits>()
+                            for (const lawsuit of foundLawsuits) {
+                                if (values?.includes(String(lawsuit.publicDefendersOffice?.id)))
+                                    filteredLawsuits.push(lawsuit)
+                            }
+                            if (filteredLawsuits.length > 0)
+                                if (fileType === "0")
+                                    await writeDOCX(filteredLawsuits)
+                                else
+                                    await writePDF(filteredLawsuits)
+
+                        } else {
+                            const chks = document.querySelectorAll("#pdosContainer > input[type='checkbox']")
+                            let values = ""
+                            for (const chk of chks) {
+                                if (chk.id !== "chkAll" && (chk as HTMLInputElement).checked)
+                                    values += (chk as HTMLInputElement).value + ", "
+
+                            }
+
+                            values = values.substring(0, values.length - 2)
+                            const filteredLawsuits = new Array<Lawsuits>()
+                            for (const lawsuit of foundLawsuits) {
+                                if (values?.includes(String(lawsuit.publicDefendersOffice?.id)))
+                                    filteredLawsuits.push(lawsuit)
+                            }
+                            if (filteredLawsuits.length > 0)
+                                if (fileType === "0")
+                                    await writeDOCX(filteredLawsuits)
+                                else
+                                    await writePDF(filteredLawsuits)
+                        }
                     } else {
-                        writeJSON(lawsuits)
+                        writeJSON(foundLawsuits)
                     }
                 }
             }
         ]
+
     })
 
+    const fileTypeInput = document.querySelector("#fileExtension") as HTMLSelectElement
+    fileTypeInput.onchange = () => {
+        document.querySelector("#pdosContainer")?.remove()
+        const form = document.querySelector("#reportForm") as HTMLFormElement
+        if (fileTypeInput.selectedIndex === 1 || fileTypeInput.selectedIndex === 2) {
+            let savedPreferences = JSON.parse(localStorage.getItem("preferences") ?? "{}") as UserPreferences | undefined
+            const user = JSON.parse(localStorage.getItem("user") ?? "{}") as User
+            let pdos = ""
+            if (savedPreferences?.office?.customRolesDates) {
+                pdos = savedPreferences?.office?.customRolesDates.map(c => {
+                    const role = user.roles.find(d => d.defensoria.id === c.pdoId)
+                    if (role) {
+                        return `
+                        <input type='checkbox' value='${role.defensoria.id}'>
+                        <label style="font-size: small">${role.defensoria.nome}</label>
+                        <br>`
+                    }
+                    return ""
+                }).join("")
+                // form.innerHTML += pdos
+            } else {
+                pdos = user.roles.map(c => {
+                    if (new Date(c.data_final!) < new Date()) {
+                        return `
+                        <div class="form-group">
+                        <input type='checkbox' value='${c.defensoria.id}'>
+                        <label>${c.defensoria.nome}</label>
+                        </div>`
+                    }
+                    return ""
+                }).join("")
+
+            }
+
+
+            form.insertAdjacentHTML(
+                "beforeend",
+                `<div id="pdosContainer">${pdos}</div>`
+            )
+
+            const chkContainer = document.querySelector("#pdosContainer")
+            const opt = document.createElement("input")
+            opt.setAttribute("type", "checkbox")
+            opt.value = "*"
+            opt.id = "chkAll"
+            const label = document.createElement("label")
+            label.textContent = "Todos"
+            label.style.fontSize = "small"
+            chkContainer?.append(opt)
+            chkContainer?.append(label)
+            const chkAll = document.querySelector("#pdosContainer > #chkAll") as HTMLInputElement
+            chkAll.onchange = () => {
+                if (chkAll.checked) {
+                    let values = ""
+                    const chks = document.querySelectorAll("#pdosContainer > input[type='checkbox']")
+                    for (const chk of chks) {
+                        if (chk.id !== "chkAll") {
+                            (chk as HTMLInputElement).disabled = true
+                            values += (chk as HTMLInputElement).value + ", "
+
+                        }
+                        else
+                            (chk as HTMLInputElement).dataset.keys = values.substring(0, values.length - 2)
+
+                    }
+                } else {
+                    const chks = document.querySelectorAll("#pdosContainer > input[type='checkbox']")
+                    for (const chk of chks) {
+                        if (chk.id !== "chkAll")
+                            (chk as HTMLInputElement).disabled = false
+                        else
+                            (chk as HTMLInputElement).dataset.keys = ""
+
+                    }
+                }
+
+            }
+        }
+    }
 }
 
 function openPreferencesModal() {
