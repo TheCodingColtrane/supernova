@@ -873,3 +873,20 @@ function parseSolarAPIResult(results: SolarResponse[], defenders: Defenders[]) {
 
 
 
+export async function readSummon(summonPageContent: string){
+  const domParser = new DOMParser()
+  const summonPage = domParser.parseFromString(summonPageContent, "text/html")
+  if(summonPage.querySelector(".timbre_poder")){
+    const summonParagraphs = summonPage.querySelectorAll(".paragrafoPadrao") as NodeListOf<HTMLParagraphElement>
+    // const title = document.querySelector("p.titulo")?.textContent
+    // if(title?.includes("ATO ORDINATÓRIO", "DESPACHO"]))
+    let summonContent = ""
+    for (const paragraph of summonParagraphs) {
+      summonContent += paragraph.textContent + "\n"
+    }
+
+    return summonContent
+  } 
+
+  return ""
+}

@@ -1,5 +1,5 @@
 import { formatISO } from "date-fns";
-import type { Holidays } from "../types/holidays";
+import type { Holidays, HolidaysAPIResponse } from "../types/holidays";
 import { sendMessage } from "../../util";
 import { showToast } from "../utils/ui";
 let holidaysData = Array<Holidays>();
@@ -45,19 +45,27 @@ let holidaysData = Array<Holidays>();
 
     const currentDate = new Date()
     const lastDayYear = new Date(Number(yearFilterSelect.options.item(curholiday)?.value), 11, 31)
-    if(currentDate < lastDayYear){
+    if(currentDate > lastDayYear){
         const newYear = currentDate.getFullYear()
-       const response =  await fetch("https://brasilapi.com.br/api/feriados/v1/" + 2027)
+       const response =  await fetch("https://brasilapi.com.br/api/feriados/v1/" + newYear)
        if(response.ok){
-            const data = await response.json() as Holidays[]
+            const data = await response.json() as HolidaysAPIResponse[]
             if(data.length > 0){
-                data.push({startDate: String(newYear) + "-12-20", endDate: String(newYear) + "-01-20", name: "Recesso Forense", type: "national" })
-                const result = await sendMessage("SAVE_HOLIDAYS", {holidays: data})
+                const newHolidays = data.map(c => {
+                    return {
+                        startDate: c.date,
+                        endDate: c.date,
+                        type: "national",
+                        name: c.name
+                    } as Holidays
+                })
+
+                newHolidays.push({startDate: String(newYear) + "-12-20", endDate: String(newYear) + "-01-20", name: "Recesso Forense", type: "national" })
+                const result = await sendMessage("SAVE_HOLIDAYS", {holidays: newHolidays})
                 if(result.data){
                      showToast("Feriados cadastrados com sucesso.")
                      years.push(String(newYear))
-                     holidaysData.push(...data)
-                     window.location.reload()
+                    window.location.reload()
                 }
             }
 
