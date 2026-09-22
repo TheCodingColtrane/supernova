@@ -32,4 +32,36 @@ export type Lawsuits = {
     }]
     createdAt?: Date
     updatedAt?: Date
-} 
+}
+
+
+export type SummonAction =
+    | 'AWARENESS'
+    | 'INITIAL_PLEADING'
+    | 'DEFENSE'
+    | 'REPLY'
+    | 'COUNTERARGUMENTS'
+    | 'APPEAL'
+    | 'EVIDENCE'
+    | 'EXPERT_REPORT'
+    | 'HEARING'
+    | 'DOCUMENT_PRESENTATION'
+    | 'CALCULATION'
+    | 'COMPLIANCE'
+    | 'PAYMENT'
+    | 'STATEMENT'
+    | 'RESPONSE'
+    | 'OTHER'
+
+
+
+export type SummonClassification = {
+    action: SummonAction
+    matchedRules: string[]
+    confidence: number
+    score: number
+      alternatives?: {
+        action: SummonAction
+        score: number
+    }[]
+}

@@ -46,11 +46,9 @@ function showAlert(message: string, type = 'success', duration = 4000) {
     <button style="background:none; border:none; cursor:pointer; font-size:1.2rem; margin-left:10px; color:var(--text-muted)">&times;</button>
   `;
 
-  // Botão de fechar manual
   const toastButton = toast.querySelector('button') as HTMLButtonElement
   toastButton.onclick = () => removeToast(toast);
   container?.appendChild(toast);
-  // Auto-remover após o tempo definido
   setTimeout(() => removeToast(toast), duration);
 }
 

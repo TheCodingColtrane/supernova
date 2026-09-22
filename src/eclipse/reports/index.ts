@@ -1,31 +1,34 @@
 import { Document, Paragraph, Packer, TextRun } from "docx";
 import type { Lawsuits } from "../types/lawsuits";
-import { getDeadline } from "../utils/date";
+// import { getDeadline } from "../utils/date";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export async function writeDOCX(lawsuits: Lawsuits[]) {
-    const paragraphs = lawsuits.map(c =>
-        new Paragraph({
+    const paragraphs = lawsuits.map(c => {
+        // const dates = getDays(String(c.initialDeadline),String(c.deadline))
+        return new Paragraph({
             children: [
-                new TextRun({ text: c.number, bold: true, break: 1 }),
+                new TextRun({ text: formatLawsuitNumber(c.number), bold: true, break: 1 }),
                 new TextRun({ text: c.class, break: 1 }),
                 new TextRun({ text: c.circuit, break: 1 }),
                 new TextRun({ text: c.publicDefendersOffice?.name, break: 1 }),
                 new TextRun({ text: `Link da intimação: ${c.summonURL ?? "oculto"}`, break: 1 }),
                 new TextRun({ text: c.assisted, break: 1 }),
                 new TextRun({ text: `Início: ${c.initialDeadline ? convertDate(String(c.initialDeadline)) : "Data inicial não definida"}`, break: 1 }),
-                new TextRun({ text: `Prazo Final: ${c.deadline ? convertDate(String(c.deadline)) : "Data final não definida"}`, break: 1 }),
-                new TextRun({ text: `Data de distribuição: ${c.releaseDate ? convertDate(String(c.releaseDate)) : "Data de distribuição não definida"}`, break: 1 }),
+                new TextRun({ text: `Prazo Final: ${c?.deadline ? convertDate(String(c.deadline)) : "Data final não definida"}`, break: 1 }),
+                new TextRun({ text: `Data de distribuição: ${c.releaseDate ? new Date(c.releaseDate).toLocaleString() : "Data de distribuição não definida"}`, break: 1 }),
                 new TextRun({ text: `${c.source} ${c.status}`, break: 1 }),
-                new TextRun({ text: `${c.initialDeadline && c.deadline ? getDays(String(c.initialDeadline), String(c.deadline))?.days + " dias concedidos" : ""}`, break: 1 }),
-                new TextRun({ text: `${c.deadline ? getDays(new Date().toISOString().split("T")[0], String(c.deadline))?.days + " dias restantes" : ""}`, break: 1 }),
-
             ],
             spacing: {
                 after: 300, // space between reports
             },
         })
+
+
+    }
+
+
     );
 
     paragraphs.unshift(new Paragraph({
@@ -60,20 +63,9 @@ function convertDate(date: string) {
     return dateParts[2] + "/" + dateParts[1] + "/" + dateParts[0]
 }
 
-
-function getDays(earlierDate: string, endDate: string) {
-    if (earlierDate && endDate) {
-        const firstDateComponents = earlierDate.split("-")
-        const lastDateComponents = endDate.split("-")
-        const firstDate = new Date(Number(firstDateComponents[0]), Number(firstDateComponents[1]) - 1, Number(firstDateComponents[2]))
-        const lastDate = new Date(Number(lastDateComponents[0]), Number(lastDateComponents[1]) - 1, Number(lastDateComponents[2]))
-        return getDeadline(firstDate, lastDate, undefined, false)
-
-    }
-
+function formatLawsuitNumber(number: string) {
+    return `${number.substring(0, 7)}-${number.substring(7, 9)}.${number.substring(9, 13)}.${number[13]}.${number.substring(14, 16)}.${number.substring(16)}`
 }
-
-
 export function writeJSON(lawsuits: Lawsuits[]) {
     const lawsuitJSON = JSON.stringify(lawsuits)
     let utf8Encode = new TextEncoder();
@@ -92,19 +84,56 @@ export function writeJSON(lawsuits: Lawsuits[]) {
 
 
 export async function writePDF(lawsuits: Lawsuits[]) {
-    const pdf = new jsPDF();
+    const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+});
     pdf.text("Relatório de Processos", 14, 15)
-    autoTable(pdf, {
-        startY: 25,
-        head: [["Status", "Processo", "Classe", "Vara", "Defensoria", "Assistido", "Prazo"]],
+   autoTable(pdf, {
+    startY: 25,
+    theme: 'grid',
+
+    margin: {
+        top: 15,
+        right: 10,
+        bottom: 15,
+        left: 10
+    },
+
+    styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        overflow: 'linebreak',
+        valign: 'middle'
+    },
+
+    headStyles: {
+        fontSize: 7,
+        halign: 'center',
+        valign: 'middle'
+    },
+
+    columnStyles: {
+        0: { cellWidth: 20 }, // Status
+        1: { cellWidth: 35 }, // Processo
+        2: { cellWidth: 35 }, // Classe
+        3: { cellWidth: 25 }, // Vara
+        4: { cellWidth: 35 }, // Defensoria
+        5: { cellWidth: 45 }, // Assistido
+        6: { cellWidth: 25 }, // Prazo Inicial
+        7: { cellWidth: 25 }  // Prazo Final
+    },
+        head: [["Status", "Processo", "Classe", "Vara", "Defensoria", "Assistido", "Prazo Inicial", "Prazo Final"]],
         body: lawsuits.map(item => [
             item.status,
-            item.number,
+            formatLawsuitNumber(item.number),
             item.class ?? "",
             item.circuit,
             item.publicDefendersOffice?.name ?? "",
-            item.assisted + " " + item.isDefendant ? "(passivo)" : "(ativo)",
-            String(item.initialDeadline) + " " + String(item.deadline)
+            `${item.assisted} ${item.isDefendant ? "(passivo)" : "(ativo)"}`,
+            convertDate(String(item.initialDeadline)),
+            convertDate(String(item.deadline))
         ])
     });
     const today = new Date()
